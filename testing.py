@@ -3,7 +3,7 @@
 Created on Fri Feb 16 15:48:07 2018
 
 @author: suzanne
-testing how to plot
+testing how to plot a few ways
 """
 
 import numpy
