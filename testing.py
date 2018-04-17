@@ -3,6 +3,7 @@
 Created on Fri Feb 16 15:48:07 2018
 
 @author: suzanne
+testing how to plot
 """
 
 import numpy
