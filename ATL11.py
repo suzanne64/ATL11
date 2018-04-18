@@ -40,6 +40,8 @@ class ATL11_data:
         
 class ATL11_point:
     def __init__(self, N_pairs=1, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12):
+        self.N_pairs=N_pairs
+        self.N_reps=N_reps        
         self.x_atc_ctr=x_atc_ctr
         self.y_atc_ctr=y_atc_ctr
         self.z_poly_fit=None
@@ -98,6 +100,7 @@ class ATL11_point:
         my_regression_tol=np.max(0.01, 3*np.median(y_slope_sigma))
 
         for item in range(2):
+            # QUESTION: Do we need the "for item in range(2)" loop?  There are already 2 iterations in self.my_poly_fit.fit
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
             self.my_poly_fit=poly_ref_surf(my_regression_x_degree, my_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
             y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=2, min_sigma=my_regression_tol)
@@ -114,7 +117,7 @@ class ATL11_point:
             # re-establish pairs_valid_for_y_fit
             pairs_valid_for_y_fit=np.logical_and( np.logical_and(self.valid_pairs.data.ravel(),self.valid_pairs.ysearch.ravel()), self.valid_pairs.y_slope.ravel()) 
                             
-        # 3g. Use model on all pairs
+        # 3g. Use y model to evaluate all pairs
         self.valid_pairs.y_slope=np.abs(self.my_poly_fit.z(pair_data.x, pair_data.y)- pair_data.dh_dy) < y_slope_threshold 
         
         #4a. define pairs_valid_for_x_fit
@@ -132,6 +135,7 @@ class ATL11_point:
         #4c: Calculate along-track slope regression tolerance
         mx_regression_tol=np.maximum(0.01, 3*np.median(D6.dh_fit_dx_sigma[pairs_valid_for_x_fit,:].flatten())) 
         for item in range(2):
+            # QUESTION: Do we need the "for item in range(2)" loop?  There are already 2 iterations in self.mx_poly_fit.fit
             # 4d: regression of along-track slope against x_pair and y_pair
             self.mx_poly_fit=poly_ref_surf(mx_regression_x_degree, mx_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
             x_slope_model, x_slope_resid,  x_slope_chi2r, x_slope_valid_flag=self.mx_poly_fit.fit(D6.x_atc[pairs_valid_for_x_fit,:].ravel(), D6.y_atc[pairs_valid_for_x_fit,:].ravel(), D6.dh_fit_dx[pairs_valid_for_x_fit,:].ravel(), max_iterations=2, min_sigma=mx_regression_tol)
@@ -139,7 +143,7 @@ class ATL11_point:
             x_slope_valid_flag.shape=[np.sum(pairs_valid_for_x_fit),2]
             self.valid_segs.x_slope[np.where(pairs_valid_for_x_fit),:]=x_slope_valid_flag
             self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1) 
-            # re-establish pairs_valid_for_y_fit
+
             # re-establish pairs_valid_for_x_fit
             pairs_valid_for_x_fit=np.logical_and(self.valid_pairs.data.ravel(), self.valid_pairs.x_slope.ravel()) # include ysearch here?
             
@@ -152,7 +156,7 @@ class ATL11_point:
             self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1) 
             pairs_valid_for_x_fit=np.logical_and(np.logical_and(self.valid_pairs.data.ravel(),self.valid_pairs.ysearch.ravel()), self.valid_pairs.x_slope.ravel()) 
             
-        # 4g. Use model on all segments
+        # 4g. Use x model to evaluate all segments
         self.valid_segs.x_slope=np.abs(self.mx_poly_fit.z(D6.x_atc, D6.y_atc)- D6.dh_fit_dx) < x_slope_threshold #, max_iterations=2, min_sigma=mx_regression_tol)
         self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1) 
     
