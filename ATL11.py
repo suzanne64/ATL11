@@ -368,9 +368,10 @@ class ATL11_point:
         cycle=D6.cycle[self.valid_pairs.all,:].ravel()[selected_segs]
         self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]
         
-        fig=plt.figure(); ax=fig.add_subplot(111, projection='3d')        
-        ax.scatter(x_atc, y_atc, h_li, c=time
-        
+        if self.DOPLOT is not None:
+            fig=plt.figure(31); plt.clf(); ax=fig.add_subplot(111, projection='3d')        
+            p=ax.scatter(x_atc, y_atc, h_li, c=time); 
+            fig.colorbar(p)
         
         # separate m_ref
         self.ref_surf_poly=m_ref[self.poly_cols]
