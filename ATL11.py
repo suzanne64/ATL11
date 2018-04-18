@@ -34,6 +34,7 @@ class valid_mask:
 class ATL11_data:
     def __init__(self, N_ref_pts, N_reps):
         self.Data=[]
+        self.DOPLOT=None
         # define empty records here based on ATL11 ATBD
         self.corrected_h=generic_group(N_ref_pts, N_reps, ['ref_pt_lat', 'ref_pt_lon', 'ref_pt_number'], ['mean_pass_time', 'pass_h_shapecorr', 'pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'])
         
@@ -49,6 +50,7 @@ class ATL11_point:
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.z=ATL11_data(1, N_reps)
         self.status=dict()
+        self.DOPLOT=None
 
     def select_ATL06_pairs(self, D6, pair_data, params_11):   # x_polyfit_ctr is x_atc_ctr and seg_x_center
         # this is section 5.1.2: select "valid pairs" for reference-surface calculation    
@@ -191,20 +193,23 @@ class ATL11_point:
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
         self.y_atc_ctr=np.median(y0_shifts[best])
-        plt.figure(2);plt.clf()
-        plt.plot(y0_shifts,score,'.');
-        plt.plot(np.ones_like(np.arange(1,np.amax(score)+1))*self.y_atc_ctr,np.arange(1,np.amax(score)+1),'r')
-        plt.title(' score vs y0_shifts(blu), y_best(red)')
+        if self.DOPLOT is not None:        
+            plt.figure(2);plt.clf()
+            plt.plot(y0_shifts,score,'.');
+            plt.plot(np.ones_like(np.arange(1,np.amax(score)+1))*self.y_atc_ctr,np.arange(1,np.amax(score)+1),'r')
+            plt.title(' score vs y0_shifts(blu), y_best(red)')
         
         # 4: update valid pairs to inlucde y_atc within L_search_XT of y_atc_ctr (y_best)
-        plt.figure(50)
-        plt.plot(pair_data.y,'b.');plt.hold(True)
-        plt.plot(pair_data.y[self.valid_pairs.data],'r.')
-        plt.plot(D6.y_atc,'o');
-        plt.plot(D6.y_atc[self.valid_pairs.all,:],'+');plt.grid(True)
-        plt.figure(51);plt.clf()
-        #plt.plot(np.abs(pair_data.y - y_atc_ctr)<params_11.L_search_XT[self.valid_pairs.data])
         self.valid_pairs.ysearch=np.logical_and(self.valid_pairs.ysearch,np.abs(pair_data.y - self.y_atc_ctr)<params_11.L_search_XT)  
+        if self.DOPLOT is not None:
+            plt.figure(50)
+            plt.plot(pair_data.y,'b.');plt.hold(True)
+            plt.plot(pair_data.y[self.valid_pairs.data],'r.')
+            plt.plot(D6.y_atc,'o');
+            plt.plot(D6.y_atc[self.valid_pairs.all,:],'+');plt.grid(True)
+        #plt.figure(51);plt.clf()
+        #plt.plot(np.abs(pair_data.y - y_atc_ctr)<params_11.L_search_XT[self.valid_pairs.data])
+
 
         return 
 
