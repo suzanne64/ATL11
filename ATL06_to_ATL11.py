@@ -33,7 +33,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None):
         P11=ATL11_point(N_pairs=len(pair_data.x), x_atc_ctr=seg_x_center, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()) )
         # step 2: select pairs, based on reasonable slopes
         P11.select_ATL06_pairs(D6_sub, pair_data, params_11)
-        P11.y_atc_ctr=P11.select_y_center(D6_sub, pair_data, params_11)
+        P11.select_y_center(D6_sub, pair_data, params_11)
                 
         P11.lat_ctr,P11.lon_ctr = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[seg_x_center,P11.y_atc_ctr])
 
