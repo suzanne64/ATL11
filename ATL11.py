@@ -402,13 +402,14 @@ class ATL11_point:
         self.Cm = np.dot(np.dot(G_g,Cdp.toarray()),np.transpose(G_g))
         self.sigma_m=np.full(G_full.shape[1],np.nan)
         self.sigma_m[fit_columns]=np.sqrt(self.Cm.diagonal())
-        plt.figure(3);plt.clf()
-        plt.plot(self.sigma_m[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'ro-')
-        plt.hold(True)
-        plt.plot(m_ref[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'go-')
-        plt.xticks(np.arange(9),(self.x_degree_list+self.y_degree_list).astype('S3'))
-        plt.xlabel('sum of x_degree, y degree')
-        plt.title('Surface Shape Polynomial (g), Sigma m (r)')
+        if self.DOPLOT:
+            plt.figure(3);plt.clf()
+            plt.plot(self.sigma_m[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'ro-')
+            plt.hold(True)
+            plt.plot(m_ref[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'go-')
+            plt.xticks(np.arange(9),(self.x_degree_list+self.y_degree_list).astype('S3'))
+            plt.xlabel('sum of x_degree, y degree')
+            plt.title('Surface Shape Polynomial (g), Sigma m (r)')
         self.z_cycle_sigma=self.sigma_m[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
         self.pass_h_shapecorr_sigma[self.ref_surf_passes.astype(int)-1]=self.z_cycle_sigma[fit_columns[np.sum([self.poly_cols.shape,self.slope_change_cols.shape]):]] #np.sum([self.poly_cols.shape,self.slope_change_cols.shape,self.repeat_cols])]] )
         
@@ -474,11 +475,12 @@ class ATL11_point:
         else:
             Cms=self.Cm[:,self.poly_cols][self.poly_cols,:] # can't index 2 dimensions at once. IF NO SLOPE_CHANGE_COLS!!
         z_kc_sigma = np.sqrt( np.diag( np.dot(np.dot(G_other,Cms),np.transpose(G_other)) ) + h_li_sigma**2 ) # equation 11
-        plt.figure(108);plt.clf()
-        plt.plot(h_li_sigma,'b.-');plt.hold(True)
-        plt.plot(z_kc_sigma,'ro-')
-        plt.title('Other cycles: hli sigma (b), Zkc sigma(r)');plt.grid()
-        
+        if self.DOPLOT:        
+            plt.figure(108);plt.clf()
+            plt.plot(h_li_sigma,'b.-');plt.hold(True)
+            plt.plot(z_kc_sigma,'ro-')
+            plt.title('Other cycles: hli sigma (b), Zkc sigma(r)');plt.grid()
+            
         for cc in self.non_ref_surf_passes:
             self.pass_h_shapecorr[np.int(cc)-1]=z_kc[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
             self.pass_h_shapecorr_sigma[np.int(cc)-1]=np.amin(z_kc_sigma[cycle==cc])
@@ -486,19 +488,19 @@ class ATL11_point:
             self.pass_lat[np.int(cc)-1]=lat[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
             self.pass_x[np.int(cc)-1]  =x_atc[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
             self.pass_y[np.int(cc)-1]  =y_atc[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
-
-        plt.figure(200);plt.clf()
-        plt.plot(np.arange(12)+1,self.pass_h_shapecorr,'bo-');plt.hold(True)
-        plt.plot(np.arange(12)[self.non_ref_surf_passes.astype(int)-1]+1,self.pass_h_shapecorr[self.non_ref_surf_passes.astype(int)-1],'ro')
-        plt.xlabel('Cycle Number');plt.xlim((0,13))
-        plt.ylabel('Corrected Height with lowest Error / Cycle')
-        plt.title('Pass H ShapeCorr: selected (b), other (r)');plt.grid()
-        plt.figure(201);plt.clf()
-        plt.plot(np.arange(12)+1,self.pass_h_shapecorr_sigma,'bo-');plt.hold(True)
-        plt.plot(np.arange(12)[self.non_ref_surf_passes.astype(int)-1]+1,self.pass_h_shapecorr_sigma[self.non_ref_surf_passes.astype(int)-1],'ro')
-        plt.xlabel('Cycle Number');plt.xlim((0,13))
-        plt.ylabel('Lowest Error of Segments in each Cycle')
-        plt.title('Pass H ShapeCorr Sigma: selected (b), other (r)');plt.grid()
+        if self.DOPLOT:
+            plt.figure(200);plt.clf()
+            plt.plot(np.arange(12)+1,self.pass_h_shapecorr,'bo-');plt.hold(True)
+            plt.plot(np.arange(12)[self.non_ref_surf_passes.astype(int)-1]+1,self.pass_h_shapecorr[self.non_ref_surf_passes.astype(int)-1],'ro')
+            plt.xlabel('Cycle Number');plt.xlim((0,13))
+            plt.ylabel('Corrected Height with lowest Error / Cycle')
+            plt.title('Pass H ShapeCorr: selected (b), other (r)');plt.grid()
+            plt.figure(201);plt.clf()
+            plt.plot(np.arange(12)+1,self.pass_h_shapecorr_sigma,'bo-');plt.hold(True)
+            plt.plot(np.arange(12)[self.non_ref_surf_passes.astype(int)-1]+1,self.pass_h_shapecorr_sigma[self.non_ref_surf_passes.astype(int)-1],'ro')
+            plt.xlabel('Cycle Number');plt.xlim((0,13))
+            plt.ylabel('Lowest Error of Segments in each Cycle')
+            plt.title('Pass H ShapeCorr Sigma: selected (b), other (r)');plt.grid()
         
 def gen_inv(self,G,sigma):
             # 3f. Generate data-covariance matrix
