@@ -190,10 +190,10 @@ class ATL11_point:
             score[count]=selected_seg_cycle_count + unselected_seg_cycle_count/100.
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
-        y_atc_ctr=np.median(y0_shifts[best])
+        self.y_atc_ctr=np.median(y0_shifts[best])
         plt.figure(2);plt.clf()
         plt.plot(y0_shifts,score,'.');
-        plt.plot(np.ones_like(np.arange(1,np.amax(score)+1))*y_atc_ctr,np.arange(1,np.amax(score)+1),'r')
+        plt.plot(np.ones_like(np.arange(1,np.amax(score)+1))*self.y_atc_ctr,np.arange(1,np.amax(score)+1),'r')
         plt.title(' score vs y0_shifts(blu), y_best(red)')
         
         # 4: update valid pairs to inlucde y_atc within L_search_XT of y_atc_ctr (y_best)
@@ -204,9 +204,9 @@ class ATL11_point:
         plt.plot(D6.y_atc[self.valid_pairs.all,:],'+');plt.grid(True)
         plt.figure(51);plt.clf()
         #plt.plot(np.abs(pair_data.y - y_atc_ctr)<params_11.L_search_XT[self.valid_pairs.data])
-        self.valid_pairs.ysearch=np.logical_and(self.valid_pairs.ysearch,np.abs(pair_data.y - y_atc_ctr)<params_11.L_search_XT)  
+        self.valid_pairs.ysearch=np.logical_and(self.valid_pairs.ysearch,np.abs(pair_data.y - self.y_atc_ctr)<params_11.L_search_XT)  
 
-        return y_atc_ctr
+        return 
 
     def find_reference_surface(self, D6, params_11):  #5.1.4
         # establish some output variables
