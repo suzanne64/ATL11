@@ -298,12 +298,14 @@ class ATL11_point:
         h_li      =D6.h_li[self.valid_pairs.all,:].ravel()
             
         for kk in range(max_fit_iterations): 
+             
             G=G_full[selected_segs,:]
             # 3e. Subset fitting matrix, to include columns that are not uniform
             for c in range(G.shape[1]-1,-1,-1):   # check lat col first, do in reverse order
                 if np.all(G[:,c]==G[0,c]):
                     fit_columns[c]=False
-                    G=np.delete(G,[c],1)
+            G=G[:, fit_columns]
+            
             # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
             if np.sum(np.logical_not(fit_columns[np.sum(self.poly_cols.shape,self.slope_change_cols.shape):])) > 2: 
                 S_fit_poly=np.zeros((len(x_atc),2),dtype=float)
@@ -345,16 +347,20 @@ class ATL11_point:
             surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),Cdi.toarray()),r_fit)
 
             # calculate P value
-            n=np.sum(fit_columns)
-            m=np.sum(selected_segs)
-            P = 1 - stats.chi2.cdf(surf_fit_misfit_chi2,m-n)
+            n_cols=np.sum(fit_columns)
+            n_rows=np.sum(selected_segs)
+            P = 1 - stats.chi2.cdf(surf_fit_misfit_chi2, n_rows-n_cols)
 
             # 3j. 
-            if P<0.025:
+            if P<0.025 and kk < max_fit_iterations-1:
+                selected_segs_prev=selected_segs
                 selected_segs = np.abs(r_seg/h_li_sigma) < r_tol # boolean
-            selected_segs=np.reshape(selected_segs,(len(selected_pairs),2))
-            selected_pairs=np.logical_and(selected_segs[:,0], selected_segs[:,1])
+                #if np.all( selected_segs_prev==selected_segs ):
+                #    break
+            # make selected_segs pair-wise consistent        
+            selected_pairs=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)  
             selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
+            
         
         segment_id=D6.segment_id[self.valid_pairs.all,:].ravel()[selected_segs]
         x_atc=D6.x_atc[self.valid_pairs.all,:].ravel()[selected_segs]
@@ -371,6 +377,9 @@ class ATL11_point:
         if self.DOPLOT is not None:
             fig=plt.figure(31); plt.clf(); ax=fig.add_subplot(111, projection='3d')        
             p=ax.scatter(x_atc, y_atc, h_li, c=time); 
+            fig.colorbar(p)
+            fig=plt.figure(32); plt.clf(); ax=fig.add_subplot(111, projection='3d')
+            p=ax.scatter(x_atc, y_atc, h_li, c=np.abs(r_seg[selected_segs]/h_li_sigma)) 
             fig.colorbar(p)
         
         # separate m_ref
