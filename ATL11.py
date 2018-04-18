@@ -503,13 +503,13 @@ class ATL11_point:
             plt.title('Pass H ShapeCorr Sigma: selected (b), other (r)');plt.grid()
         
 def gen_inv(self,G,sigma):
-            # 3f. Generate data-covariance matrix
+    # 3f. Generate data-covariance matrix
     Cd=sparse.diags(sigma**2)
-    Cdi=sps_linalg.inv(Cd)
+    Cdi=sparse.diags(1/sigma**2)
     G_sq=np.dot(np.dot(np.transpose(G),Cdi.toarray()),G)
             
     G_sqi=linalg.inv(G_sq)
-            # calculate the generalized inverse of G
+    # calculate the generalized inverse of G
     G_g=np.dot( np.dot(G_sqi,np.transpose(G)),Cdi.toarray() )  
             
     return Cd, Cdi, G_g
