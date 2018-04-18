@@ -248,26 +248,17 @@ class ATL11_point:
 
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y 
-        self.x_degree_list = np.array([],dtype=int)
-        self.y_degree_list = np.array([],dtype=int)
-        sum_degree_list = np.array([],dtype=int)
-        for x_deg in range(4):
-            for y_deg in range(4):
-                self.x_degree_list = np.append(self.x_degree_list,x_deg)
-                self.y_degree_list = np.append(self.y_degree_list,y_deg)
-                sum_degree_list = np.append(sum_degree_list,x_deg+y_deg)                
-        # remove degrees where sum>3        
-        self.x_degree_list = self.x_degree_list[np.where(sum_degree_list<=np.maximum(poly_deg_x,poly_deg_y))]
-        self.y_degree_list = self.y_degree_list[np.where(sum_degree_list<=np.maximum(poly_deg_x,poly_deg_y))]
-        sum_degree_list = sum_degree_list[np.where(sum_degree_list<=np.maximum(poly_deg_x,poly_deg_y))]        
-        # remove x_degree=0 and y_degree=0
-        keep = np.any([self.x_degree_list,self.y_degree_list],axis=0)
-        self.x_degree_list = self.x_degree_list[keep]
-        self.y_degree_list = self.y_degree_list[keep]
-        sum_degree_list = sum_degree_list[keep]
+        self.x_degree_list, self.y_degree_list = np.meshgrid(np.arange(poly_deg_x+1), np.arange(poly_deg_y+1))
+        # keep only degrees > 0 and degree_x+degree_y < max(max_x_degree, max_y_degree)
+        sum_degrees=(self.x_degree_list + self.y_degree_list).ravel()
+        keep=np.where(np.logical_and( sum_degrees <= np.maximum(poly_deg_x,poly_deg_y), sum_degrees > 0 ))
+        self.x_degree_list = self.x_degree_list.ravel()[keep]
+        self.y_degree_list = self.y_degree_list.ravel()[keep]
+        sum_degree_list = sum_degrees[keep]
         # order by sum, x and then y
-        self.x_degree_list=self.x_degree_list[np.argsort(sum_degree_list)]
-        self.y_degree_list=self.y_degree_list[np.argsort(sum_degree_list)]
+        degree_order=np.argsort(sum_degree_list + (self.y_degree_list / (self.y_degree_list.max()+1)))
+        self.x_degree_list=self.x_degree_list[degree_order]
+        self.y_degree_list=self.y_degree_list[degree_order]
         
         # 3b. define polynomial matrix
         print('x_ctr is',self.x_atc_ctr)
@@ -370,12 +361,16 @@ class ATL11_point:
         y_atc=D6.y_atc[self.valid_pairs.all,:].ravel()[selected_segs]
         lon=D6.longitude[self.valid_pairs.all,:].ravel()[selected_segs]
         lat=D6.latitude[self.valid_pairs.all,:].ravel()[selected_segs]
-        
+        time=D6.delta_time[self.valid_pairs.all,:].ravel()[selected_segs]
         h_li_sigma=D6.h_li_sigma[self.valid_pairs.all,:].ravel()[selected_segs]
         h_li      =D6.h_li[self.valid_pairs.all,:].ravel()[selected_segs]
         
         cycle=D6.cycle[self.valid_pairs.all,:].ravel()[selected_segs]
         self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]
+        
+        fig=plt.figure(); ax=fig.add_subplot(111, projection='3d')        
+        ax.scatter(x_atc, y_atc, h_li, c=time
+        
         
         # separate m_ref
         self.ref_surf_poly=m_ref[self.poly_cols]
