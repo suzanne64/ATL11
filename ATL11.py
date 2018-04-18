@@ -447,8 +447,10 @@ class ATL11_point:
             y_term=np.array( [(y_atc-self.y_atc_ctr)/params_11.xy_scale * (delta_time-t_ctr)/params_11.t_scale] )
             S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
             G_other=np.concatenate( (S_fit_poly,S_fit_slope_change),axis=1 ) # G [S St]
+            surf_model=np.concatenate((self.ref_surf_poly,self.ref_surf_slope_change_rate))
         else:
             G_other=S_fit_poly  #  G=[S]
+            surf_model=self.ref_surf_poly
          
         # with heights and errors from non_ref_segments 
         h_li      =D6.h_li.ravel()[non_ref_segments]
@@ -459,10 +461,7 @@ class ATL11_point:
         self.non_ref_surf_passes=np.unique(cycle)
         
         # calculate corrected heights, z_kc, with non selected segs design matrix and surface shape polynomial from selected segments
-        if self.slope_change_cols.shape[0]>0:
-            z_kc=h_li - np.dot(G_other,np.concatenate((self.ref_surf_poly,self.ref_surf_slope_change_rate))) # equation 10
-        else:
-            z_kc=h_li - np.dot(G_other,self.ref_surf_poly) 
+        z_kc=h_li - np.dot(G_other,surf_model) 
           
         plt.figure(107);plt.clf()
         plt.plot(h_li,'b.-');plt.hold(True)
