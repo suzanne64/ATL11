@@ -202,11 +202,13 @@ class ATL11_point:
         # 4: update valid pairs to inlucde y_atc within L_search_XT of y_atc_ctr (y_best)
         self.valid_pairs.ysearch=np.logical_and(self.valid_pairs.ysearch,np.abs(pair_data.y - self.y_atc_ctr)<params_11.L_search_XT)  
         if self.DOPLOT is not None:
-            plt.figure(50)
-            plt.plot(pair_data.y,'b.');plt.hold(True)
-            plt.plot(pair_data.y[self.valid_pairs.data],'r.')
-            plt.plot(D6.y_atc,'o');
-            plt.plot(D6.y_atc[self.valid_pairs.all,:],'+');plt.grid(True)
+            plt.figure(50); plt.clf()
+            plt.plot(pair_data.x, pair_data.y,'bo'); 
+            plt.plot(pair_data.x[self.valid_pairs.data], pair_data.y[self.valid_pairs.data],'ro')
+            plt.plot(D6.x_atc, D6.y_atc,'.');
+            plt.plot(D6.x_atc[self.valid_pairs.all,:], D6.y_atc[self.valid_pairs.all,:],'+');
+            plt.grid(True)
+            #plt.figure(51)
         #plt.figure(51);plt.clf()
         #plt.plot(np.abs(pair_data.y - y_atc_ctr)<params_11.L_search_XT[self.valid_pairs.data])
 
