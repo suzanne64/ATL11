@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 #from poly_ref_surf import poly_ref_surf
 
-def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None):
+def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, DOPLOT=None):
     params_11=ATL11_defaults()
     # read in the ATL06 data
     D6=ATL06_data(filename=ATL06_files, beam_pair=beam_pair) # two cols (two segs)
@@ -20,7 +20,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None):
     for field in D6.list_of_fields:
         tmp=getattr(D6,field)
         setattr(D6,field,tmp[this_index, :])
-        
+    P11_list=list()
     if seg_x_centers is None:
         # NO: select every nth center        
         seg_x_centers=np.arange(np.min(np.c_[D6.x_atc]), np.max(np.c_[D6.x_atc]), params_11.seg_atc_spacing)
@@ -33,7 +33,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None):
         pair_data=D6_sub.get_pairs()   # this might go, similar to D6_sub
 
         P11=ATL11_point(N_pairs=len(pair_data.x), x_atc_ctr=seg_x_center, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()) )
-        P11.DOPLOT=True
+        P11.DOPLOT=DOPLOT
        # step 2: select pairs, based on reasonable slopes
         P11.select_ATL06_pairs(D6_sub, pair_data, params_11)
         P11.select_y_center(D6_sub, pair_data, params_11)
@@ -43,8 +43,8 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None):
         P11.find_reference_surface(D6_sub, params_11)
         
         P11.corr_heights_other_cycles(D6_sub, params_11)
-        
-    return
+        P11_list=list()
+    return P11_list
   
 def regress_to(D, out_field_names, in_field_names, in_field_pt):
     D_in =np.transpose( np.array((getattr(D, in_field_names[0]).ravel(), getattr(D, in_field_names[1]).ravel())) )
