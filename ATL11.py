@@ -197,7 +197,7 @@ class ATL11_point:
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
         self.y_atc_ctr=np.median(y0_shifts[best])
-        if self.DOPLOT is not None:        
+        if self.DOPLOT:        
             plt.figure(2);plt.clf()
             plt.plot(y0_shifts,score,'.');
             plt.plot(np.ones_like(np.arange(1,np.amax(score)+1))*self.y_atc_ctr,np.arange(1,np.amax(score)+1),'r')
@@ -205,7 +205,7 @@ class ATL11_point:
         
         # 4: update valid pairs to inlucde y_atc within L_search_XT of y_atc_ctr (y_best)
         self.valid_pairs.ysearch=np.logical_and(self.valid_pairs.ysearch,np.abs(pair_data.y - self.y_atc_ctr)<params_11.L_search_XT)  
-        if self.DOPLOT is not None:
+        if self.DOPLOT:
             plt.figure(50); plt.clf()
             plt.plot(pair_data.x, pair_data.y,'bo'); 
             plt.plot(pair_data.x[self.valid_pairs.data], pair_data.y[self.valid_pairs.data],'ro')
@@ -380,7 +380,7 @@ class ATL11_point:
         cycle=D6.cycle[self.valid_pairs.all,:].ravel()[selected_segs]
         self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]
         
-        if self.DOPLOT is not None:
+        if self.DOPLOT:
             fig=plt.figure(31); plt.clf(); ax=fig.add_subplot(111, projection='3d')        
             p=ax.scatter(x_atc, y_atc, h_li, c=time); 
             fig.colorbar(p)
@@ -469,12 +469,12 @@ class ATL11_point:
         
         # calculate corrected heights, z_kc, with non selected segs design matrix and surface shape polynomial from selected segments
         z_kc=h_li - np.dot(G_other,surf_model) 
-          
-        plt.figure(107);plt.clf()
-        plt.plot(h_li,'b.-');plt.hold(True)
-        plt.plot(z_kc,'ro-')
-        plt.title('Other cycles: hli (b), Zkc-Corrected Heights (r)');plt.grid()
-        
+        if self.DOPLOT:
+            plt.figure(107);plt.clf()
+            plt.plot(h_li,'b.-');plt.hold(True)
+            plt.plot(z_kc,'ro-')
+            plt.title('Other cycles: hli (b), Zkc-Corrected Heights (r)');plt.grid()
+            
         # use errors from surface shape polynomial and non-selected segs design matrix to get non selected segs height corrs errors
         if self.slope_change_cols.shape[0]>0:
             Cms=self.Cm[:,np.concatenate( (self.poly_cols,self.slope_change_cols) )][np.concatenate( (self.poly_cols,self.slope_change_cols) ),:] 
