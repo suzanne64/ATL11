@@ -487,13 +487,14 @@ class ATL11_point:
             plt.plot(z_kc_sigma,'ro-')
             plt.title('Other cycles: hli sigma (b), Zkc sigma(r)');plt.grid()
             
-        for cc in self.non_ref_surf_passes:
-            self.pass_h_shapecorr[np.int(cc)-1]=z_kc[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
-            self.pass_h_shapecorr_sigma[np.int(cc)-1]=np.amin(z_kc_sigma[cycle==cc])
-            self.pass_lon[np.int(cc)-1]=lon[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
-            self.pass_lat[np.int(cc)-1]=lat[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
-            self.pass_x[np.int(cc)-1]  =x_atc[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
-            self.pass_y[np.int(cc)-1]  =y_atc[cycle==cc][np.argmin(z_kc_sigma[cycle==cc])]
+        for cc in self.non_ref_surf_passes.astype(int):
+            best_seg=np.argmin(z_kc_sigma[cycle==cc])
+            self.pass_h_shapecorr[cc-1]=z_kc[cycle==cc][best_seg]
+            self.pass_h_shapecorr_sigma[cc-1]=np.amin(z_kc_sigma[cycle==cc])
+            self.pass_lon[cc-1]=lon[cycle==cc][best_seg]
+            self.pass_lat[cc-1]=lat[cycle==cc][best_seg]
+            self.pass_x[cc-1]  =x_atc[cycle==cc][best_seg]
+            self.pass_y[cc-1]  =y_atc[cycle==cc][best_seg]
         if self.DOPLOT:
             plt.figure(200);plt.clf()
             plt.plot(np.arange(12)+1,self.pass_h_shapecorr,'bo-');plt.hold(True)
