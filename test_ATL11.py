@@ -29,4 +29,4 @@ x_ctr=33046250.0
 #filenames=filenames[0:3] 
 # NEED TO TRY WITH THESE FILES AND PAIR=1
 
-fit_ATL11(filenames, beam_pair=3, seg_x_centers=x_ctr+np.arange(0, 60, 120)) # defined in ATL06_to_ATL11  step=60
+P11=fit_ATL11(filenames, beam_pair=3, seg_x_centers=x_ctr+np.arange(0, 60, 120), DOPLOT=True) # defined in ATL06_to_ATL11  step=60
