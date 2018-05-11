@@ -86,11 +86,14 @@ class ATL11_point:
         # 3a: combine data and ysearch
         pairs_valid_for_y_fit=np.logical_and(self.valid_pairs.data.ravel(), self.valid_pairs.ysearch.ravel()) 
         # 3b:choose the degree of the regression for across-track slope
-        if len(np.unique(pair_data.x[pairs_valid_for_y_fit]))>1:
+        uX=np.unique(pair_data.x[pairs_valid_for_y_fit])
+        if len(uX)>1 and uX.max()-uX.min() > 18.:
             my_regression_x_degree=1
         else:
             my_regression_x_degree=0
-        if len(np.unique(pair_data.y[pairs_valid_for_y_fit]))>1:
+            
+        uY=np.unique(pair_data.y[pairs_valid_for_y_fit])   
+        if len(uY)>1 and uY.max()-uY.min() > 18.:
             my_regression_y_degree=1
         else:
             my_regression_y_degree=0
@@ -122,12 +125,15 @@ class ATL11_point:
         
         #4a. define pairs_valid_for_x_fit
         pairs_valid_for_x_fit= np.logical_and(self.valid_pairs.data.ravel(), self.valid_pairs.ysearch.ravel())
+        
         # 4b:choose the degree of the regression for along-track slope
-        if len(np.unique(D6.x_atc[pairs_valid_for_x_fit,:].ravel()))>1:
+        uX=np.unique(D6.x_atc[pairs_valid_for_x_fit,:].ravel())
+        if len(uX)>1 and uX.max()-uX.min() > 18:
             mx_regression_x_degree=1
         else:
             mx_regression_x_degree=0
-        if len(np.unique(D6.y_atc[pairs_valid_for_x_fit,:].ravel()))>1:
+        uY=np.unique(D6.y_atc[pairs_valid_for_x_fit,:].ravel())    
+        if len(uY)>1 and uY.max()-uY.min() > 18:
             mx_regression_y_degree=1
         else:
             mx_regression_y_degree=0
@@ -219,7 +225,7 @@ class ATL11_point:
 
         return 
 
-    def find_reference_surface(self, D6, params_11):  #5.1.4
+    def find_reference_surface(self, D6, params_11, DEBUG=None):  #5.1.4
         # establish some output variables
         self.pass_h_shapecorr=np.full(12, np.nan)
         self.pass_h_shapecorr_sigma=np.full(12, np.nan)
@@ -267,8 +273,9 @@ class ATL11_point:
         self.y_degree_list=self.y_degree_list[degree_order]
         
         # 3b. define polynomial matrix
-        print('x_ctr is',self.x_atc_ctr)
-        print('y_ctr is',self.y_atc_ctr)
+        if DEBUG:        
+            print('x_ctr is',self.x_atc_ctr)
+            print('y_ctr is',self.y_atc_ctr)
         x_atc=D6.x_atc[self.valid_pairs.all,:].ravel()
         y_atc=D6.y_atc[self.valid_pairs.all,:].ravel()
         S_fit_poly=np.zeros((len(x_atc),len(self.x_degree_list)),dtype=float)
