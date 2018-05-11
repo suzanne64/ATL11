@@ -76,8 +76,10 @@ class poly_ref_surf:
             if np.abs(chi2r_last-chi2r)<0.01 or chi2r<1:
                 break
             sigma=RDE(rs[rows])
+            if not np.isfinite(sigma):
+                sigma=0
             print('sigma from RDE ',sigma)
-            threshold=3.*np.max(sigma, min_sigma)
+            threshold=3.*np.max([sigma, min_sigma])
             mask=np.abs(rs)<threshold
             print "\tsigma=%3.2f, f=%d/%d" % (sigma, np.sum(mask), len(mask))
             # In the future, compute the LS coefficients using PySPQR (get from github.com/yig/PySPQR)
