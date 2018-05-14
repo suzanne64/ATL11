@@ -241,7 +241,7 @@ class ATL11_point:
         
         # establish new boolean arrays for selecting
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool) 
-        selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
+        selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()  
 
         cycle=D6.cycle[self.valid_pairs.all,:].ravel()  # want the cycle of each seg in valid pair
         self.ref_surf_passes = np.unique(cycle) 
@@ -380,7 +380,6 @@ class ATL11_point:
             selected_pairs=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)  
             selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
             
-        
         segment_id=D6.segment_id[self.valid_pairs.all,:].ravel()[selected_segs]
         x_atc=D6.x_atc[self.valid_pairs.all,:].ravel()[selected_segs]
         y_atc=D6.y_atc[self.valid_pairs.all,:].ravel()[selected_segs]
@@ -392,6 +391,13 @@ class ATL11_point:
         
         cycle=D6.cycle[self.valid_pairs.all,:].ravel()[selected_segs]
         self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]
+        
+        # report the selected segments 
+        selected_pair_out= self.valid_pairs.all.copy()
+        selected_pair_out[selected_pair_out==True]=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
+        self.valid_pairs.iterative_fit=selected_pair_out
+        self.valid_segs.iterative_fit=np.column_stack((self.valid_pairs.iterative_fit, self.valid_pairs.iterative_fit))
+        
         
         if self.DOPLOT:
             fig=plt.figure(31); plt.clf(); ax=fig.add_subplot(111, projection='3d')        
@@ -421,6 +427,7 @@ class ATL11_point:
         self.Cm = np.dot(np.dot(G_g,Cdp.toarray()),np.transpose(G_g))
         self.sigma_m=np.full(G_full.shape[1],np.nan)
         self.sigma_m[fit_columns]=np.sqrt(self.Cm.diagonal())
+        self.ref_surf_poly_sigma=self.sigma_m[self.poly_cols]
         if self.DOPLOT:
             plt.figure(3);plt.clf()
             plt.plot(self.sigma_m[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'ro-')
@@ -494,6 +501,21 @@ class ATL11_point:
         else:
             Cms=self.Cm[:,self.poly_cols][self.poly_cols,:] # can't index 2 dimensions at once. IF NO SLOPE_CHANGE_COLS!!
         z_kc_sigma = np.sqrt( np.diag( np.dot(np.dot(G_other,Cms),np.transpose(G_other)) ) + h_li_sigma**2 ) # equation 11
+        #  If the x polynomial degree is zero, correct the heights using the 
+        # error-weighted average of the along-track slopes for the segment slopes
+        if (self.x_degree_list==0).all:
+            this_mask=self.valid_segs.iterative_fit.ravel()
+            W=1/(D6.dh_fit_dx_sigma.ravel()[this_mask])**2
+            dh_dx=(W*D6.dh_fit_dx.ravel()[this_mask]).sum()/W.sum()
+            dh_dx_sigma2=(W*D6.dh_fit_dx_sigma.ravel()[this_mask]).sum()/W.sum()
+            z_kc=z_kc-dh_dx*(x_atc-self.x_atc_ctr)
+            z_kc_sigma=np.sqrt(z_kc_sigma**2+dh_dx_sigma2*(x_atc-self.x_atc_ctr)**2)
+            self.x_degree_list=np.append(self.x_degree_list, 1)
+            self.y_degree_list=np.append(self.y_degree_list, 0)
+            self.ref_surf_poly=np.append(self.ref_surf_poly, dh_dx*params_11.xy_scale)
+            self.ref_surf_poly_sigma=np.append(self.ref_surf_poly_sigma, dh_dx_sigma2*params_11.xy_scale)
+            
+        
         if self.DOPLOT:        
             plt.figure(108);plt.clf()
             plt.plot(h_li_sigma,'b.-');plt.hold(True)
