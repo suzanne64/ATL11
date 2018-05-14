@@ -71,7 +71,7 @@ class poly_ref_surf:
             residual=zd.ravel()-G.dot(m).ravel()
             rs=residual/sigma_d.ravel()
             chi2r_last=chi2r
-            chi2r=sum(rs**2)/(len(rows)-len(cols))  
+            chi2r=sum(rs**2)/(rows.sum()-cols.sum())  
             #print('chi2r is ',chi2r)
             if np.abs(chi2r_last-chi2r)<0.01 or chi2r<1:
                 break
