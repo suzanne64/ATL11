@@ -71,7 +71,12 @@ class poly_ref_surf:
             residual=zd.ravel()-G.dot(m).ravel()
             rs=residual/sigma_d.ravel()
             chi2r_last=chi2r
-            chi2r=sum(rs**2)/(rows.sum()-cols.sum())  
+            deg_of_freedom=(rows.sum()-cols.sum())
+            if deg_of_freedom  > 0:
+                chi2r=sum(rs**2)/(deg_of_freedom)     
+            else:
+                # the inversion is even-determined or worse, no further improvement is expected
+                break
             #print('chi2r is ',chi2r)
             if np.abs(chi2r_last-chi2r)<0.01 or chi2r<1:
                 break
