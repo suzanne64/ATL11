@@ -113,8 +113,10 @@ class ATL11_point:
             pairs_valid_for_y_fit=np.logical_and(self.valid_pairs.data.ravel(), self.valid_pairs.y_slope.ravel()) # what about ysearch?
             
             # 3e: calculate across-track slope threshold
-            y_slope_threshold=np.max(my_regression_tol,3*RDE(y_slope_resid))
-            
+            if y_slope_resid.size>1:
+                y_slope_threshold=np.max(my_regression_tol,3.*RDE(y_slope_resid))
+            else:
+                y_slope_threshold=my_regression_tol
             # 3f: select for across-track residuals within threshold
             self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=np.abs(y_slope_resid)<=y_slope_threshold
             # re-establish pairs_valid_for_y_fit
@@ -154,14 +156,16 @@ class ATL11_point:
             pairs_valid_for_x_fit=np.logical_and(self.valid_pairs.data.ravel(), self.valid_pairs.x_slope.ravel()) # include ysearch here?
             
             # 4e: calculate along-track slope threshold
-            x_slope_threshold = np.max(mx_regression_tol,3*RDE(x_slope_resid))
+            if x_slope_resid.size > 1.:
+                x_slope_threshold = np.max(mx_regression_tol,3*RDE(x_slope_resid))
+            else:   
+                x_slope_threshold=mx_regression_tol
 
             # 4f: select for along-track residuals within threshold
             x_slope_resid.shape=[np.sum(pairs_valid_for_x_fit),2]
             self.valid_segs.x_slope[np.where(pairs_valid_for_x_fit),:]=np.transpose(np.tile(np.all(np.abs(x_slope_resid)<=x_slope_threshold,axis=1),(2,1)))
             self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1) 
             pairs_valid_for_x_fit=np.logical_and(np.logical_and(self.valid_pairs.data.ravel(),self.valid_pairs.ysearch.ravel()), self.valid_pairs.x_slope.ravel()) 
-            
         # 4g. Use x model to evaluate all segments
         self.valid_segs.x_slope=np.abs(self.mx_poly_fit.z(D6.x_atc, D6.y_atc)- D6.dh_fit_dx) < x_slope_threshold #, max_iterations=2, min_sigma=mx_regression_tol)
         self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1) 
@@ -313,11 +317,13 @@ class ATL11_point:
         for kk in range(max_fit_iterations): 
              
             G=G_full[selected_segs,:]
-            # 3e. Subset fitting matrix, to include columns that are not uniform
-            for c in range(G.shape[1]-1,-1,-1):   # check lat col first, do in reverse order
-                if np.all(G[:,c]==G[0,c]):
-                    fit_columns[c]=False
-            G=G[:, fit_columns]
+            # 3e. If more than one repeat is present, subset 
+            #fitting matrix, to include columns that are not uniform
+            if self.ref_surf_passes.size > 1:
+                for c in range(G.shape[1]-1,-1,-1):   # check lat col first, do in reverse order
+                    if np.all(G[:,c]==G[0,c]):
+                        fit_columns[c]=False
+                G=G[:, fit_columns]
             
             # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
             if np.sum(np.logical_not(fit_columns[np.sum(self.poly_cols.shape,self.slope_change_cols.shape):])) > 2: 
