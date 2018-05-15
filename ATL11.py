@@ -280,7 +280,6 @@ class ATL11_point:
         # establish new boolean arrays for selecting
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool) 
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()  
-        #selected_segs=self.selected_segments[self.valid_pairs.all,:].ravel()
 
         cycle=D6.cycle[self.valid_pairs.all,:].ravel()  # want the cycle of each seg in valid pair
         self.ref_surf_passes = np.unique(cycle) 
