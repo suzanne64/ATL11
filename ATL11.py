@@ -17,11 +17,13 @@ import scipy.sparse.linalg as sps_linalg
 import time
 
 class generic_group:
-    def __init__(self, N_ref_pts, N_reps, per_pt_fields, full_fields):
-        for field in per_pt_fields:
-            setattr(self, field, np.zeros([N_ref_pts, 1]))
-        for field in full_fields:
-            setattr(self, field, np.zeros([N_ref_pts, N_reps]))
+    def __init__(self, N_ref_pts, N_reps, per_pt_fields=None, full_fields=None):
+        if per_pt_fields is not None:
+            for field in per_pt_fields:
+                setattr(self, field, np.zeros([N_ref_pts, 1]))
+        if full_fields is not None:
+            for field in full_fields:
+                setattr(self, field, np.zeros([N_ref_pts, N_reps]))
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
         self.list_of_fields=self.per_pt_fields.append(self.full_fields)
@@ -36,7 +38,39 @@ class ATL11_data:
         self.Data=[]
         self.DOPLOT=None
         # define empty records here based on ATL11 ATBD
-        self.corrected_h=generic_group(N_ref_pts, N_reps, ['ref_pt_lat', 'ref_pt_lon', 'ref_pt_number'], ['mean_pass_time', 'pass_h_shapecorr', 'pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'])
+        self.corrected_h=generic_group(N_ref_pts, N_reps, per_pt_fields=['ref_pt_lat', 'ref_pt_lon', 'ref_pt_number'], 
+                                       full_fields=['mean_pass_time', 'pass_h_shapecorr', 'pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'])
+        self.non_product=generic_group(N_ref_pts, N_reps, per_pt_fields=['x_atc_ctr'])
+
+    def from_list(self, P11_list):
+        for ii, P11 in enumerate(P11_list):
+            self.corrected_h.ref_pt_lat[ii]=P11.lat_ctr
+            self.corrected_h.ref_pt_lon[ii]=P11.lon_ctr
+            #NEED ref_pt_number, mean_pass_time
+            self.corrected_h.pass_h_shapecorr[ii,:]=P11.pass_h_shapecorr
+            self.corrected_h.pass_h_shapecorr_sigma[ii,:]=P11.pass_h_shapecorr_sigma
+            # need pass_h_shapecorr_sigma_systematic
+            # need quality_summary
+            self.non_product.x_atc_ctr[ii]=P11.x_atc_ctr
+        return self
+        
+    def write_to_file(self, filename):
+        # Generic code to write data from an object to an h5 file       
+        return
+        
+    def plot(self):
+        plt.figure()
+        n_cycles=self.corrected_h.pass_h_shapecorr.shape[1]
+        HR=np.zeros((n_cycles, 2))
+        for cycle in range(n_cycles):
+            xx=self.non_product.x_atc_ctr
+            zz= self.corrected_h.pass_h_shapecorr[:,cycle]
+            ss=self.corrected_h.pass_h_shapecorr_sigma[:,cycle]
+            good=np.abs(ss)<50            
+            plt.errorbar(xx[good],zz[good],ss[good])
+            HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
+        plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
+        return
         
 class ATL11_point:
     def __init__(self, N_pairs=1, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12):
@@ -503,7 +537,7 @@ class ATL11_point:
         z_kc_sigma = np.sqrt( np.diag( np.dot(np.dot(G_other,Cms),np.transpose(G_other)) ) + h_li_sigma**2 ) # equation 11
         #  If the x polynomial degree is zero, correct the heights using the 
         # error-weighted average of the along-track slopes for the segment slopes
-        if (self.x_degree_list==0).all:
+        if (self.x_degree_list==0).all():
             this_mask=self.valid_segs.iterative_fit.ravel()
             W=1/(D6.dh_fit_dx_sigma.ravel()[this_mask])**2
             dh_dx=(W*D6.dh_fit_dx.ravel()[this_mask]).sum()/W.sum()
