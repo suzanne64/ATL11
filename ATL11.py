@@ -59,18 +59,25 @@ class ATL11_data:
         return
         
     def plot(self):
-        plt.figure()
         n_cycles=self.corrected_h.pass_h_shapecorr.shape[1]
-        HR=np.zeros((n_cycles, 2))
+        HR=np.nan+np.zeros((n_cycles, 2))
+        h=list()
         for cycle in range(n_cycles):
             xx=self.non_product.x_atc_ctr
             zz= self.corrected_h.pass_h_shapecorr[:,cycle]
             ss=self.corrected_h.pass_h_shapecorr_sigma[:,cycle]
-            good=np.abs(ss)<50            
-            plt.errorbar(xx[good],zz[good],ss[good])
-            HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
+            good=np.abs(ss)<50   
+            if np.any(good):
+                h0=plt.errorbar(xx[good],zz[good],ss[good], marker='o',picker=None)
+                h.append(h0)
+                HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
+                #plt.plot(xx[good], zz[good], 'k',picker=None)
+        temp=self.corrected_h.pass_h_shapecorr;
+        temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
+        temp=np.nanmean(temp, axis=1)
+        plt.plot(xx, temp, 'k', picker=5)
         plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
-        return
+        return h
         
 class ATL11_point:
     def __init__(self, N_pairs=1, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12):
