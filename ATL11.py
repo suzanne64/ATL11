@@ -448,6 +448,9 @@ class ATL11_point:
         # report the selected segments 
         selected_pair_out= self.valid_pairs.all.copy()
         selected_pair_out[selected_pair_out==True]=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
+        plt.figure(40);plt.clf()
+        plt.plot(selected_pair_out,'.')
+        
         self.valid_pairs.iterative_fit=selected_pair_out
         self.valid_segs.iterative_fit=np.column_stack((self.valid_pairs.iterative_fit, self.valid_pairs.iterative_fit))
         
@@ -474,7 +477,6 @@ class ATL11_point:
             self.pass_h_shapecorr[self.ref_surf_passes.astype(int)-1]=self.z_cycle[fit_columns[np.sum([self.poly_cols.shape,self.slope_change_cols.shape]):]] #np.sum([self.poly_cols.shape,self.slope_change_cols.shape,self.repeat_cols])]] )
         else:
             self.pass_h_shapecorr[self.ref_surf_passes.astype(int)-1]=self.z_cycle[fit_columns[self.poly_cols.shape[0]:]] #np.sum([self.poly_cols.shape,self.slope_change_cols.shape,self.repeat_cols])]] )
-        #print('h pass corr',self.pass_h_shapecorr)   
         
         self.h_poly_seg = np.dot(self.G_surf[:,:len(self.m_ref)],self.m_ref)
 
@@ -501,7 +503,6 @@ class ATL11_point:
         self.z_cycle_sigma=self.sigma_m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
 
         self.pass_h_shapecorr_sigma[self.ref_surf_passes.astype(int)-1]=self.z_cycle_sigma
-        #print('h pass corr',self.pass_h_shapecorr_sigma)   
         
         return 
     
@@ -510,7 +511,7 @@ class ATL11_point:
         other_passes=np.unique(D6.cycle.ravel()[~np.in1d(D6.cycle.ravel(),self.ref_surf_passes)])
         # 1. find cycles not in ref_surface_passes, but have valid_segs.data and valid_segs.x_slope  
         non_ref_segments=np.logical_and(np.in1d(D6.cycle.ravel(),other_passes),np.logical_and(self.valid_segs.data.ravel(),self.valid_segs.x_slope.ravel()))
-    
+        
         # 2. build design matrix, G_other, for non selected segments (poly and dt parts only)
         x_atc=D6.x_atc.ravel()[non_ref_segments]
         y_atc=D6.y_atc.ravel()[non_ref_segments]
@@ -593,6 +594,26 @@ class ATL11_point:
             self.pass_lat[cc-1]=lat[cycle==cc][best_seg]
             self.pass_x[cc-1]  =x_atc[cycle==cc][best_seg]
             self.pass_y[cc-1]  =y_atc[cycle==cc][best_seg]
+        
+        # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
+        self.segment_id_by_cycle=[]         
+        self.selected_segments_by_cycle=[]         
+        cyc=D6.cycle[self.selected_segments[:,0],0]  
+        segid=D6.segment_id[self.selected_segments[:,0],0]    
+        
+        non_cyc=D6.cycle.ravel()[non_ref_segments]  
+        non_segid=D6.segment_id.ravel()[non_ref_segments]  
+        
+        for cc in range(1,13):  
+            if np.in1d(cc,self.ref_surf_passes):
+                self.segment_id_by_cycle.append( np.array( segid[cyc==cc] ) )
+            elif np.in1d(cc,self.non_ref_surf_passes):
+                self.segment_id_by_cycle.append( np.array( non_segid[non_cyc==cc] ) )
+            else:     
+                self.segment_id_by_cycle.append(np.array([]))
+
+        self.selected_segments=np.logical_or(self.selected_segments,non_ref_segments.reshape(self.valid_pairs.all.shape[0],2))
+
         if self.DOPLOT:
             plt.figure(200);plt.clf()
             plt.plot(np.arange(12)+1,self.pass_h_shapecorr,'bo-');plt.hold(True)
