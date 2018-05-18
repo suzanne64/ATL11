@@ -15,6 +15,7 @@ from scipy import linalg
 from scipy import stats
 import scipy.sparse.linalg as sps_linalg
 import time
+import h5py
 
 class generic_group:
     def __init__(self, N_ref_pts, N_reps, per_pt_fields=None, full_fields=None):
@@ -27,7 +28,7 @@ class generic_group:
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
         self.list_of_fields=self.per_pt_fields.append(self.full_fields)
-               
+        
 class valid_mask:
     def __init__(self, dims, fields):
         for field in fields:
@@ -38,19 +39,33 @@ class ATL11_data:
         self.Data=[]
         self.DOPLOT=None
         # define empty records here based on ATL11 ATBD
+        # Table 4-1
         self.corrected_h=generic_group(N_ref_pts, N_reps, per_pt_fields=['ref_pt_lat', 'ref_pt_lon', 'ref_pt_number'], 
                                        full_fields=['mean_pass_time', 'pass_h_shapecorr', 'pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'])
+        # Table 4-4        
+        self.ref_surf   =generic_group(N_ref_pts, N_reps, per_pt_fields=['complex_surface_flag', 'n_deg_x', 'n_deg_y', 'surf_fit_misfit_chi2', 'surf_fit_misfit_RMS', 'surf_fit_quality_summary'])
         self.non_product=generic_group(N_ref_pts, N_reps, per_pt_fields=['x_atc_ctr'])
 
     def from_list(self, P11_list):
         for ii, P11 in enumerate(P11_list):
             self.corrected_h.ref_pt_lat[ii]=P11.lat_ctr
             self.corrected_h.ref_pt_lon[ii]=P11.lon_ctr
-            #NEED ref_pt_number, mean_pass_time
+            # NEED ref_pt_number, mean_pass_time
             self.corrected_h.pass_h_shapecorr[ii,:]=P11.pass_h_shapecorr
             self.corrected_h.pass_h_shapecorr_sigma[ii,:]=P11.pass_h_shapecorr_sigma
-            # need pass_h_shapecorr_sigma_systematic
-            # need quality_summary
+            # NEED pass_h_shapecorr_sigma_systematic
+            # NEED quality_summary
+            
+            self.ref_surf.complex_surface_flag[ii]=P11.complex_surface_flag
+            # NEED fit_curvature, fit_E_slope, fit_N_slope
+            self.ref_surf.n_deg_x=P11.poly_deg_x
+            self.ref_surf.n_deg_y=P11.poly_deg_y
+            # NEED N_pass_avail, N_pass_used, poly_ref_surf, poly_ref_surf_sigma, ref_pt_number
+            # NEED Slope_change_rate_x, Slope_change_rate_y, Slope_change_rate_x_sigma, Slope_change_rate_y_sigma
+            self.ref_surf.surf_fit_misfit_chi2=P11.surf_fit_misfit_chi2
+            self.ref_surf.surf_fit_misfit_RMS=P11.rde_r_fit   # suzanne's guess!
+            self.ref_surf.surf_fit_quality_summary=P11.surf_fit_quality_summary
+            
             self.non_product.x_atc_ctr[ii]=P11.x_atc_ctr
         return self
         
@@ -280,6 +295,7 @@ class ATL11_point:
         self.pass_x=np.full(12, np.nan)
         self.pass_y=np.full(12, np.nan)
         self.complex_surface_flag=0
+        self.surf_fit_quality_summary=0
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
         self.t0=(np.max(D6.delta_time[self.valid_pairs.all,:])-np.min(D6.delta_time[self.valid_pairs.all,:]))/2  # mid-point between start and end of mission
@@ -300,21 +316,21 @@ class ATL11_point:
             col=np.append(col,np.array(index*np.ones(np.count_nonzero(cycle==item))))
         G_Zp=sparse.csc_matrix((data,(row,col)),shape=[len(cycle),len(self.ref_surf_passes)])    
         self.repeat_cols=np.arange(G_Zp.toarray().shape[1])
-        N_shape_passes=self.repeat_cols.shape
+        N_shape_passes=self.repeat_cols.shape  # should be N_pass_avail? (see Table 4-4)
         #print('N_shape_passes',N_shape_passes)
         
         # 2. determine polynomial degree, using unique x's and unique y's of segments in valid pairs
         x_atcU = np.unique(D6.x_atc[self.valid_pairs.all,:].ravel()) # np.unique orders the unique values
         y_atcU = np.unique(D6.y_atc[self.valid_pairs.all,:].ravel()) # np.unique orders the unique values
-        poly_deg_x = np.minimum(params_11.poly_max_degree_AT,len(x_atcU)-1) 
-        poly_deg_y = np.minimum(params_11.poly_max_degree_XT,len(y_atcU)-1) 
+        self.poly_deg_x = np.minimum(params_11.poly_max_degree_AT,len(x_atcU)-1) 
+        self.poly_deg_y = np.minimum(params_11.poly_max_degree_XT,len(y_atcU)-1) 
 
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y 
-        self.degree_list_x, self.degree_list_y = np.meshgrid(np.arange(poly_deg_x+1), np.arange(poly_deg_y+1))
+        self.degree_list_x, self.degree_list_y = np.meshgrid(np.arange(self.poly_deg_x+1), np.arange(self.poly_deg_y+1))
         # keep only degrees > 0 and degree_x+degree_y < max(max_x_degree, max_y_degree)
         sum_degrees=(self.degree_list_x + self.degree_list_y).ravel()
-        keep=np.where(np.logical_and( sum_degrees <= np.maximum(poly_deg_x,poly_deg_y), sum_degrees > 0 ))
+        keep=np.where(np.logical_and( sum_degrees <= np.maximum(self.poly_deg_x,self.poly_deg_y), sum_degrees > 0 ))
         self.degree_list_x = self.degree_list_x.ravel()[keep]
         self.degree_list_y = self.degree_list_y.ravel()[keep]
         sum_degree_list = sum_degrees[keep]
@@ -371,7 +387,9 @@ class ATL11_point:
                     if np.all(G[:,c]==G[0,c]):
                         fit_columns[c]=False
                 G=G[:, fit_columns]
-            
+            else:
+                self.surf_fit_quality_summary=1
+                
             # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
             if np.sum(np.logical_not(fit_columns[np.sum(self.poly_cols.shape,self.slope_change_cols.shape):])) > 2: 
                 S_fit_poly=np.zeros((len(x_atc),2),dtype=float)
@@ -410,12 +428,12 @@ class ATL11_point:
             # 3i. Calculate the fitting tolerance, 
             r_tol = 3*RDE(r_fit/h_li_sigma[selected_segs])
             # reduce chi-squared value
-            surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),Cdi.toarray()),r_fit)
+            self.surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),Cdi.toarray()),r_fit)
 
             # calculate P value
             n_cols=np.sum(fit_columns)
             n_rows=np.sum(selected_segs)
-            P = 1 - stats.chi2.cdf(surf_fit_misfit_chi2, n_rows-n_cols)
+            P = 1 - stats.chi2.cdf(self.surf_fit_misfit_chi2, n_rows-n_cols)
 
             # 3j. 
             if P<0.025 and kk < params_11.max_fit_iterations-1:
@@ -470,6 +488,9 @@ class ATL11_point:
         else:
             self.ref_surf_slope_change_rate=np.zeros((2,))
             self.m_ref=self.m_full[self.poly_cols]
+        # check if slope change rate for either x or y is > 0.1 (see Table 4-4)     
+        if np.any(self.ref_surf_slope_change_rate>0.1):
+            self.surf_fit_quality_summary=1
             
         self.z_cycle=self.m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
         
@@ -503,7 +524,7 @@ class ATL11_point:
         self.z_cycle_sigma=self.sigma_m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
 
         self.pass_h_shapecorr_sigma[self.ref_surf_passes.astype(int)-1]=self.z_cycle_sigma
-        
+        #self.surf_fit_quality_summary
         return 
     
     def corr_heights_other_cycles(self, D6, params_11):
