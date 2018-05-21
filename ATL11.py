@@ -16,6 +16,8 @@ from scipy import stats
 import scipy.sparse.linalg as sps_linalg
 import time
 import h5py
+import inspect
+import re
 
 class generic_group:
     def __init__(self, N_ref_pts, N_reps, per_pt_fields=None, full_fields=None):
@@ -58,19 +60,44 @@ class ATL11_data:
             
             self.ref_surf.complex_surface_flag[ii]=P11.complex_surface_flag
             # NEED fit_curvature, fit_E_slope, fit_N_slope
-            self.ref_surf.n_deg_x=P11.poly_deg_x
-            self.ref_surf.n_deg_y=P11.poly_deg_y
+            self.ref_surf.n_deg_x[ii]=P11.poly_deg_x
+            self.ref_surf.n_deg_y[ii]=P11.poly_deg_y
             # NEED N_pass_avail, N_pass_used, poly_ref_surf, poly_ref_surf_sigma, ref_pt_number
             # NEED Slope_change_rate_x, Slope_change_rate_y, Slope_change_rate_x_sigma, Slope_change_rate_y_sigma
-            self.ref_surf.surf_fit_misfit_chi2=P11.surf_fit_misfit_chi2
-            self.ref_surf.surf_fit_misfit_RMS=P11.rde_r_fit   # suzanne's guess!
-            self.ref_surf.surf_fit_quality_summary=P11.surf_fit_quality_summary
+            self.ref_surf.surf_fit_misfit_chi2[ii]=P11.surf_fit_misfit_chi2
+            self.ref_surf.surf_fit_misfit_RMS[ii]=P11.rde_r_fit   # suzanne's guess!
+            self.ref_surf.surf_fit_quality_summary[ii]=P11.surf_fit_quality_summary
             
             self.non_product.x_atc_ctr[ii]=P11.x_atc_ctr
+            
         return self
         
-    def write_to_file(self, filename):
-        # Generic code to write data from an object to an h5 file       
+    def write_to_file(self, fileout):
+        # Generic code to write data from an object to an h5 file 
+        f = h5py.File(fileout,'w')
+        di=vars(self)  # a dictionary
+        for item in di.keys():
+            # find the attributes of self that are instances of generic_group
+            m=re.search(r"generic_group",str(di.get(item)))
+            if m is not None:
+                print('group',item)
+                grp = f.create_group(item)
+                
+                subgrp1=grp.create_group('per_pt_fields')
+                list_vars=eval('self.' + item + '.per_pt_fields')
+                if list_vars is not None:
+                    for field in list_vars:                
+                        if field is not None:
+                            if isinstance(field,basestring):
+                                subgrp1.create_dataset(field,data=getattr(eval('self.' + item),field))
+                            
+                subgrp2=grp.create_group('full_fields')
+                list_vars=eval('self.' + item + '.full_fields')
+                if list_vars is not None:
+                    for field in list_vars:
+                        if field is not None:
+                            subgrp2.create_dataset(field,data=getattr(eval('self.' + item),field))
+        f.close()    
         return
         
     def plot(self):
