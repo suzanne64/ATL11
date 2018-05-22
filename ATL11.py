@@ -16,7 +16,6 @@ from scipy import stats
 import scipy.sparse.linalg as sps_linalg
 import time
 import h5py
-import inspect
 import re
 
 class generic_group:
@@ -42,28 +41,49 @@ class ATL11_data:
         self.DOPLOT=None
         # define empty records here based on ATL11 ATBD
         # Table 4-1
-        self.corrected_h=generic_group(N_ref_pts, N_reps, per_pt_fields=['ref_pt_lat', 'ref_pt_lon', 'ref_pt_number'], 
-                                       full_fields=['mean_pass_time', 'pass_h_shapecorr', 'pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'])
+        self.corrected_h=generic_group(N_ref_pts, N_reps, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
+                                       full_fields=['mean_pass_time','pass_h_shapecorr','pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'])
+        # Table 4-2
+        self.pass_quality_stats=generic_group(N_ref_pts, N_reps,per_pt_fields=[],
+                                              full_fields=['ATL06_summary_zero_count','min_SNR_significance','mean_uncorr_reflectance','min_signal_selection_source','pass_seg_count','pass_included_in_fit'])
         # Table 4-4        
-        self.ref_surf   =generic_group(N_ref_pts, N_reps, per_pt_fields=['complex_surface_flag', 'n_deg_x', 'n_deg_y', 'surf_fit_misfit_chi2', 'surf_fit_misfit_RMS', 'surf_fit_quality_summary'])
+        self.ref_surf=generic_group(N_ref_pts, N_reps, per_pt_fields=['complex_surface_flag', 'n_deg_x', 'n_deg_y', 'surf_fit_misfit_chi2', 'surf_fit_misfit_RMS', 'surf_fit_quality_summary'])
+
         self.non_product=generic_group(N_ref_pts, N_reps, per_pt_fields=['x_atc_ctr'])
 
     def from_list(self, P11_list):
         for ii, P11 in enumerate(P11_list):
             self.corrected_h.ref_pt_lat[ii]=P11.lat_ctr
             self.corrected_h.ref_pt_lon[ii]=P11.lon_ctr
-            # NEED ref_pt_number, mean_pass_time
+            # self.corrected_h.ref_pt_number[ii]=
+            # self.corrected_h.mean_pass_time[ii,:]=
             self.corrected_h.pass_h_shapecorr[ii,:]=P11.pass_h_shapecorr
             self.corrected_h.pass_h_shapecorr_sigma[ii,:]=P11.pass_h_shapecorr_sigma
-            # NEED pass_h_shapecorr_sigma_systematic
-            # NEED quality_summary
+            # self.corrected_h.pass_h_shapecorr_sigma_systematic[ii,:]=
+            # self.corrected_h.quality_summary[ii,:]=
+            
+#            self.pass_quality_stats.ATL06_summary_zero_count[ii,:]=
+#            self.pass_quality_stats.min_SNR_significance[ii,:]=
+#            self.pass_quality_stats.mean_uncorr_reflectance[ii,:]=
+#            self.pass_quality_stats.min_signal_selection_source[ii,:]=
+#            self.pass_quality_stats.pass_seg_count[ii,:]=
+#            self.pass_quality_stats.pass_included_in_fit[ii,:]=
             
             self.ref_surf.complex_surface_flag[ii]=P11.complex_surface_flag
-            # NEED fit_curvature, fit_E_slope, fit_N_slope
+            # self.ref_surf.fit_curvature[ii]=
+            # self.ref_surf.fit_E_slope[ii]=
+            # self.ref_surf.fit_N_slope[ii]=
             self.ref_surf.n_deg_x[ii]=P11.poly_deg_x
             self.ref_surf.n_deg_y[ii]=P11.poly_deg_y
-            # NEED N_pass_avail, N_pass_used, poly_ref_surf, poly_ref_surf_sigma, ref_pt_number
-            # NEED Slope_change_rate_x, Slope_change_rate_y, Slope_change_rate_x_sigma, Slope_change_rate_y_sigma
+            # self.ref_surf.N_pass_avail[ii]=
+            # self.ref_surf.N_pass_used[ii]=
+            # self.ref_surf.poly_ref_surf[ii,:]=
+            # self.ref_surf.poly_ref_surf_sigma[ii,:]=
+            # self.ref_surf.ref_pt_number[ii]=
+            # self.ref_surf.Slope_change_rate_x[ii]=
+            # self.ref_surf.Slope_change_rate_y[ii]=
+            # self.ref_surf.Slope_change_rate_x_sigma[ii]=
+            # self.ref_surf.Slope_change_rate_y_sigma[ii]=
             self.ref_surf.surf_fit_misfit_chi2[ii]=P11.surf_fit_misfit_chi2
             self.ref_surf.surf_fit_misfit_RMS[ii]=P11.rde_r_fit   # suzanne's guess!
             self.ref_surf.surf_fit_quality_summary[ii]=P11.surf_fit_quality_summary
@@ -82,21 +102,16 @@ class ATL11_data:
             if m is not None:
                 print('group',item)
                 grp = f.create_group(item)
-                
-                subgrp1=grp.create_group('per_pt_fields')
                 list_vars=eval('self.' + item + '.per_pt_fields')
                 if list_vars is not None:
                     for field in list_vars:                
                         if field is not None:
                             if isinstance(field,basestring):
-                                subgrp1.create_dataset(field,data=getattr(eval('self.' + item),field))
-                            
-                subgrp2=grp.create_group('full_fields')
-                list_vars=eval('self.' + item + '.full_fields')
-                if list_vars is not None:
-                    for field in list_vars:
-                        if field is not None:
-                            subgrp2.create_dataset(field,data=getattr(eval('self.' + item),field))
+                                grp.create_dataset(field,data=getattr(eval('self.' + item),field))
+                            else:
+                                for fie in field:
+                                    if fie is not None:
+                                        grp.create_dataset(fie,data=getattr(eval('self.' + item),fie))
         f.close()    
         return
         
