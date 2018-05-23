@@ -15,6 +15,8 @@ from scipy import linalg
 from scipy import stats
 import scipy.sparse.linalg as sps_linalg
 import time
+import h5py
+import re
 
 class generic_group:
     def __init__(self, N_ref_pts, N_reps, per_pt_fields=None, full_fields=None):
@@ -27,7 +29,7 @@ class generic_group:
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
         self.list_of_fields=self.per_pt_fields.append(self.full_fields)
-               
+        
 class valid_mask:
     def __init__(self, dims, fields):
         for field in fields:
@@ -38,24 +40,81 @@ class ATL11_data:
         self.Data=[]
         self.DOPLOT=None
         # define empty records here based on ATL11 ATBD
-        self.corrected_h=generic_group(N_ref_pts, N_reps, per_pt_fields=['ref_pt_lat', 'ref_pt_lon', 'ref_pt_number'], 
-                                       full_fields=['mean_pass_time', 'pass_h_shapecorr', 'pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'])
+        # Table 4-1
+        self.corrected_h=generic_group(N_ref_pts, N_reps, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
+                                       full_fields=['mean_pass_time','pass_h_shapecorr','pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'])
+        # Table 4-2
+        self.pass_quality_stats=generic_group(N_ref_pts, N_reps,per_pt_fields=[],
+                                              full_fields=['ATL06_summary_zero_count','min_SNR_significance','mean_uncorr_reflectance','min_signal_selection_source','pass_seg_count','pass_included_in_fit'])
+        # Table 4-4        
+        self.ref_surf=generic_group(N_ref_pts, N_reps, per_pt_fields=['complex_surface_flag','n_deg_x','n_deg_y','N_pass_avail','N_pass_used','poly_ref_surf','poly_ref_surf_sigma','Slope_change_rate_x','Slope_change_rate_y','Slope_change_rate_x_sigma','Slope_change_rate_y_sigma','surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'])
+
         self.non_product=generic_group(N_ref_pts, N_reps, per_pt_fields=['x_atc_ctr'])
 
     def from_list(self, P11_list):
         for ii, P11 in enumerate(P11_list):
             self.corrected_h.ref_pt_lat[ii]=P11.lat_ctr
             self.corrected_h.ref_pt_lon[ii]=P11.lon_ctr
-            #NEED ref_pt_number, mean_pass_time
+            # self.corrected_h.ref_pt_number[ii]=
+            # self.corrected_h.mean_pass_time[ii,:]=
             self.corrected_h.pass_h_shapecorr[ii,:]=P11.pass_h_shapecorr
             self.corrected_h.pass_h_shapecorr_sigma[ii,:]=P11.pass_h_shapecorr_sigma
-            # need pass_h_shapecorr_sigma_systematic
-            # need quality_summary
+            # self.corrected_h.pass_h_shapecorr_sigma_systematic[ii,:]=
+            # self.corrected_h.quality_summary[ii,:]=
+            
+            # Table 4-2
+            self.pass_quality_stats.ATL06_summary_zero_count[ii,:]=P11.ATL06_summary_zero_count
+            self.pass_quality_stats.min_SNR_significance[ii,:]=P11.min_SNR_significance
+#            self.pass_quality_stats.mean_uncorr_reflectance[ii,:]=P11.
+            self.pass_quality_stats.min_signal_selection_source[ii,:]=P11.min_signal_selection_source
+            self.pass_quality_stats.pass_seg_count[ii,:]=P11.pass_seg_count
+            self.pass_quality_stats.pass_included_in_fit[ii,:]=P11.pass_included_in_fit
+            
+            # Table 4-4
+            self.ref_surf.complex_surface_flag[ii]=P11.complex_surface_flag
+            # self.ref_surf.fit_curvature[ii]=
+            # self.ref_surf.fit_E_slope[ii]=
+            # self.ref_surf.fit_N_slope[ii]=
+            self.ref_surf.n_deg_x[ii]=P11.poly_deg_x
+            self.ref_surf.n_deg_y[ii]=P11.poly_deg_y
+            self.ref_surf.N_pass_avail[ii]=P11.N_pass_avail # where at least one segment has atl06_quality_summary=0 for a cycle
+            self.ref_surf.N_pass_used[ii]=P11.N_pass_used   
+            # self.ref_surf.poly_ref_surf[ii,:]=
+            # self.ref_surf.poly_ref_surf_sigma[ii,:]=
+            # self.ref_surf.ref_pt_number[ii]=
+            self.ref_surf.Slope_change_rate_x[ii]=P11.ref_surf_slope_change_rate[0]
+            self.ref_surf.Slope_change_rate_y[ii]=P11.ref_surf_slope_change_rate[1]
+            self.ref_surf.Slope_change_rate_x_sigma[ii]=P11.slope_change_rate_sigma[0]
+            self.ref_surf.Slope_change_rate_y_sigma[ii]=P11.slope_change_rate_sigma[1]
+            self.ref_surf.surf_fit_misfit_chi2[ii]=P11.surf_fit_misfit_chi2
+            self.ref_surf.surf_fit_misfit_RMS[ii]=P11.rde_r_fit   
+            self.ref_surf.surf_fit_quality_summary[ii]=P11.surf_fit_quality_summary
+            
             self.non_product.x_atc_ctr[ii]=P11.x_atc_ctr
+            
         return self
         
-    def write_to_file(self, filename):
-        # Generic code to write data from an object to an h5 file       
+    def write_to_file(self, fileout):
+        # Generic code to write data from an object to an h5 file 
+        f = h5py.File(fileout,'w')
+        di=vars(self)  # a dictionary
+        for item in di.keys():
+            # find the attributes of self that are instances of generic_group
+            m=re.search(r"generic_group",str(di.get(item)))
+            if m is not None:
+                print('group',item)
+                grp = f.create_group(item)
+                list_vars=eval('self.' + item + '.per_pt_fields')
+                if list_vars is not None:
+                    for field in list_vars:                
+                        if field is not None:
+                            if isinstance(field,basestring):
+                                grp.create_dataset(field,data=getattr(eval('self.' + item),field))
+                            else:
+                                for fie in field:
+                                    if fie is not None:
+                                        grp.create_dataset(fie,data=getattr(eval('self.' + item),fie))
+        f.close()    
         return
         
     def plot(self):
@@ -99,6 +158,13 @@ class ATL11_point:
         # this is section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
+        self.ATL06_summary_zero_count=np.zeros( (12,))
+        for cc in range(1,13):
+            self.ATL06_summary_zero_count[cc-1]=np.sum(self.valid_segs.data[D6.cycle==cc])
+            self.min_SNR_significance[cc-1]=np.amin(D6.snr_significance[D6.cycle==cc])
+            self.min_signal_selection_source[cc-1]=np.amin(D6.signal_selection_source[D6.cycle==cc])
+        self.N_pass_avail=np.count_nonzero(self.ATL06_summary_zero_count) 
+        
         # step 1b; the backup step here is UNDOCUMENTED AND UNTESTED
         if not np.any(self.valid_segs.data):
             self.status['atl06_quality_summary_all_nonzero']=1.0
@@ -280,10 +346,13 @@ class ATL11_point:
         self.pass_x=np.full(12, np.nan)
         self.pass_y=np.full(12, np.nan)
         self.complex_surface_flag=0
+        self.surf_fit_quality_summary=0
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
         self.t0=(np.max(D6.delta_time[self.valid_pairs.all,:])-np.min(D6.delta_time[self.valid_pairs.all,:]))/2  # mid-point between start and end of mission
-        
+        self.pass_seg_count=np.zeros((12,))
+        self.pass_included_in_fit=np.zeros((12,))
+
         # establish new boolean arrays for selecting
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool) 
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()  
@@ -300,21 +369,19 @@ class ATL11_point:
             col=np.append(col,np.array(index*np.ones(np.count_nonzero(cycle==item))))
         G_Zp=sparse.csc_matrix((data,(row,col)),shape=[len(cycle),len(self.ref_surf_passes)])    
         self.repeat_cols=np.arange(G_Zp.toarray().shape[1])
-        N_shape_passes=self.repeat_cols.shape
-        #print('N_shape_passes',N_shape_passes)
         
         # 2. determine polynomial degree, using unique x's and unique y's of segments in valid pairs
         x_atcU = np.unique(D6.x_atc[self.valid_pairs.all,:].ravel()) # np.unique orders the unique values
         y_atcU = np.unique(D6.y_atc[self.valid_pairs.all,:].ravel()) # np.unique orders the unique values
-        poly_deg_x = np.minimum(params_11.poly_max_degree_AT,len(x_atcU)-1) 
-        poly_deg_y = np.minimum(params_11.poly_max_degree_XT,len(y_atcU)-1) 
+        self.poly_deg_x = np.minimum(params_11.poly_max_degree_AT,len(x_atcU)-1) 
+        self.poly_deg_y = np.minimum(params_11.poly_max_degree_XT,len(y_atcU)-1) 
 
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y 
-        self.degree_list_x, self.degree_list_y = np.meshgrid(np.arange(poly_deg_x+1), np.arange(poly_deg_y+1))
+        self.degree_list_x, self.degree_list_y = np.meshgrid(np.arange(self.poly_deg_x+1), np.arange(self.poly_deg_y+1))
         # keep only degrees > 0 and degree_x+degree_y < max(max_x_degree, max_y_degree)
         sum_degrees=(self.degree_list_x + self.degree_list_y).ravel()
-        keep=np.where(np.logical_and( sum_degrees <= np.maximum(poly_deg_x,poly_deg_y), sum_degrees > 0 ))
+        keep=np.where(np.logical_and( sum_degrees <= np.maximum(self.poly_deg_x,self.poly_deg_y), sum_degrees > 0 ))
         self.degree_list_x = self.degree_list_x.ravel()[keep]
         self.degree_list_y = self.degree_list_y.ravel()[keep]
         sum_degree_list = sum_degrees[keep]
@@ -371,7 +438,9 @@ class ATL11_point:
                     if np.all(G[:,c]==G[0,c]):
                         fit_columns[c]=False
                 G=G[:, fit_columns]
-            
+            else:
+                self.surf_fit_quality_summary=1
+            #print(np.sum(fit_columns))    
             # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
             if np.sum(np.logical_not(fit_columns[np.sum(self.poly_cols.shape,self.slope_change_cols.shape):])) > 2: 
                 S_fit_poly=np.zeros((len(x_atc),2),dtype=float)
@@ -410,12 +479,12 @@ class ATL11_point:
             # 3i. Calculate the fitting tolerance, 
             r_tol = 3*RDE(r_fit/h_li_sigma[selected_segs])
             # reduce chi-squared value
-            surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),Cdi.toarray()),r_fit)
+            self.surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),Cdi.toarray()),r_fit)
 
             # calculate P value
             n_cols=np.sum(fit_columns)
             n_rows=np.sum(selected_segs)
-            P = 1 - stats.chi2.cdf(surf_fit_misfit_chi2, n_rows-n_cols)
+            P = 1 - stats.chi2.cdf(self.surf_fit_misfit_chi2, n_rows-n_cols)
 
             # 3j. 
             if P<0.025 and kk < params_11.max_fit_iterations-1:
@@ -442,13 +511,18 @@ class ATL11_point:
 
         if self.slope_change_cols.shape[0]>0:
             self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]
+            
         else:
             self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.repeat_cols]]
-            
+    
         # report the selected segments 
         selected_pair_out= self.valid_pairs.all.copy()
         selected_pair_out[selected_pair_out==True]=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
+        plt.figure(40);plt.clf()
+        plt.plot(selected_pair_out,'.')
+        
         self.valid_pairs.iterative_fit=selected_pair_out
+        
         self.valid_segs.iterative_fit=np.column_stack((self.valid_pairs.iterative_fit, self.valid_pairs.iterative_fit))
         
         if self.DOPLOT:
@@ -467,6 +541,9 @@ class ATL11_point:
         else:
             self.ref_surf_slope_change_rate=np.zeros((2,))
             self.m_ref=self.m_full[self.poly_cols]
+        # check if slope change rate for either x or y is > 0.1 (see Table 4-4)     
+        if np.any(self.ref_surf_slope_change_rate>0.1):
+            self.surf_fit_quality_summary=1
             
         self.z_cycle=self.m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
         
@@ -474,7 +551,6 @@ class ATL11_point:
             self.pass_h_shapecorr[self.ref_surf_passes.astype(int)-1]=self.z_cycle[fit_columns[np.sum([self.poly_cols.shape,self.slope_change_cols.shape]):]] #np.sum([self.poly_cols.shape,self.slope_change_cols.shape,self.repeat_cols])]] )
         else:
             self.pass_h_shapecorr[self.ref_surf_passes.astype(int)-1]=self.z_cycle[fit_columns[self.poly_cols.shape[0]:]] #np.sum([self.poly_cols.shape,self.slope_change_cols.shape,self.repeat_cols])]] )
-        #print('h pass corr',self.pass_h_shapecorr)   
         
         self.h_poly_seg = np.dot(self.G_surf[:,:len(self.m_ref)],self.m_ref)
 
@@ -483,6 +559,9 @@ class ATL11_point:
             self.pass_lat[cc.astype(int)-1]=np.mean(lat[(cycle==cc)])
             self.pass_x[cc.astype(int)-1]=np.mean(x_atc[(cycle==cc)])
             self.pass_y[cc.astype(int)-1]=np.mean(y_atc[(cycle==cc)])
+            self.pass_seg_count[cc.astype(int)-1]=np.sum(self.selected_segments[D6.cycle==cc])
+            self.pass_included_in_fit[cc.astype(int)-1]=1
+        self.N_pass_used=np.count_nonzero(self.ref_surf_passes)
         
         # 3k. propagate the errors   
         Cdp=sparse.diags(np.maximum(h_li_sigma**2,(RDE(r_fit))**2))  # C1 in text  
@@ -490,6 +569,11 @@ class ATL11_point:
         self.sigma_m_full=np.full(self.G_surf.shape[1],np.nan)
         self.sigma_m_full[fit_columns]=np.sqrt(self.C_m_surf.diagonal())
         self.ref_surf_poly_sigma=self.sigma_m_full[self.poly_cols]
+        if self.slope_change_cols.shape[0]>0:          
+            self.slope_change_rate_sigma=self.sigma_m_full[self.poly_cols.shape[0]+self.slope_change_cols]
+        else:
+            self.slope_change_rate_sigma=np.full((2,),np.nan)
+        
         if self.DOPLOT:
             plt.figure(3);plt.clf()
             plt.plot(self.sigma_m_full[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'ro-')
@@ -501,7 +585,7 @@ class ATL11_point:
         self.z_cycle_sigma=self.sigma_m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
 
         self.pass_h_shapecorr_sigma[self.ref_surf_passes.astype(int)-1]=self.z_cycle_sigma
-        #print('h pass corr',self.pass_h_shapecorr_sigma)   
+        #self.surf_fit_quality_summary
         
         return 
     
@@ -510,7 +594,7 @@ class ATL11_point:
         other_passes=np.unique(D6.cycle.ravel()[~np.in1d(D6.cycle.ravel(),self.ref_surf_passes)])
         # 1. find cycles not in ref_surface_passes, but have valid_segs.data and valid_segs.x_slope  
         non_ref_segments=np.logical_and(np.in1d(D6.cycle.ravel(),other_passes),np.logical_and(self.valid_segs.data.ravel(),self.valid_segs.x_slope.ravel()))
-    
+        
         # 2. build design matrix, G_other, for non selected segments (poly and dt parts only)
         x_atc=D6.x_atc.ravel()[non_ref_segments]
         y_atc=D6.y_atc.ravel()[non_ref_segments]
@@ -593,6 +677,27 @@ class ATL11_point:
             self.pass_lat[cc-1]=lat[cycle==cc][best_seg]
             self.pass_x[cc-1]  =x_atc[cycle==cc][best_seg]
             self.pass_y[cc-1]  =y_atc[cycle==cc][best_seg]
+            self.pass_seg_count[cc-1]=1
+        
+        # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
+        self.segment_id_by_cycle=[]         
+        self.selected_segments_by_cycle=[]         
+        cyc=D6.cycle[self.selected_segments[:,0],0]  
+        segid=D6.segment_id[self.selected_segments[:,0],0]    
+        
+        non_cyc=D6.cycle.ravel()[non_ref_segments]  
+        non_segid=D6.segment_id.ravel()[non_ref_segments]  
+        
+        for cc in range(1,13):  
+            if np.in1d(cc,self.ref_surf_passes):
+                self.segment_id_by_cycle.append( np.array( segid[cyc==cc] ) )
+            elif np.in1d(cc,self.non_ref_surf_passes):
+                self.segment_id_by_cycle.append( np.array( non_segid[non_cyc==cc] ) )
+            else:     
+                self.segment_id_by_cycle.append(np.array([]))
+
+        self.selected_segments=np.logical_or(self.selected_segments,non_ref_segments.reshape(self.valid_pairs.all.shape[0],2))
+
         if self.DOPLOT:
             plt.figure(200);plt.clf()
             plt.plot(np.arange(12)+1,self.pass_h_shapecorr,'bo-');plt.hold(True)

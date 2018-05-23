@@ -8,8 +8,12 @@ from glob import glob
 import numpy as np
 from ATL06_to_ATL11 import fit_ATL11
 from ATL11 import ATL11_data
+<<<<<<< HEAD
 from ATL11_plot import ATL11_plot
 #import sys
+=======
+#from ATL11 import ATL11_data.write_to_file
+import re
  
 np.seterr(invalid='ignore')
 
@@ -20,6 +24,12 @@ np.seterr(invalid='ignore')
 #from ATL06_data import ATL06_data 
 #filenames=glob('/Volumes/ice1/ben/sdt/ATLxx_example/PIG_Collab_v13A/ATL06/run_1/rep_*/Track_462_D3.h5')
 filenames=glob('/Volumes/ice1/ben/sdt/ATLxx_example/PIG_Collab_v13B_NoFirn_NoDz/ATL06/run_1/rep_*/Track_462_D3.h5') 
+
+# establish output file name
+m=re.search(r"Track_(.*?).h5",filenames[0])
+fileout='Fit_' + m.group(1) + '.h5'
+print(fileout)
+
 #x_ctr=33044510.0
 #x_ctr=33046250.0
 x_ctr=33047260
@@ -36,4 +46,7 @@ x_ctr=33047260
 #seg_x_centers=x_ctr+np.arange(-1200, 0, 60);
 P11_list=fit_ATL11(filenames, beam_pair=3, seg_x_centers=None , DOPLOT=None, DEBUG=False) # defined in ATL06_to_ATL11  step=60
 D11=ATL11_data(len(P11_list), P11_list[0].N_reps).from_list(P11_list)
-ATL11_plot(D11, P11_list)
+#ATL11_plot(D11, P11_list)
+D11.plot()
+ATL11_data.write_to_file(D11,fileout)
+
