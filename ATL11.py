@@ -153,13 +153,16 @@ class ATL11_point:
         self.z=ATL11_data(1, N_reps)
         self.status=dict()
         self.DOPLOT=None
+        self.D=ATL11_data(1, self.N_reps)
 
     def select_ATL06_pairs(self, D6, pair_data, params_11):   # x_polyfit_ctr is x_atc_ctr and seg_x_center
         # this is section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
-        self.ATL06_summary_zero_count=np.zeros( (12,))
-        for cc in range(1,13):
+        self.ATL06_summary_zero_count=np.zeros((self.N_reps,))
+        self.min_SNR_significance=np.zeros((self.N_reps,))+np.nan
+        self.min_signal_selection_source=np.zeros((self.N_reps,))+np.nan
+        for cc in range(1,self.N_reps+1):
             self.ATL06_summary_zero_count[cc-1]=np.sum(self.valid_segs.data[D6.cycle==cc])
             self.min_SNR_significance[cc-1]=np.amin(D6.snr_significance[D6.cycle==cc])
             self.min_signal_selection_source[cc-1]=np.amin(D6.signal_selection_source[D6.cycle==cc])
