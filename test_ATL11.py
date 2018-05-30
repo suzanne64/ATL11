@@ -8,10 +8,9 @@ from glob import glob
 import numpy as np
 from ATL06_to_ATL11 import fit_ATL11
 from ATL11 import ATL11_data
-<<<<<<< HEAD
+
 from ATL11_plot import ATL11_plot
 #import sys
-=======
 #from ATL11 import ATL11_data.write_to_file
 import re
  
