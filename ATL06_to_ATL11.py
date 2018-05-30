@@ -22,7 +22,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, DO
     P11_list=list()
     if seg_x_centers is None:
         # NO: select every nth center        
-        seg_x_centers=np.arange(np.min(np.c_[D6.x_atc]), np.max(np.c_[D6.x_atc]), params_11.seg_atc_spacing)
+        seg_x_centers=np.arange(np.min(np.c_[D6.x_atc]), np.max(np.c_[D6.x_atc]), params_11.seg_atc_spacing)   
     for seg_x_center in seg_x_centers:
         # section 5.1.1 ?
         D6_sub=D6.subset(np.any(np.abs(D6.x_atc-seg_x_center) < params_11.L_search_AT, axis=1), by_row=True) # len 144 = 12 xlocs, by 12 cycles where ylocs are diff for each cycle, xlocs the same for all cycles.
@@ -40,7 +40,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, DO
             continue
         P11.select_y_center(D6_sub, pair_data, params_11)
                 
-        P11.lat_ctr,P11.lon_ctr = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[seg_x_center,P11.y_atc_ctr])
+        P11.D.ref_pt_lat,P11.D.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[seg_x_center,P11.y_atc_ctr])
 
         P11.find_reference_surface(D6_sub, params_11)
         
