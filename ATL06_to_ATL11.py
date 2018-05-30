@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 #from poly_ref_surf import poly_ref_surf
 
-def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, DOPLOT=None, DEBUG=None):
+def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, num_centers=None, DOPLOT=None, DEBUG=None):
     params_11=ATL11_defaults()
     # read in the ATL06 data
     D6=ATL06_data(filename=ATL06_files, beam_pair=beam_pair) # two cols (two segs)
@@ -22,7 +22,9 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, DO
     P11_list=list()
     if seg_x_centers is None:
         # NO: select every nth center        
-        seg_x_centers=np.arange(np.min(np.c_[D6.x_atc]), np.max(np.c_[D6.x_atc]), params_11.seg_atc_spacing)   
+        seg_x_centers=np.arange(np.min(np.c_[D6.x_atc]), np.max(np.c_[D6.x_atc]), params_11.seg_atc_spacing) 
+    if num_centers is not None:
+        seg_x_centers=seg_x_centers[0:num_centers]
     for seg_x_center in seg_x_centers:
         # section 5.1.1 ?
         D6_sub=D6.subset(np.any(np.abs(D6.x_atc-seg_x_center) < params_11.L_search_AT, axis=1), by_row=True) # len 144 = 12 xlocs, by 12 cycles where ylocs are diff for each cycle, xlocs the same for all cycles.
