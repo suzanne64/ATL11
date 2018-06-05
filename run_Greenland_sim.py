@@ -33,10 +33,12 @@ for track_file in track_files:
         fileout='Fit_%s_Pair%d.h5' % (m.group(1), pair)
         print(fileout)
         h5_files=glob(ATL06_base+'/*/'+track_file) 
-        P11_list=fit_ATL11(h5_files, beam_pair=pair, seg_x_centers=None, num_centers=20., DOPLOT=None, DEBUG=False) # defined in ATL06_to_ATL11  step=60
-        D11=ATL11_data(len(P11_list), P11_list[0].N_reps).from_list(P11_list)
-        #ATL11_plot(D11, P11_list)
-        D11.plot()
-        ATL11_data.write_to_file(D11,fileout)
+        print(h5_files[0])
+        P11_list=fit_ATL11(h5_files, beam_pair=pair, seg_x_centers=None, num_centers=20, DOPLOT=None, DEBUG=False) # defined in ATL06_to_ATL11  step=60
+        if P11_list:
+            D11=ATL11_data(len(P11_list), P11_list[0].N_reps).from_list(P11_list)
+            #ATL11_plot(D11, P11_list)
+            D11.plot()
+            ATL11_data.write_to_file(D11,fileout)
         break
 
