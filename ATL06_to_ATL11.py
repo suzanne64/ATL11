@@ -15,7 +15,6 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
 
     # read in the ATL06 data
     D6=ATL06_data(filename=ATL06_files, beam_pair=beam_pair, NICK=True) # two cols (two segs)
- 
     # reoder data rows from D6 by cycle
     this_index=np.argsort(D6.cycle[:,0],axis=0)
     for field in D6.list_of_fields:
@@ -28,7 +27,6 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
     if num_centers is not None:
         seg_x_centers=seg_x_centers[0:int(num_centers)]
     for seg_x_center in seg_x_centers:
-        print(seg_x_center)
         # section 5.1.1 ?
         D6_sub=D6.subset(np.any(np.abs(D6.x_atc-seg_x_center) < params_11.L_search_AT, axis=1), by_row=True) # len 144 = 12 xlocs, by 12 cycles where ylocs are diff for each cycle, xlocs the same for all cycles.
         if DEBUG:

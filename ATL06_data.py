@@ -72,9 +72,14 @@ class ATL06_data:
                 try:
                     if NICK is not None:
                         if group is None:
-                            setattr(self, field, np.c_[
-                            np.array(h5_f[beam_names[0]]['land_ice_segments'][field]).transpose(),  
-                            np.array(h5_f[beam_names[1]]['land_ice_segments'][field]).transpose()])
+                            if 'delta_time' in field:
+                                setattr(self, field, np.c_[
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400,   # convert days to seconds
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400])
+                            else:                                
+                                setattr(self, field, np.c_[
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field]).transpose(),  
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][field]).transpose()])
                         else:
                             if 'ground' in group and 'cycle' in field:  # currently all the cycle info is NaN
                                 setattr(self, field, np.c_[
