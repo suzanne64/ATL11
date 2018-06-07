@@ -13,13 +13,14 @@ from mpl_toolkits.mplot3d import Axes3D
 def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, num_centers=None, DOPLOT=None, DEBUG=None):
     params_11=ATL11_defaults()
 
-    # read in the ATL06 data
+    # read in the ATL06 data from all the repeats
     D6=ATL06_data(filename=ATL06_files, beam_pair=beam_pair, NICK=True) # two cols (two segs)
     # reoder data rows from D6 by cycle
     this_index=np.argsort(D6.cycle[:,0],axis=0)
     for field in D6.list_of_fields:
         tmp=getattr(D6,field)
         setattr(D6,field,tmp[this_index, :])
+        
     P11_list=list()
     if seg_x_centers is None:
         # NO: select every nth center        
@@ -35,23 +36,24 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
         #2a. define representative x and y values for the pairs
         pair_data=D6_sub.get_pairs()   # this might go, similar to D6_sub
 
-        P11=ATL11_point(N_pairs=len(pair_data.x), x_atc_ctr=seg_x_center, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_reps=len(ATL06_files) )
-
+        P11=ATL11_point(N_pairs=len(pair_data.x), x_atc_ctr=seg_x_center, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_reps=len(ATL06_files),N_coeffs=9 )
+        
         P11.DOPLOT=DOPLOT
        # step 2: select pairs, based on reasonable slopes
         P11.select_ATL06_pairs(D6_sub, pair_data, params_11)
         if 'no_valid_pairs' in P11.status and P11.status['no_valid_pairs']==1:
-            print('you are in no valid pairs',seg_x_center)
+            print('you have no valid pairs',seg_x_center)
             continue
         P11.select_y_center(D6_sub, pair_data, params_11)
                 
         P11.D.ref_pt_lat,P11.D.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[seg_x_center,P11.y_atc_ctr])
- 
+        
         P11.find_reference_surface(D6_sub, params_11)
         
         P11.corr_heights_other_cycles(D6_sub, params_11)
         
         P11_list.append(P11)
+        
         
     return P11_list
   
