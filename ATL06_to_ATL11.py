@@ -42,7 +42,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
        # step 2: select pairs, based on reasonable slopes
         P11.select_ATL06_pairs(D6_sub, pair_data, params_11)
         if 'no_valid_pairs' in P11.status and P11.status['no_valid_pairs']==1:
-            print('you have no valid pairs',seg_x_center)
+            #print('you have no valid pairs',seg_x_center)
             continue
         P11.select_y_center(D6_sub, pair_data, params_11)
                 
