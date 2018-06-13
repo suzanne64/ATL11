@@ -9,21 +9,28 @@ Class to read and manipulate ATL06 data.  Currently set up for Ben-style fake da
 import h5py
 import numpy as np
 from ATL06_pair import ATL06_pair
+import matplotlib.pyplot as plt 
+import re
 
 class ATL06_data:
     np.seterr(invalid='ignore')
-    def __init__(self, filename=None, beam_pair=1, x_bounds=None, y_bounds=None, field_dict=None, list_of_fields=None, list_of_data=None, from_dict=None):
+    def __init__(self, filename=None, beam_pair=1, x_bounds=None, y_bounds=None, field_dict=None, list_of_fields=None, list_of_data=None, from_dict=None, NICK=None): 
         if field_dict is None:
-            # read everything
-            field_dict={'land_ice_height':['delta_time','dh_fit_dx','dh_fit_dy','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
-                        'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth'],
-                        'fit_statistics':['dh_fit_dx_sigma','h_robust_spread','snr_significance','signal_selection_source']} 
+            if NICK is not None:
+                field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
+                            'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth'],
+                            'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','dh_fit_dy','h_robust_spread','signal_selection_source','snr_significance']} 
+            else:
+                field_dict={'land_ice_height':['delta_time','dh_fit_dx','dh_fit_dy','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
+                            'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth'],
+                            'fit_statistics':['dh_fit_dx_sigma','h_robust_spread','snr_significance','signal_selection_source']} 
+
         if list_of_fields is None:
             list_of_fields=list()
             for group in field_dict.keys():
                 for field in field_dict[group]:
                     list_of_fields.append(field)
-            
+
         self.list_of_fields=list_of_fields
         if list_of_data is not None:
             self.build_from_list_of_data(list_of_data)
@@ -41,7 +48,7 @@ class ATL06_data:
                 self.build_from_list_of_data(D6_list)
             elif isinstance(filename, (basestring)):
                 # this happens when the input filename is a string, not a list
-                self.read_from_file(filename, field_dict, beam_pair=beam_pair, x_bounds=x_bounds, y_bounds=y_bounds)
+                self.read_from_file(filename, field_dict, beam_pair=beam_pair, x_bounds=x_bounds, y_bounds=y_bounds,NICK=True)
             else:
                 raise TypeError
         else:
@@ -49,20 +56,44 @@ class ATL06_data:
             for field in list_of_fields:
                 setattr(self, field, np.zeros((2,0)))       
           
-    def read_from_file(self, filename, field_dict,  x_bounds=None, y_bounds=None, beam_pair=None):
+    def read_from_file(self, filename, field_dict,  x_bounds=None, y_bounds=None, beam_pair=None, NICK=None): 
         beam_names=['gt%d%s' %(beam_pair, b) for b in ['l','r']]
         h5_f=h5py.File(filename,'r')
+        # find cycle number in filename
+        m=re.search(r"TrackData_(.*?)/",filename)
+        
+        #print('line 61,',NICK,filename)
         if beam_names[0] not in h5_f.keys():
             return None
         for group in field_dict.keys():
             for field in field_dict[group]:
                 if field not in self.list_of_fields:
                     self.list_of_fields.append(field)
-                #print field
                 try:
-                    setattr(self, field, np.c_[
-                        np.array(h5_f[beam_names[0]][group][field]).transpose(), 
+                    if NICK is not None:
+                        if group is None:
+                            if 'delta_time' in field:
+                                setattr(self, field, np.c_[
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400,   # convert days to seconds
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400])
+                            else:                                
+                                setattr(self, field, np.c_[
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field]).transpose(),  
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][field]).transpose()])
+                        else:
+                            if 'ground' in group and 'cycle' in field:  # currently all the cycle info is NaN
+                                setattr(self, field, np.c_[
+                                np.ones( np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field]).transpose().shape ) * int(m.group(1)),  
+                                np.ones( np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field]).transpose().shape ) * int(m.group(1))])
+                            else:
+                                setattr(self, field, np.c_[
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field]).transpose(),  
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field]).transpose()])
+                    else:
+                        setattr(self, field, np.c_[
+                        np.array(h5_f[beam_names[0]][group][field]).transpose(),  
                         np.array(h5_f[beam_names[1]][group][field]).transpose()])
+                            
                 except KeyError:
                     print "could not read %s/%s" % (group, field)
                     setattr(self, field, np.zeros_like(self.delta_time)+np.NaN)
