@@ -131,7 +131,7 @@ class ATL11_data:
         temp=self.corrected_h.pass_h_shapecorr;
         temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
         temp=np.nanmean(temp, axis=1)
-        plt.plot(xx, temp, 'k', picker=5)
+        plt.plot(xx, temp, 'k.')#, picker=5)
         plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
         return h
         
@@ -227,6 +227,9 @@ class ATL11_point:
                 y_slope_threshold=np.max(my_regression_tol,3.*RDE(y_slope_resid))
             else:
                 y_slope_threshold=my_regression_tol
+            if ~pairs_valid_for_y_fit.any():
+                pairs_valid_for_y_fit=np.zeros_like(pairs_valid_for_y_fit, dtype=bool)
+                break
             # 3f: select for across-track residuals within threshold
             self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=np.abs(y_slope_resid)<=y_slope_threshold
             # re-establish pairs_valid_for_y_fit
@@ -623,8 +626,14 @@ class ATL11_point:
         other_passes=np.unique(D6.cycle.ravel()[~np.in1d(D6.cycle.ravel(),self.ref_surf_passes)])
         # 1. find cycles not in ref_surface_passes, but have valid_segs.data and valid_segs.x_slope  
         non_ref_segments=np.logical_and(np.in1d(D6.cycle.ravel(),other_passes),np.logical_and(self.valid_segs.data.ravel(),self.valid_segs.x_slope.ravel()))
-
-        if np.sum(non_ref_segments) > 0:
+        #  If the x polynomial degree is zero, allow only segments that have x_atc matching that of the valid segments (+- 10 m)
+        if (self.D.degree_list_x==0).all():
+            ref_surf_x_ctrs=D6.x_atc[self.selected_segments]
+            ref_surf_x_range=np.array([ref_surf_x_ctrs.min(), ref_surf_x_ctrs.max()])
+            non_ref_segments=np.logical_and(non_ref_segments, D6.x_atc.ravel() > ref_surf_x_range[0]-10.)
+            non_ref_segments=np.logical_and(non_ref_segments, D6.x_atc.ravel() < ref_surf_x_range[1]+10.)
+        
+        if non_ref_segments.any():
             # 2. build design matrix, G_other, for non selected segments (poly and dt parts only)
             x_atc=D6.x_atc.ravel()[non_ref_segments]
             y_atc=D6.y_atc.ravel()[non_ref_segments]
@@ -676,20 +685,7 @@ class ATL11_point:
             else:
                 Cms=self.C_m_surf[:,self.poly_cols][self.poly_cols,:] # can't index 2 dimensions at once. 
             z_kc_sigma = np.sqrt( np.diag( np.dot(np.dot(G_other,Cms),np.transpose(G_other)) ) + h_li_sigma**2 ) # equation 11
-            #  If the x polynomial degree is zero, correct the heights using the 
-            # error-weighted average of the along-track slopes for the segment slopes
-            if (self.D.degree_list_x==0).all():
-                this_mask=self.valid_segs.iterative_fit.ravel()
-                W=1/(D6.dh_fit_dx_sigma.ravel()[this_mask])**2
-                dh_dx=(W*D6.dh_fit_dx.ravel()[this_mask]).sum()/W.sum()
-                dh_dx_sigma2=(W*D6.dh_fit_dx_sigma.ravel()[this_mask]).sum()/W.sum()
-                z_kc=z_kc-dh_dx*(x_atc-self.x_atc_ctr)
-                z_kc_sigma=np.sqrt(z_kc_sigma**2+dh_dx_sigma2*(x_atc-self.x_atc_ctr)**2)
-                self.D.degree_list_x=np.append(self.D.degree_list_x, 1)
-                self.D.degree_list_y=np.append(self.D.degree_list_y, 0)
-                self.D.ref_surf_poly_coeffs=np.append(self.D.ref_surf_poly_coeffs, dh_dx*params_11.xy_scale)
-                self.D.ref_surf_poly_coeffs_sigma=np.append(self.D.ref_surf_poly_coeffs_sigma, dh_dx_sigma2*params_11.xy_scale)            
-        
+                  
             if self.DOPLOT:        
                 plt.figure(108);plt.clf()
                 plt.plot(h_li_sigma,'b.-');plt.hold(True)
