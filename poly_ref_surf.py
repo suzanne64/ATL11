@@ -48,9 +48,15 @@ class poly_ref_surf:
         z.shape=x0.shape
         return z
     def fit(self, xd, yd, zd, sigma_d=None, max_iterations=1, min_sigma=0):
+        
+        
         # asign poly_vals and cov_matrix with a linear fit to zd at points xd, yd
         # build the design matrix:      
         G=self.fit_matrix(xd, yd)
+        #initialize outputs
+        m=np.zeros(G.shape[1])+np.NaN
+        residual=np.zeros_like(xd)+np.NaN
+        rows=np.ones_like(xd, dtype=bool)
         # build a sparse covariance matrix
         if sigma_d is None:
             sigma_d=np.ones_like(xd.ravel())
@@ -58,6 +64,9 @@ class poly_ref_surf:
         mask=np.ones_like(zd.ravel(), dtype=bool)
         for k_it in np.arange(max_iterations):
             rows=mask
+            if rows.sum()==0:
+                chi2r=np.NaN
+                break
             sigma_inv=sparse.diags(1/sigma_d.ravel()[rows])
             Gsub=G[rows,:]
             cols=(np.amax(Gsub,axis=0)-np.amin(Gsub,axis=0))>0
