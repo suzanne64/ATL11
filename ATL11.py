@@ -380,7 +380,6 @@ class ATL11_point:
         
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
-        self.t0=(np.max(D6.delta_time[self.valid_pairs.all,:])-np.min(D6.delta_time[self.valid_pairs.all,:]))/2  # mid-point between start and end of mission
         # Table 4-2        
         self.D.pass_seg_count=np.zeros((self.N_reps,))
         self.D.pass_included_in_fit=np.zeros((self.N_reps,))
@@ -449,10 +448,7 @@ class ATL11_point:
         # 3d. build the fitting matrix
         delta_time=D6.delta_time[self.valid_pairs.all,:].ravel()
         self.t_ctr=(np.max(delta_time)-np.min(delta_time))/2  # mid-point between start and end of mission
-        print('np.max(delta_time)',np.max(delta_time)/86400)
-        print('np.min(delta_time)',np.min(delta_time)/86400)
-        print('diff',(np.max(delta_time)-np.min(delta_time))/86400)
-##### comment out when testing self.slope_change_rate
+
         if (np.max(delta_time)-np.min(delta_time))/params_11.t_scale > 1.5:
             print(' you are within 1.5 years')
             x_term=np.array( [(x_atc-self.x_atc_ctr)/params_11.xy_scale * (delta_time-self.t_ctr)/params_11.t_scale] )
@@ -583,13 +579,17 @@ class ATL11_point:
             self.D.slope_change_rate_y=np.array([self.m_full[self.poly_cols.shape[0]+self.slope_change_cols[1]]])
             self.m_ref=np.concatenate( ([self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)],self.D.slope_change_rate_x,self.D.slope_change_rate_y]), axis=0)
         else:
-            self.D.slope_change_rate_x=np.zeros(1,)
-            self.D.slope_change_rate_y=np.zeros(1,)
+            self.D.slope_change_rate_x=np.nan
+            self.D.slope_change_rate_y=np.nan
             self.m_ref=self.m_full[self.poly_cols]
         # check if slope change rate for either x or y is > 0.1 (see Table 4-4)     
-        if np.any((self.D.slope_change_rate_x>0.1,self.D.slope_change_rate_y>0.1)):
+        if np.any((np.logical_or(self.D.slope_change_rate_x>0.1,np.isnan(self.D.slope_change_rate_x)),
+                   np.logical_or(self.D.slope_change_rate_y>0.1,np.isnan(self.D.slope_change_rate_y)))):
             self.D.surf_fit_quality_summary=1
-        
+        print('self.D.slope_change_rate_x',self.D.slope_change_rate_x)
+        print('self.D.slope_change_rate_y',self.D.slope_change_rate_y)
+        print('self.D.surf_fit_quality_summary',self.D.surf_fit_quality_summary)
+        print()
         self.z_cycle=self.m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
         
         if self.slope_change_cols.shape[0]>0:
