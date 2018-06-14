@@ -56,7 +56,7 @@ class ATL11_data:
         self.ref_surf=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','n_deg_x','n_deg_y','N_pass_avail','N_pass_used','slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma','surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'],
                                     full_fields=[], poly_fields=['ref_surf_poly_coeffs','ref_surf_poly_coeffs_sigma'])
 
-        self.non_product=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['x_atc_ctr'], full_fields=[], poly_fields=['degree_list_x','degree_list_y'])
+        self.non_product=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['x_atc_ctr'], full_fields=[], poly_fields=['all_degree_list_x','all_degree_list_y'])
         
 #    def __setitem__(self,idx,value):
 #        self.generic_group[idx]=value
@@ -87,8 +87,7 @@ class ATL11_data:
                     temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_coeffs],dtype=float)
                     for ii, P11 in enumerate(P11_list):
                         if hasattr(P11.D,field):
-                            actual_N_coeffs=int(eval('P11.D.' + field).shape[0])
-                            temp[ii,:actual_N_coeffs]=eval('P11.D.' + field)
+                            temp[ii,:]=eval('P11.D.' + field)
                     setattr(eval('self.' + group),field,temp)                                    
         return self
         
@@ -105,12 +104,10 @@ class ATL11_data:
                 if list_vars is not None:
                     for field in list_vars: 
                         dset=grp.create_dataset(field,data=getattr(eval('self.' + item),field))
-                        if 'ref_surf' in item and 'ref_surf_poly_coeffs' is field:  # item is a string, grp is not
-                            #print(self.non_product.degree_list_x)
-#                            print(self.D.degree_list_y)
-                            dset.attrs['x exponent order']=self.non_product.degree_list_x.astype('int')
-                            dset.attrs['y exponent order']=self.non_product.degree_list_y.astype('int')
-                            #print(grp.attrs,field)
+                        if 'ref_surf' in item and 'ref_surf_poly_coeffs' in field:  # item is a string, grp is not
+                            dset.attrs['x exponent order']=self.non_product.all_degree_list_x.astype('int')
+                            dset.attrs['y exponent order']=self.non_product.all_degree_list_y.astype('int')
+                            
         f.close()    
         return
         
@@ -371,6 +368,13 @@ class ATL11_point:
         self.D.fit_N_slope=np.nan
         self.D.ref_surf_poly_coeffs=np.full(self.N_coeffs, np.nan)
         self.D.ref_surf_poly_coeffs_sigma=np.full(self.N_coeffs, np.nan)
+        # establish attributes: all possible exponent combinations for reference surface fit 
+        self.D.all_degree_list_x=np.array([])
+        for jj in range(params_11.poly_max_degree_AT):
+            self.D.all_degree_list_x=np.append(self.D.all_degree_list_x,np.arange(jj+1,-1,-1),axis=0).astype('int')        
+        self.D.all_degree_list_y=np.array([])
+        for jj in range(params_11.poly_max_degree_XT):
+            self.D.all_degree_list_y=np.append(self.D.all_degree_list_y,np.arange(jj+2),axis=0).astype('int')
         self.D.surf_fit_quality_summary=0
         
         # in this section we only consider segments in valid pairs
@@ -407,30 +411,37 @@ class ATL11_point:
         self.D.n_deg_y = np.minimum(params_11.poly_max_degree_XT,len(y_atcU)-1) 
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y 
-        self.D.degree_list_x, self.D.degree_list_y = np.meshgrid(np.arange(self.D.n_deg_x+1), np.arange(self.D.n_deg_y+1))
-        #print(self.D.degree_list_x,self.D.degree_list_x.shape)
+        self.degree_list_x, self.degree_list_y = np.meshgrid(np.arange(self.D.n_deg_x+1), np.arange(self.D.n_deg_y+1))
+        #print(self.degree_list_x,self.degree_list_x.shape)
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
-        sum_degrees=(self.D.degree_list_x + self.D.degree_list_y).ravel()
+        sum_degrees=(self.degree_list_x + self.degree_list_y).ravel()
         keep=np.where(np.logical_and( sum_degrees <= np.maximum(self.D.n_deg_x,self.D.n_deg_y), sum_degrees > 0 ))
-        self.D.degree_list_x = self.D.degree_list_x.ravel()[keep]
-        self.D.degree_list_y = self.D.degree_list_y.ravel()[keep]
+        self.degree_list_x = self.degree_list_x.ravel()[keep]
+        self.degree_list_y = self.degree_list_y.ravel()[keep]
         sum_degree_list = sum_degrees[keep]
         # order by sum, x and then y
-        degree_order=np.argsort(sum_degree_list + (self.D.degree_list_y / (self.D.degree_list_y.max()+1)))
-        self.D.degree_list_x=self.D.degree_list_x[degree_order]
-        self.D.degree_list_y=self.D.degree_list_y[degree_order]
+        degree_order=np.argsort(sum_degree_list + (self.degree_list_y / (self.degree_list_y.max()+1)))
+        self.degree_list_x=self.degree_list_x[degree_order]
+        self.degree_list_y=self.degree_list_y[degree_order]
                 
+        # make mask for polynomial coeffs
+        all_degree_list=np.transpose(np.vstack((self.D.all_degree_list_x,self.D.all_degree_list_y))).tolist()
+        degree_list=np.transpose(np.vstack((self.degree_list_x,self.degree_list_y))).tolist()
+        self.poly_mask=[False]*len(all_degree_list)
+        for ii, item in enumerate(degree_list):
+            self.poly_mask[all_degree_list.index(degree_list[ii])]=True
+
         # 3b. define polynomial matrix
         if DEBUG:        
             print('x_ctr is',self.x_atc_ctr)
             print('y_ctr is',self.y_atc_ctr)
         x_atc=D6.x_atc[self.valid_pairs.all,:].ravel()
         y_atc=D6.y_atc[self.valid_pairs.all,:].ravel()
-        S_fit_poly=np.zeros((len(x_atc),len(self.D.degree_list_x)),dtype=float)
+        S_fit_poly=np.zeros((len(x_atc),len(self.degree_list_x)),dtype=float)
         for jj in range(len(x_atc)):
-            for ii in range(len(self.D.degree_list_x)):
-                x_term=( (x_atc[jj]-self.x_atc_ctr)/params_11.xy_scale )**self.D.degree_list_x[ii]
-                y_term=( (y_atc[jj]-self.y_atc_ctr)/params_11.xy_scale )**self.D.degree_list_y[ii]
+            for ii in range(len(self.degree_list_x)):
+                x_term=( (x_atc[jj]-self.x_atc_ctr)/params_11.xy_scale )**self.degree_list_x[ii]
+                y_term=( (y_atc[jj]-self.y_atc_ctr)/params_11.xy_scale )**self.degree_list_y[ii]
                 S_fit_poly[jj,ii]=x_term*y_term                
             
         # 3c. define slope-change matrix 
@@ -561,11 +572,12 @@ class ATL11_point:
             fig.colorbar(p)
         
         # separate self.m_full
-        self.D.ref_surf_poly_coeffs=self.m_full[self.poly_cols]
+        self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)]=self.m_full[self.poly_cols]
+
         if self.slope_change_cols.shape[0]>0:
             self.D.slope_change_rate_x=np.array([self.m_full[self.poly_cols.shape[0]+self.slope_change_cols[0]]])
             self.D.slope_change_rate_y=np.array([self.m_full[self.poly_cols.shape[0]+self.slope_change_cols[1]]])
-            self.m_ref=np.concatenate( ([self.D.ref_surf_poly_coeffs,self.D.slope_change_rate_x,self.D.slope_change_rate_y]), axis=0)
+            self.m_ref=np.concatenate( ([self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)],self.D.slope_change_rate_x,self.D.slope_change_rate_y]), axis=0)
         else:
             self.D.slope_change_rate_x=np.zeros(1,)
             self.D.slope_change_rate_y=np.zeros(1,)
@@ -598,7 +610,7 @@ class ATL11_point:
         self.C_m_surf = np.dot(np.dot(G_g,Cdp.toarray()),np.transpose(G_g))
         self.sigma_m_full=np.full(self.G_surf.shape[1],np.nan)
         self.sigma_m_full[fit_columns]=np.sqrt(self.C_m_surf.diagonal())
-        self.D.ref_surf_poly_coeffs_sigma=self.sigma_m_full[self.poly_cols]
+        self.D.ref_surf_poly_coeffs_sigma[np.where(self.poly_mask)]=self.sigma_m_full[self.poly_cols]
         if self.slope_change_cols.shape[0]>0:          
             self.D.slope_change_rate_x_sigma=self.sigma_m_full[self.poly_cols.shape[0]+self.slope_change_cols[0]]
             self.D.slope_change_rate_y_sigma=self.sigma_m_full[self.poly_cols.shape[0]+self.slope_change_cols[1]]
@@ -611,7 +623,7 @@ class ATL11_point:
             plt.plot(self.sigma_m_full[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'ro-')
             plt.hold(True)
             plt.plot(self.m_ref[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'go-')
-            plt.xticks(np.arange(9),(self.D.degree_list_x+self.D.degree_list_y).astype('S3'))
+            plt.xticks(np.arange(9),(self.degree_list_x+self.degree_list_y).astype('S3'))
             plt.xlabel('sum of x_degree, y degree')
             plt.title('Surface Shape Polynomial (g), Sigma m (r)')
         self.z_cycle_sigma=self.sigma_m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
@@ -627,7 +639,7 @@ class ATL11_point:
         # 1. find cycles not in ref_surface_passes, but have valid_segs.data and valid_segs.x_slope  
         non_ref_segments=np.logical_and(np.in1d(D6.cycle.ravel(),other_passes),np.logical_and(self.valid_segs.data.ravel(),self.valid_segs.x_slope.ravel()))
         #  If the x polynomial degree is zero, allow only segments that have x_atc matching that of the valid segments (+- 10 m)
-        if (self.D.degree_list_x==0).all():
+        if (self.degree_list_x==0).all():
             ref_surf_x_ctrs=D6.x_atc[self.selected_segments]
             ref_surf_x_range=np.array([ref_surf_x_ctrs.min(), ref_surf_x_ctrs.max()])
             non_ref_segments=np.logical_and(non_ref_segments, D6.x_atc.ravel() > ref_surf_x_range[0]-10.)
@@ -638,11 +650,11 @@ class ATL11_point:
             x_atc=D6.x_atc.ravel()[non_ref_segments]
             y_atc=D6.y_atc.ravel()[non_ref_segments]
             if self.D.complex_surface_flag==0:
-                S_fit_poly=np.zeros((len(x_atc),len(self.D.degree_list_x)),dtype=float)
+                S_fit_poly=np.zeros((len(x_atc),len(self.degree_list_x)),dtype=float)
                 for jj in range(len(x_atc)):
-                    for ii in range(len(self.D.degree_list_x)):
-                        x_term=( (x_atc[jj]-self.x_atc_ctr)/params_11.xy_scale )**self.D.degree_list_x[ii]
-                        y_term=( (y_atc[jj]-self.y_atc_ctr)/params_11.xy_scale )**self.D.degree_list_y[ii]
+                    for ii in range(len(self.degree_list_x)):
+                        x_term=( (x_atc[jj]-self.x_atc_ctr)/params_11.xy_scale )**self.degree_list_x[ii]
+                        y_term=( (y_atc[jj]-self.y_atc_ctr)/params_11.xy_scale )**self.degree_list_y[ii]
                         S_fit_poly[jj,ii]=x_term*y_term            
             else:
                 S_fit_poly=np.zeros((len(x_atc),2),dtype=float)
@@ -658,10 +670,10 @@ class ATL11_point:
                 y_term=np.array( [(y_atc-self.y_atc_ctr)/params_11.xy_scale * (delta_time-self.t_ctr)/params_11.t_scale] )
                 S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
                 G_other=np.concatenate( (S_fit_poly,S_fit_slope_change),axis=1 ) # G [S St]
-                surf_model=np.concatenate((self.D.ref_surf_poly_coeffs,self.D.slope_change_rate_x,self.D.slope_change_rate_y))
+                surf_model=np.concatenate((self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)],self.D.slope_change_rate_x,self.D.slope_change_rate_y))
             else:
                 G_other=S_fit_poly  #  G=[S]
-                surf_model=self.D.ref_surf_poly_coeffs
+                surf_model=self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)]
          
              # with heights and errors from non_ref_segments 
             h_li      =D6.h_li.ravel()[non_ref_segments]
