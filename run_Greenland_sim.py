@@ -27,8 +27,8 @@ track_files=[os.path.basename(X) for X  in glob(ATL06_base+'TrackData_01/*.h5')]
 #filenames=glob('/Volumes/ice1/ben/sdt/ATLxx_example/PIG_Collab_v13B_NoFirn_NoDz/ATL06/run_1/rep_*/Track_462_D3.h5') 
 
 for track_file in track_files:
-    #if '0079.h5' in track_file:  # ragged
-    if '0414.h5' in track_file:  # full
+    if '0079.h5' in track_file:  # ragged
+    #if '0414.h5' in track_file:  # full
         for pair in [1,2,3]:
             # establish output file name
             m=re.search(r"Track_(.*?).h5",track_file)

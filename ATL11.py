@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 26 11:08:33 2017
+Created on Thu Oct 26 11:08:33 2017f
 
 @author: ben
 """
@@ -356,7 +356,8 @@ class ATL11_point:
         self.D.pass_h_shapecorr=np.full(self.N_reps, np.nan)
         self.D.pass_h_shapecorr_sigma=np.full(self.N_reps, np.nan)
         self.D.pass_h_shapecorr_sigma_systematic=np.full(self.N_reps, np.nan)
-        self.D.quality_summary=np.full(self.N_reps, np.nan)
+        # use np.logical_not because 0 = good.
+        self.D.quality_summary=np.logical_not(np.logical_and( np.logical_and(self.D.min_signal_selection_source<=1, self.D.min_SNR_significance<0.02),self.D.ATL06_summary_zero_count>0 ))
         self.pass_lon=np.full(self.N_reps, np.nan)
         self.pass_lat=np.full(self.N_reps, np.nan)
         self.pass_x=np.full(self.N_reps, np.nan)
@@ -447,10 +448,13 @@ class ATL11_point:
         # 3c. define slope-change matrix 
         # 3d. build the fitting matrix
         delta_time=D6.delta_time[self.valid_pairs.all,:].ravel()
-        self.t_ctr=1.5 #(np.max(delta_time)-np.min(delta_time))/2  # mid-point between start and end of mission
-
+        self.t_ctr=(np.max(delta_time)-np.min(delta_time))/2  # mid-point between start and end of mission
+        print('np.max(delta_time)',np.max(delta_time)/86400)
+        print('np.min(delta_time)',np.min(delta_time)/86400)
+        print('diff',(np.max(delta_time)-np.min(delta_time))/86400)
 ##### comment out when testing self.slope_change_rate
         if (np.max(delta_time)-np.min(delta_time))/params_11.t_scale > 1.5:
+            print(' you are within 1.5 years')
             x_term=np.array( [(x_atc-self.x_atc_ctr)/params_11.xy_scale * (delta_time-self.t_ctr)/params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/params_11.xy_scale * (delta_time-self.t_ctr)/params_11.t_scale] )
             S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
@@ -583,9 +587,9 @@ class ATL11_point:
             self.D.slope_change_rate_y=np.zeros(1,)
             self.m_ref=self.m_full[self.poly_cols]
         # check if slope change rate for either x or y is > 0.1 (see Table 4-4)     
-        if np.any([self.D.slope_change_rate_x,self.D.slope_change_rate_y]>0.1):
+        if np.any((self.D.slope_change_rate_x>0.1,self.D.slope_change_rate_y>0.1)):
             self.D.surf_fit_quality_summary=1
-            
+        
         self.z_cycle=self.m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
         
         if self.slope_change_cols.shape[0]>0:
@@ -604,6 +608,8 @@ class ATL11_point:
             self.D.pass_seg_count[cc.astype(int)-1]=np.sum(self.selected_segments[D6.cycle==cc])
             self.D.pass_included_in_fit[cc.astype(int)-1]=1
         self.D.N_pass_used=np.count_nonzero(self.ref_surf_passes)
+        if self.D.N_pass_used<2:
+            self.D.surf_fit_quality_summary=1
         
         # 3k. propagate the errors   
         Cdp=sparse.diags(np.maximum(h_li_sigma**2,(RDE(r_fit))**2))  # C1 in text  
