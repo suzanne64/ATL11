@@ -51,7 +51,7 @@ class ATL11_data:
         # Table 4-2
         self.pass_quality_stats=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
                                               full_fields=['ATL06_summary_zero_count','min_SNR_significance','mean_uncorr_reflectance','min_signal_selection_source','pass_seg_count','pass_included_in_fit'],
-                                              poly_fields=[])
+                                              poly_fields=[])            
         # Table 4-4        
         self.ref_surf=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','n_deg_x','n_deg_y','N_pass_avail','N_pass_used','slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma','surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'],
                                     full_fields=[], poly_fields=['ref_surf_poly_coeffs','ref_surf_poly_coeffs_sigma'])
@@ -61,7 +61,7 @@ class ATL11_data:
 #    def __setitem__(self,idx,value):
 #        self.generic_group[idx]=value
 
-    def from_list(self, P11_list):
+    def from_list(self, P11_list):  # list of output variables
         
         di=vars(self)  # a dictionary
         #print(di.keys())
@@ -103,6 +103,7 @@ class ATL11_data:
                 list_vars=eval('self.' + item + '.list_of_fields')
                 if list_vars is not None:
                     for field in list_vars: 
+                        #print(grp,field)
                         dset=grp.create_dataset(field,data=getattr(eval('self.' + item),field))
                         if 'ref_surf' in item and 'ref_surf_poly_coeffs' in field:  # item is a string, grp is not
                             dset.attrs['x exponent order']=self.non_product.all_degree_list_x.astype('int')
@@ -121,15 +122,16 @@ class ATL11_data:
             ss=self.corrected_h.pass_h_shapecorr_sigma[:,cycle]
             good=np.abs(ss)<50   
             if np.any(good):
+                plt.figure(1);plt.clf()
                 h0=plt.errorbar(xx[good],zz[good],ss[good], marker='o',picker=None)
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
                 #plt.plot(xx[good], zz[good], 'k',picker=None)
-        temp=self.corrected_h.pass_h_shapecorr;
-        temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
-        temp=np.nanmean(temp, axis=1)
-        plt.plot(xx, temp, 'k.')#, picker=5)
-        plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
+#        temp=self.corrected_h.pass_h_shapecorr;
+#        temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
+#        temp=np.nanmean(temp, axis=1)
+#        plt.plot(xx, temp, 'k.')#, picker=5)
+#        plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
         return h
         
 class ATL11_point:
@@ -139,6 +141,7 @@ class ATL11_point:
         self.N_coeffs=N_coeffs
         self.x_atc_ctr=x_atc_ctr
         self.y_atc_ctr=y_atc_ctr
+        self.track_azimuth=track_azimuth
         self.z_poly_fit=None
         self.mx_poly_fit=None
         self.my_poly_fit=None
@@ -450,7 +453,7 @@ class ATL11_point:
         self.t_ctr=(np.max(delta_time)-np.min(delta_time))/2  # mid-point between start and end of mission
 
         if (np.max(delta_time)-np.min(delta_time))/params_11.t_scale > 1.5:
-            print(' you are within 1.5 years')
+            #print(' you are within 1.5 years')
             x_term=np.array( [(x_atc-self.x_atc_ctr)/params_11.xy_scale * (delta_time-self.t_ctr)/params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/params_11.xy_scale * (delta_time-self.t_ctr)/params_11.t_scale] )
             S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
@@ -586,10 +589,7 @@ class ATL11_point:
         if np.any((np.logical_or(self.D.slope_change_rate_x>0.1,np.isnan(self.D.slope_change_rate_x)),
                    np.logical_or(self.D.slope_change_rate_y>0.1,np.isnan(self.D.slope_change_rate_y)))):
             self.D.surf_fit_quality_summary=1
-        print('self.D.slope_change_rate_x',self.D.slope_change_rate_x)
-        print('self.D.slope_change_rate_y',self.D.slope_change_rate_y)
-        print('self.D.surf_fit_quality_summary',self.D.surf_fit_quality_summary)
-        print()
+
         self.z_cycle=self.m_full[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols] # the 'intercept'
         
         if self.slope_change_cols.shape[0]>0:
@@ -608,6 +608,7 @@ class ATL11_point:
             self.D.pass_seg_count[cc.astype(int)-1]=np.sum(self.selected_segments[D6.cycle==cc])
             self.D.pass_included_in_fit[cc.astype(int)-1]=1
         self.D.N_pass_used=np.count_nonzero(self.ref_surf_passes)
+
         if self.D.N_pass_used<2:
             self.D.surf_fit_quality_summary=1
         
@@ -636,7 +637,18 @@ class ATL11_point:
 
         self.D.pass_h_shapecorr_sigma[self.ref_surf_passes.astype(int)-1]=self.z_cycle_sigma
 
-        
+        print(self.x_atc_ctr,self.y_atc_ctr)
+        northing=np.arange(self.x_atc_ctr-50,self.x_atc_ctr+50+10,10);
+        easting=np.arange(self.y_atc_ctr-50,self.y_atc_ctr+50+10,10);
+        [N,E]=np.meshgrid(northing,easting)
+        cos_az=np.cos(self.track_azimuth*np.pi/180) # assuming in degrees
+        sin_az=np.sin(self.track_azimuth*np.pi/180) # assuming in degrees
+        xg=N*cos_az + E*sin_az
+        yg=-N*sin_az + E*cos_az
+        plt.figure(100);plt.clf()
+        plt.imshow(xg);plt.colorbar()
+        plt.figure(101);plt.clf()
+        plt.imshow(yg);plt.colorbar()
         return 
     
     def corr_heights_other_cycles(self, D6, params_11):
@@ -721,6 +733,9 @@ class ATL11_point:
                 self.D.mean_pass_time[cc-1]=delta_time[cycle==cc][best_seg]
                 self.D.pass_seg_count[cc-1]=1
         
+            # set height corrections to NaN if sigmas is > 20
+            self.D.pass_h_shapecorr[self.D.pass_h_shapecorr_sigma>20]=np.nan
+            
             # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
             self.segment_id_by_cycle=[]         
             self.selected_segments_by_cycle=[]         
