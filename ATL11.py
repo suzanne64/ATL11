@@ -127,11 +127,11 @@ class ATL11_data:
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
                 #plt.plot(xx[good], zz[good], 'k',picker=None)
-#        temp=self.corrected_h.pass_h_shapecorr;
+        temp=self.corrected_h.pass_h_shapecorr;
 #        temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
-#        temp=np.nanmean(temp, axis=1)
-#        plt.plot(xx, temp, 'k.')#, picker=5)
-#        plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
+        temp=np.nanmean(temp, axis=1)
+        plt.plot(xx, temp, 'k.')#, picker=5)
+        plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
         return h
         
 class ATL11_point:
@@ -642,13 +642,36 @@ class ATL11_point:
         easting=np.arange(self.y_atc_ctr-50,self.y_atc_ctr+50+10,10);
         [N,E]=np.meshgrid(northing,easting)
         cos_az=np.cos(self.track_azimuth*np.pi/180) # assuming in degrees
-        sin_az=np.sin(self.track_azimuth*np.pi/180) # assuming in degrees
+        sin_az=np.sin(self.track_azimuth*np.pi/180) 
+        
         xg=N*cos_az + E*sin_az
-        yg=-N*sin_az + E*cos_az
-        plt.figure(100);plt.clf()
-        plt.imshow(xg);plt.colorbar()
         plt.figure(101);plt.clf()
-        plt.imshow(yg);plt.colorbar()
+        plt.imshow( (xg-xg[6,6])/params_11.xy_scale);plt.colorbar()
+        
+        yg=-N*sin_az + E*cos_az
+        plt.figure(102);plt.clf()
+        plt.imshow( (yg-yg[6,6])/params_11.xy_scale);plt.colorbar()
+        
+        zg=np.zeros_like(xg)
+        for ii in np.arange(np.sum(self.poly_mask)):
+            xterm=( (xg-xg[6,6])/params_11.xy_scale )**self.degree_list_x[ii]
+            yterm=( (yg-yg[6,6])/params_11.xy_scale )**self.degree_list_y[ii]
+            zg=zg+self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)][ii] * xterm * yterm 
+        plt.figure(100);plt.clf()
+        plt.contourf(zg);plt.colorbar()
+
+        # fitting a plane as a function of N and E ? or xg and yg ?
+        M=np.transpose(np.vstack(( (xg.ravel()-xg[6,6])/params_11.xy_scale,(yg.ravel()-yg[6,6])/params_11.xy_scale)))
+        print(M.shape,zg.ravel().shape)
+        msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
+        print(msub,rr,rank,sing)
+        zg_plane=msub[0]*((xg-xg[6,6])/params_11.xy_scale) + msub[1]*((yg-yg[6,6])/params_11.xy_scale);
+        plt.figure(104);plt.clf()
+        plt.contourf(zg_plane);plt.colorbar()
+        self.D.fit_N_slope=msub[0]
+        self.D.fit_E_slope=msub[1]
+        self.D.curvature=rr
+        
         return 
     
     def corr_heights_other_cycles(self, D6, params_11):
@@ -733,9 +756,6 @@ class ATL11_point:
                 self.D.mean_pass_time[cc-1]=delta_time[cycle==cc][best_seg]
                 self.D.pass_seg_count[cc-1]=1
         
-            # set height corrections to NaN if sigmas is > 20
-            self.D.pass_h_shapecorr[self.D.pass_h_shapecorr_sigma>20]=np.nan
-            
             # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
             self.segment_id_by_cycle=[]         
             self.selected_segments_by_cycle=[]         
