@@ -22,20 +22,18 @@ class generic_group:
     def __init__(self, N_ref_pts, N_reps, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None):
         self.list_of_fields=list()
         if per_pt_fields is not None:
-            self.list_of_fields += per_pt_fields
             for field in per_pt_fields:
                 setattr(self, field, np.nan + np.zeros([N_ref_pts, 1]))
         if full_fields is not None:
-            self.list_of_fields += full_fields
             for field in full_fields:
                 setattr(self, field, np.nan + np.zeros([N_ref_pts, N_reps]))
         if poly_fields is not None:
-            self.list_of_fields += poly_fields
             for field in poly_fields:
                 setattr(self, field, np.nan + np.zeros([N_ref_pts, N_coeffs]))
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
         self.poly_fields=poly_fields
+        self.list_of_fields=self.per_pt_fields+self.full_fields+self.poly_fields
                 
 class valid_mask:
     def __init__(self, dims, fields):
