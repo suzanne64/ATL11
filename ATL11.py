@@ -20,19 +20,22 @@ import re
 
 class generic_group:
     def __init__(self, N_ref_pts, N_reps, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None):
+        self.list_of_fields=list()
         if per_pt_fields is not None:
+            self.list_of_fields += per_pt_fields
             for field in per_pt_fields:
                 setattr(self, field, np.nan + np.zeros([N_ref_pts, 1]))
         if full_fields is not None:
+            self.list_of_fields += full_fields
             for field in full_fields:
                 setattr(self, field, np.nan + np.zeros([N_ref_pts, N_reps]))
         if poly_fields is not None:
+            self.list_of_fields += poly_fields
             for field in poly_fields:
                 setattr(self, field, np.nan + np.zeros([N_ref_pts, N_coeffs]))
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
         self.poly_fields=poly_fields
-        self.list_of_fields=self.per_pt_fields+self.full_fields+self.poly_fields
                 
 class valid_mask:
     def __init__(self, dims, fields):
@@ -56,6 +59,7 @@ class ATL11_data:
         self.ref_surf=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','n_deg_x','n_deg_y','N_pass_avail','N_pass_used','slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma','surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'],
                                     full_fields=[], poly_fields=['ref_surf_poly_coeffs','ref_surf_poly_coeffs_sigma'])
 
+        self.reference_point=generic_group(N_ref_pts, 1, N_coeffs, per_pt_fields=['ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth','pairTrack','referencegroundtrack'], full_fields=[], poly_fields=[]) 
         self.non_product=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['x_atc_ctr'], full_fields=[], poly_fields=['degree_list_x','degree_list_y'])
         
 #    def __setitem__(self,idx,value):
@@ -119,7 +123,7 @@ class ATL11_data:
         HR=np.nan+np.zeros((n_cycles, 2))
         h=list()
         for cycle in range(n_cycles):
-            xx=self.non_product.x_atc_ctr
+            xx=self.reference_point.ref_pt_x_atc
             zz= self.corrected_h.pass_h_shapecorr[:,cycle]
             ss=self.corrected_h.pass_h_shapecorr_sigma[:,cycle]
             good=np.abs(ss)<50   
@@ -133,6 +137,7 @@ class ATL11_data:
         temp=np.nanmean(temp, axis=1)
         plt.plot(xx, temp, 'k.')#, picker=5)
         plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
+        plt.xlim((np.nanmin(xx),  np.nanmax(xx)))
         return h
         
 class ATL11_point:
@@ -148,10 +153,10 @@ class ATL11_point:
         self.valid_segs =valid_mask((N_pairs,2),  ('data','x_slope','y_slope' ))  #  2 cols, boolan, all F to start
         self.valid_pairs=valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
-        self.z=ATL11_data(1, N_reps, N_coeffs)
         self.status=dict()
         self.DOPLOT=None
         self.D=ATL11_data(1, N_reps, N_coeffs)  # self.N_reps
+        self.D.ref_pt_x_atc=x_atc_ctr
 
     def select_ATL06_pairs(self, D6, pair_data, params_11):   # x_polyfit_ctr is x_atc_ctr and seg_x_center
         # this is section 5.1.2: select "valid pairs" for reference-surface calculation    
