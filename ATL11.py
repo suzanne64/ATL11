@@ -215,7 +215,7 @@ class ATL11_point:
         y_slope_sigma=np.sqrt(np.sum(D6.h_li_sigma[pairs_valid_for_y_fit,:]**2, axis=1))/np.transpose(np.diff(D6.y_atc[pairs_valid_for_y_fit,:], axis=1)).ravel() #same shape as y_slope*
         my_regression_tol=np.max(0.01, 3*np.median(y_slope_sigma))
 
-        for item in range(2):
+        for iteration in range(2):
             # QUESTION: Do we need the "for item in range(2)" loop?  There are already 2 iterations in self.my_poly_fit.fit
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
             self.my_poly_fit=poly_ref_surf(my_regression_x_degree, my_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
