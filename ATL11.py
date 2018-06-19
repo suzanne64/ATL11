@@ -129,8 +129,8 @@ class ATL11_data:
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
                 #plt.plot(xx[good], zz[good], 'k',picker=None)
-        temp=self.corrected_h.pass_h_shapecorr;
-#        temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
+        temp=self.corrected_h.pass_h_shapecorr.copy()
+        temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
         temp=np.nanmean(temp, axis=1)
         plt.plot(xx, temp, 'k.')#, picker=5)
         plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
@@ -219,7 +219,7 @@ class ATL11_point:
             # QUESTION: Do we need the "for item in range(2)" loop?  There are already 2 iterations in self.my_poly_fit.fit
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
             self.my_poly_fit=poly_ref_surf(my_regression_x_degree, my_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
-            y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=2, min_sigma=my_regression_tol)
+            y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
             # update what is valid based on regression flag
             self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=y_slope_valid_flag                #re-establish pairs_valid for y fit
             # re-establish pairs_valid_for_y_fit
@@ -263,7 +263,7 @@ class ATL11_point:
             # 4d: regression of along-track slope against x_pair and y_pair
             self.mx_poly_fit=poly_ref_surf(mx_regression_x_degree, mx_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
             if np.sum(pairs_valid_for_x_fit)>0:
-                x_slope_model, x_slope_resid,  x_slope_chi2r, x_slope_valid_flag=self.mx_poly_fit.fit(D6.x_atc[pairs_valid_for_x_fit,:].ravel(), D6.y_atc[pairs_valid_for_x_fit,:].ravel(), D6.dh_fit_dx[pairs_valid_for_x_fit,:].ravel(), max_iterations=2, min_sigma=mx_regression_tol)
+                x_slope_model, x_slope_resid,  x_slope_chi2r, x_slope_valid_flag=self.mx_poly_fit.fit(D6.x_atc[pairs_valid_for_x_fit,:].ravel(), D6.y_atc[pairs_valid_for_x_fit,:].ravel(), D6.dh_fit_dx[pairs_valid_for_x_fit,:].ravel(), max_iterations=1, min_sigma=mx_regression_tol)
                 # update what is valid based on regression flag
                 x_slope_valid_flag.shape=[np.sum(pairs_valid_for_x_fit),2]
                 self.valid_segs.x_slope[np.where(pairs_valid_for_x_fit),:]=x_slope_valid_flag
@@ -395,8 +395,8 @@ class ATL11_point:
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()  
 
         cycle=D6.cycle[self.valid_pairs.all,:].ravel()  # want the cycle of each seg in valid pair
-        plt.figure(1);plt.clf()
-        plt.plot(cycle,'.')
+        #plt.figure(1);plt.clf()
+        #plt.plot(cycle,'.')
         self.ref_surf_passes = np.unique(cycle) 
 
         # 1. build cycle design matrix with selected segments (those in valid_pairs, initially)
@@ -536,12 +536,15 @@ class ATL11_point:
             if P<0.025 and kk < params_11.max_fit_iterations-1:
                 selected_segs_prev=selected_segs
                 selected_segs = np.abs(r_seg/h_li_sigma) < r_tol # boolean
-                #if np.all( selected_segs_prev==selected_segs ):
-                #    break
+                if np.all( selected_segs_prev==selected_segs ):
+                    break
+            
             # make selected_segs pair-wise consistent        
             selected_pairs=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)  
             selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
-            
+            if P>0.025:
+                break
+  
         self.D.surf_fit_misfit_RMS=RDE(r_fit)   # Robos Dispersion Estimate, half the diff bet the 16th and 84th percentiles of a distribution
         self.selected_segments[np.nonzero(self.selected_segments)]=selected_segs
 
@@ -648,29 +651,29 @@ class ATL11_point:
         sin_az=np.sin(self.track_azimuth*np.pi/180) 
         
         xg=N*cos_az + E*sin_az
-        plt.figure(101);plt.clf()
-        plt.imshow( (xg-xg[6,6])/params_11.xy_scale);plt.colorbar()
+        #plt.figure(101);plt.clf()
+        #plt.imshow( (xg-xg[6,6])/params_11.xy_scale);plt.colorbar()
         
         yg=-N*sin_az + E*cos_az
-        plt.figure(102);plt.clf()
-        plt.imshow( (yg-yg[6,6])/params_11.xy_scale);plt.colorbar()
+        #plt.figure(102);plt.clf()
+        #plt.imshow( (yg-yg[6,6])/params_11.xy_scale);plt.colorbar()
         
         zg=np.zeros_like(xg)
         for ii in np.arange(np.sum(self.poly_mask)):
             xterm=( (xg-xg[6,6])/params_11.xy_scale )**self.degree_list_x[ii]
             yterm=( (yg-yg[6,6])/params_11.xy_scale )**self.degree_list_y[ii]
             zg=zg+self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)][ii] * xterm * yterm 
-        plt.figure(100);plt.clf()
-        plt.contourf(zg);plt.colorbar()
+        #plt.figure(100);plt.clf()
+        #plt.contourf(zg);plt.colorbar()
 
         # fitting a plane as a function of N and E ? or xg and yg ?
         M=np.transpose(np.vstack(( (xg.ravel()-xg[6,6])/params_11.xy_scale,(yg.ravel()-yg[6,6])/params_11.xy_scale)))
-        print(M.shape,zg.ravel().shape)
+        #print(M.shape,zg.ravel().shape)
         msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
-        print(msub,rr,rank,sing)
+        #print(msub,rr,rank,sing)
         zg_plane=msub[0]*((xg-xg[6,6])/params_11.xy_scale) + msub[1]*((yg-yg[6,6])/params_11.xy_scale);
-        plt.figure(104);plt.clf()
-        plt.contourf(zg_plane);plt.colorbar()
+        #plt.figure(104);plt.clf()
+        #plt.contourf(zg_plane);plt.colorbar()
         self.D.fit_N_slope=msub[0]
         self.D.fit_E_slope=msub[1]
         self.D.curvature=rr
