@@ -667,15 +667,15 @@ class ATL11_point:
         #plt.contourf(zg);plt.colorbar()
 
         # fitting a plane as a function of N and E ? or xg and yg ?
-        M=np.transpose(np.vstack(( (xg.ravel()-xg[6,6])/params_11.xy_scale,(yg.ravel()-yg[6,6])/params_11.xy_scale)))
-        #print(M.shape,zg.ravel().shape)
+        M=np.transpose(np.vstack(( (N.ravel()-xg[6,6])/params_11.xy_scale,(E.ravel()-yg[6,6])/params_11.xy_scale)))
+        print(M.shape,zg.ravel().shape)
         msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
-        #print(msub,rr,rank,sing)
-        zg_plane=msub[0]*((xg-xg[6,6])/params_11.xy_scale) + msub[1]*((yg-yg[6,6])/params_11.xy_scale);
-        #plt.figure(104);plt.clf()
-        #plt.contourf(zg_plane);plt.colorbar()
-        self.D.fit_N_slope=msub[0]
-        self.D.fit_E_slope=msub[1]
+        print(msub,rr,rank,sing)
+        zg_plane=msub[0]*((N-N[6,6])/params_11.xy_scale) + msub[1]*((E-E[6,6])/params_11.xy_scale);
+        plt.figure(104);plt.clf()
+        plt.contourf(zg_plane);plt.colorbar()
+        self.D.fit_N_slope=msub[0]/params_11.xy_scale
+        self.D.fit_E_slope=msub[1]/params_11.xy_scale
         self.D.curvature=rr
         
         return 
