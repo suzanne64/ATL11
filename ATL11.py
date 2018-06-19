@@ -333,7 +333,7 @@ class ATL11_point:
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
         self.y_atc_ctr=np.median(y0_shifts[best])
-        if self.DOPLOT:        
+        if self.DOPLOT is not None and "score-vs-yshift" in self.DOPLOT:        
             plt.figure(2);plt.clf()
             plt.plot(y0_shifts,score,'.');
             plt.plot(np.ones_like(np.arange(1,np.amax(score)+1))*self.y_atc_ctr,np.arange(1,np.amax(score)+1),'r')
@@ -342,16 +342,16 @@ class ATL11_point:
         # 4: update valid pairs to inlucde y_atc within L_search_XT of y_atc_ctr (y_best)
         self.valid_pairs.ysearch=np.logical_and(self.valid_pairs.ysearch,np.abs(pair_data.y.ravel() - self.y_atc_ctr)<params_11.L_search_XT)  
         self.valid_pairs.all=np.logical_and(self.valid_pairs.ysearch.ravel(), self.valid_pairs.all.ravel())
-        if self.DOPLOT:
+        if self.DOPLOT is not None and "valid pair plot" in self.DOPLOT:
             plt.figure(50); plt.clf()
             plt.plot(pair_data.x, pair_data.y,'bo'); 
             plt.plot(pair_data.x[self.valid_pairs.data], pair_data.y[self.valid_pairs.data],'ro')
             plt.plot(D6.x_atc, D6.y_atc,'.');
             plt.plot(D6.x_atc[self.valid_pairs.all,:], D6.y_atc[self.valid_pairs.all,:],'+');
             plt.grid(True)
-            #plt.figure(51)
-        #plt.figure(51);plt.clf()
-        #plt.plot(np.abs(pair_data.y - y_atc_ctr)<params_11.L_search_XT[self.valid_pairs.data])
+        if self.DOPLOT is not None and "valid pair plot" in self.DOPLOT:     
+            plt.figure(51);plt.clf()
+            plt.plot(np.abs(pair_data.y - self.y_atc_ctr)<params_11.L_search_XT[self.valid_pairs.data])
 
 
         return 
@@ -395,8 +395,6 @@ class ATL11_point:
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()  
 
         cycle=D6.cycle[self.valid_pairs.all,:].ravel()  # want the cycle of each seg in valid pair
-        #plt.figure(1);plt.clf()
-        #plt.plot(cycle,'.')
         self.ref_surf_passes = np.unique(cycle) 
 
         # 1. build cycle design matrix with selected segments (those in valid_pairs, initially)
@@ -572,7 +570,7 @@ class ATL11_point:
         
         self.valid_segs.iterative_fit=np.column_stack((self.valid_pairs.iterative_fit, self.valid_pairs.iterative_fit))
         
-        if self.DOPLOT:
+        if self.DOPLOT is not None and "3D time plot" in self.DOPLOT:
             fig=plt.figure(31); plt.clf(); ax=fig.add_subplot(111, projection='3d')        
             p=ax.scatter(x_atc, y_atc, h_li, c=time); 
             fig.colorbar(p)
@@ -631,7 +629,7 @@ class ATL11_point:
             self.D.slope_change_rate_x_sigma=np.full((1,),np.nan)
             self.D.slope_change_rate_y_sigma=np.full((1,),np.nan)
         
-        if self.DOPLOT:
+        if self.DOPLOT is not None and "plot of polynomial degree and errors" in self.DOPLOT:
             plt.figure(3);plt.clf()
             plt.plot(self.sigma_m_full[:np.sum(self.poly_cols.shape,self.slope_change_cols.shape)],'ro-')
             plt.hold(True)
@@ -651,20 +649,23 @@ class ATL11_point:
         sin_az=np.sin(self.track_azimuth*np.pi/180) 
         
         xg=N*cos_az + E*sin_az
-        #plt.figure(101);plt.clf()
-        #plt.imshow( (xg-xg[6,6])/params_11.xy_scale);plt.colorbar()
+        if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
+            plt.figure(101);plt.clf()
+            plt.imshow( (xg-xg[6,6])/params_11.xy_scale);plt.colorbar()
         
         yg=-N*sin_az + E*cos_az
-        #plt.figure(102);plt.clf()
-        #plt.imshow( (yg-yg[6,6])/params_11.xy_scale);plt.colorbar()
+        if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
+            plt.figure(102);plt.clf()
+            plt.imshow( (yg-yg[6,6])/params_11.xy_scale);plt.colorbar()
         
         zg=np.zeros_like(xg)
         for ii in np.arange(np.sum(self.poly_mask)):
             xterm=( (xg-xg[6,6])/params_11.xy_scale )**self.degree_list_x[ii]
             yterm=( (yg-yg[6,6])/params_11.xy_scale )**self.degree_list_y[ii]
             zg=zg+self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)][ii] * xterm * yterm 
-        #plt.figure(100);plt.clf()
-        #plt.contourf(zg);plt.colorbar()
+        if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
+            plt.figure(100);plt.clf()
+            plt.contourf(zg);plt.colorbar()
 
         # fitting a plane as a function of N and E ? or xg and yg ?
         M=np.transpose(np.vstack(( (N.ravel()-xg[6,6])/params_11.xy_scale,(E.ravel()-yg[6,6])/params_11.xy_scale)))
@@ -672,8 +673,9 @@ class ATL11_point:
         msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
         print(msub,rr,rank,sing)
         zg_plane=msub[0]*((N-N[6,6])/params_11.xy_scale) + msub[1]*((E-E[6,6])/params_11.xy_scale);
-        plt.figure(104);plt.clf()
-        plt.contourf(zg_plane);plt.colorbar()
+        if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
+            plt.figure(104);plt.clf()
+            plt.contourf(zg_plane);plt.colorbar()
         self.D.fit_N_slope=msub[0]/params_11.xy_scale
         self.D.fit_E_slope=msub[1]/params_11.xy_scale
         self.D.curvature=rr
@@ -732,7 +734,7 @@ class ATL11_point:
         
             # calculate corrected heights, z_kc, with non selected segs design matrix and surface shape polynomial from selected segments
             z_kc=h_li - np.dot(G_other,surf_model) 
-            if self.DOPLOT:
+            if self.DOPLOT is not None and "h_corr other cycles_plot" in self.DOPLOT:
                 plt.figure(107);plt.clf()
                 plt.plot(h_li,'b.-');plt.hold(True)
                 plt.plot(z_kc,'ro-')
@@ -745,7 +747,7 @@ class ATL11_point:
                 Cms=self.C_m_surf[:,self.poly_cols][self.poly_cols,:] # can't index 2 dimensions at once. 
             z_kc_sigma = np.sqrt( np.diag( np.dot(np.dot(G_other,Cms),np.transpose(G_other)) ) + h_li_sigma**2 ) # equation 11
                   
-            if self.DOPLOT:        
+            if self.DOPLOT is not None and "h_corr other cycles_plot" in self.DOPLOT:       
                 plt.figure(108);plt.clf()
                 plt.plot(h_li_sigma,'b.-');plt.hold(True)
                 plt.plot(z_kc_sigma,'ro-')
@@ -781,7 +783,7 @@ class ATL11_point:
 
             self.selected_segments=np.logical_or(self.selected_segments,non_ref_segments.reshape(self.valid_pairs.all.shape[0],2))
 
-            if self.DOPLOT:
+            if self.DOPLOT is not None and "select best error by cycle" in self.DOPLOT:
                 plt.figure(200);plt.clf()
                 plt.plot(np.arange(12)+1,self.D.pass_h_shapecorr,'bo-');plt.hold(True)
                 plt.plot(np.arange(12)[self.non_ref_surf_passes.astype(int)-1]+1,self.D.pass_h_shapecorr[self.non_ref_surf_passes.astype(int)-1],'ro')

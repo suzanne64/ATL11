@@ -34,7 +34,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
             print('seg_x_center',seg_x_center)
             print('D6 sub shape',D6_sub.x_atc.shape)
         #2a. define representative x and y values for the pairs
-        pair_data=D6_sub.get_pairs()   # this might go, similar to D6_sub
+        pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle','h_li'])   # this might go, similar to D6_sub
 
         P11=ATL11_point(N_pairs=len(pair_data.x), x_atc_ctr=seg_x_center, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_reps=len(ATL06_files),N_coeffs=9 )
         

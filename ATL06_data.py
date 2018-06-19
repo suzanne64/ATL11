@@ -119,20 +119,21 @@ class ATL06_data:
             setattr(self, field, getattr(self, field)[index,:])
         return
         
-    def subset(self, index, by_row=True):
+    def subset(self, index, by_row=True, datasets=None):
         dd=dict()
-        for field in self.list_of_fields:
+        if datasets is None:
+            datasets=self.list_of_fields
+        for field in datasets:
             if by_row is not None and by_row:
                 dd[field]=getattr(self, field)[index,:]
             else:
                 dd[field]=getattr(self, field)[index,:].ravel()[index]
-        return ATL06_data(from_dict=dd, list_of_fields=self.list_of_fields)
+        return ATL06_data(from_dict=dd, list_of_fields=datasets)
             
     def copy(self):
         return ATL06_data(list_of_data=(self), list_of_fields=self.list_of_fields)
     
     def plot(self, valid_pairs=None, valid_segs=None):
-        import matplotlib.pyplot as plt
         colors=('r','b')
         for col in (0, 1):
             plt.errorbar(self.x_atc[:,col], self.h_li[:,col], yerr=self.h_li_sigma[:, col], c=colors[col], marker='.', linestyle='None', markersize=4);
@@ -146,10 +147,11 @@ class ATL06_data:
         plt.ylim(np.amin(self.h_li[self.atl06_quality_summary[:,1]==0,1])-5., np.amax(self.h_li[self.atl06_quality_summary[:,1]==0 ,1])+5 ) 
         #plt.show()
         return
-    def get_pairs(self):
+
+    def get_pairs(self, datasets=None):
         pair_list=list()
         for i in np.arange(self.h_li.shape[0]):
-            pair_list.append(ATL06_pair(D6=self.subset(i, by_row=True)))
+            pair_list.append(ATL06_pair(D6=self.subset(i, by_row=True, datasets=datasets)))
         all_pairs=ATL06_pair(pair_data=pair_list)
         return all_pairs
 
