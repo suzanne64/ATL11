@@ -655,12 +655,12 @@ class ATL11_point:
         xg=N*cos_az + E*sin_az
         if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
             plt.figure(101);plt.clf()
-            plt.imshow( (xg-xg[6,6])/params_11.xy_scale);plt.colorbar()
+            plt.imshow( (xg-self.x_atc_ctr)/params_11.xy_scale);plt.colorbar()
         
         yg=-N*sin_az + E*cos_az
         if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
             plt.figure(102);plt.clf()
-            plt.imshow( (yg-yg[6,6])/params_11.xy_scale);plt.colorbar()
+            plt.imshow( (yg-self.y_atc_ctr)/params_11.xy_scale);plt.colorbar()
         
         zg=np.zeros_like(xg)
         for ii in np.arange(np.sum(self.poly_mask)):
@@ -675,7 +675,7 @@ class ATL11_point:
         M=np.transpose(np.vstack(( (N.ravel()-self.x_atc_ctr)/params_11.xy_scale,(E.ravel()-self.y_atc_ctr)/params_11.xy_scale)))
         msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
         print(msub,rr,rank,sing)
-        zg_plane=msub[0]*((N-N[6,6])/params_11.xy_scale) + msub[1]*((E-E[6,6])/params_11.xy_scale);
+        zg_plane=msub[0]*((N-self.x_atc_ctr)/params_11.xy_scale) + msub[1]*((E-self.y_atc_ctr)/params_11.xy_scale);
         if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
             plt.figure(104);plt.clf()
             plt.contourf(zg_plane);plt.colorbar()
