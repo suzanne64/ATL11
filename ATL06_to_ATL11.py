@@ -47,7 +47,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
         P11.select_y_center(D6_sub, pair_data, params_11)
                 
         P11.D.ref_pt_lat,P11.D.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[seg_x_center,P11.y_atc_ctr])
-        
+     
         P11.find_reference_surface(D6_sub, params_11)
         
         P11.corr_heights_other_cycles(D6_sub, params_11)

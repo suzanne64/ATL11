@@ -17,6 +17,7 @@ import scipy.sparse.linalg as sps_linalg
 import time
 import h5py
 import re
+import collections
 
 class generic_group:
     def __init__(self, N_ref_pts, N_reps, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None):
@@ -48,7 +49,7 @@ class ATL11_data:
         # Table 4-1
         self.corrected_h=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
                                        full_fields=['mean_pass_time','pass_h_shapecorr','pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'],
-                                       poly_fields=[])
+                                       poly_fields=[])   
         # Table 4-2
         self.pass_quality_stats=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
                                               full_fields=['ATL06_summary_zero_count','min_SNR_significance','mean_uncorr_reflectance','min_signal_selection_source','pass_seg_count','pass_included_in_fit'],
@@ -58,58 +59,62 @@ class ATL11_data:
                                     full_fields=[], poly_fields=['ref_surf_poly_coeffs','ref_surf_poly_coeffs_sigma'])
  
         self.reference_point=generic_group(N_ref_pts, 1, N_coeffs, per_pt_fields=['ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth','pairTrack','referencegroundtrack'], full_fields=[], poly_fields=[])  
-        self.non_product=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['x_atc_ctr'], full_fields=[], poly_fields=['all_degree_list_x','all_degree_list_y'])
+
+        self.non_product=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[], full_fields=[], poly_fields=['all_degree_list_x','all_degree_list_y'])
          
+    def all_fields(self):
+        variables=[]
+        di=vars(self)  # a dictionary
+        for item in di.keys():
+            if hasattr(getattr(self,item),'list_of_fields'):
+                variables.append(getattr(getattr(self,item),'list_of_fields'))
+        all_vars=[y for x in variables for y in x] # flatten list of lists
+        return all_vars
+        
 #    def __setitem__(self,idx,value):
 #        self.generic_group[idx]=value
 
-    def from_list(self, P11_list):  # list of output variables
-        
+    def from_list(self, P11_list):  # list of output variables        
         di=vars(self)  # a dictionary
-        #print(di.keys())
         for group in di.keys():
-            # find the attributes of self that are instances of generic_group
-            m=re.search(r"generic_group",str(di.get(group)))
-            if m is not None:
-                for field in eval('self.' + group + '.per_pt_fields'):
+            # want the attribute 'list_of_fields' of ATL11_data attribute generic_group
+            if hasattr(getattr(self,group),'list_of_fields'):
+                for field in getattr(self, group).per_pt_fields:
                     temp=np.ndarray(shape=[len(P11_list),],dtype=float)
                     for ii, P11 in enumerate(P11_list):
-                        if hasattr(P11.D,field):
-                            temp[ii]=eval('P11.D.' + field)
-                    setattr(eval('self.' + group),field,temp)
+                        if hasattr(P11.D,field) and not issubclass(type(getattr(P11.D,field)),property):  # this second part helps if the variable has not been set
+                            temp[ii]=getattr(P11.D, field)
+                    setattr(getattr(self,group),field,temp)
                         
-                for field in eval('self.' + group + '.full_fields'):
+                for field in getattr(self,group).full_fields:
                     temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_reps],dtype=float)
                     for ii, P11 in enumerate(P11_list):
-                        if hasattr(P11.D,field):
-                            temp[ii,:]=eval('P11.D.' + field)
-                    setattr(eval('self.' + group),field,temp)                                    
+                        if hasattr(P11.D,field) and not issubclass(type(getattr(P11.D,field)),property):
+                            temp[ii,:]=getattr(P11.D, field)
+                    setattr(getattr(self,group),field,temp)                                    
                         
-                for field in eval('self.' + group + '.poly_fields'):
+                for field in getattr(self,group).poly_fields:
                     temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_coeffs],dtype=float)
                     for ii, P11 in enumerate(P11_list):
-                        if hasattr(P11.D,field):
-                            temp[ii,:]=eval('P11.D.' + field)
-                    setattr(eval('self.' + group),field,temp)                                    
+                        if hasattr(P11.D,field) and not issubclass(type(getattr(P11.D,field)),property):
+                            temp[ii,:]=getattr(P11.D, field)
+                    setattr(getattr(self,group),field,temp)                                    
         return self
         
     def write_to_file(self, fileout):
         # Generic code to write data from an object to an h5 file 
         f = h5py.File(fileout,'w')
         di=vars(self)  # a dictionary
-        for item in di.keys():
-            # find the attributes of self that are instances of generic_group
-            m=re.search(r"generic_group",str(di.get(item)))
-            if m is not None:
-                grp = f.create_group(item)
-                list_vars=eval('self.' + item + '.list_of_fields')
+        for group in di.keys():
+            if hasattr(getattr(self,group),'list_of_fields'):
+                grp = f.create_group(group)
+                list_vars=getattr(self,group).list_of_fields
                 if list_vars is not None:
                     for field in list_vars: 
-                        #print(grp,field)
-                        dset=grp.create_dataset(field,data=getattr(eval('self.' + item),field))
-                        if 'ref_surf' in item and 'ref_surf_poly_coeffs' in field:  # item is a string, grp is not
-                            dset.attrs['x exponent order']=self.non_product.all_degree_list_x.astype('int')
-                            dset.attrs['y exponent order']=self.non_product.all_degree_list_y.astype('int')
+                        dset=grp.create_dataset(field,data=getattr(getattr(self,group),field))
+                        if 'ref_surf' in group and 'ref_surf_poly_coeffs' in field:
+                            dset.attrs['x exponent order']=self.non_product.all_degree_list_x[0,:].astype('int')
+                            dset.attrs['y exponent order']=self.non_product.all_degree_list_y[0,:].astype('int')
                             
         f.close()    
         return
@@ -120,7 +125,7 @@ class ATL11_data:
         h=list()
         for cycle in range(n_cycles):
             xx=self.reference_point.ref_pt_x_atc
-            zz= self.corrected_h.pass_h_shapecorr[:,cycle]
+            zz=self.corrected_h.pass_h_shapecorr[:,cycle]
             ss=self.corrected_h.pass_h_shapecorr_sigma[:,cycle]
             good=np.abs(ss)<50   
             if np.any(good):
@@ -129,8 +134,8 @@ class ATL11_data:
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
                 #plt.plot(xx[good], zz[good], 'k',picker=None)
-        temp=self.corrected_h.pass_h_shapecorr;
-#        temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
+        temp=self.corrected_h.pass_h_shapecorr.copy();
+        temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
         temp=np.nanmean(temp, axis=1)
         plt.plot(xx, temp, 'k.')#, picker=5)
         plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
@@ -153,7 +158,7 @@ class ATL11_point:
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.status=dict()
         self.DOPLOT=None
-        self.D=ATL11_data(1, N_reps, N_coeffs)  # self.N_reps
+        self.D=collections.namedtuple('D',ATL11_data(1, N_reps, N_coeffs).all_fields()) #,verbose=True)
         self.D.ref_pt_x_atc=x_atc_ctr
 
     def select_ATL06_pairs(self, D6, pair_data, params_11):   # x_polyfit_ctr is x_atc_ctr and seg_x_center
@@ -337,7 +342,7 @@ class ATL11_point:
             plt.figure(2);plt.clf()
             plt.plot(y0_shifts,score,'.');
             plt.plot(np.ones_like(np.arange(1,np.amax(score)+1))*self.y_atc_ctr,np.arange(1,np.amax(score)+1),'r')
-            plt.title(' score vs y0_shifts(blu), y_best(red)')
+            plt.title('score vs y0_shifts(blu), y_best(red)')
         
         # 4: update valid pairs to inlucde y_atc within L_search_XT of y_atc_ctr (y_best)
         self.valid_pairs.ysearch=np.logical_and(self.valid_pairs.ysearch,np.abs(pair_data.y.ravel() - self.y_atc_ctr)<params_11.L_search_XT)  
@@ -349,10 +354,6 @@ class ATL11_point:
             plt.plot(D6.x_atc, D6.y_atc,'.');
             plt.plot(D6.x_atc[self.valid_pairs.all,:], D6.y_atc[self.valid_pairs.all,:],'+');
             plt.grid(True)
-            #plt.figure(51)
-        #plt.figure(51);plt.clf()
-        #plt.plot(np.abs(pair_data.y - y_atc_ctr)<params_11.L_search_XT[self.valid_pairs.data])
-
 
         return 
 
@@ -362,7 +363,7 @@ class ATL11_point:
         self.D.pass_h_shapecorr=np.full(self.N_reps, np.nan)
         self.D.pass_h_shapecorr_sigma=np.full(self.N_reps, np.nan)
         self.D.pass_h_shapecorr_sigma_systematic=np.full(self.N_reps, np.nan)
-        # use np.logical_not because 0 = good.
+#        # use np.logical_not because 0 = good.
         self.D.quality_summary=np.logical_not(np.logical_and( np.logical_and(self.D.min_signal_selection_source<=1, self.D.min_SNR_significance<0.02),self.D.ATL06_summary_zero_count>0 ))
         self.pass_lon=np.full(self.N_reps, np.nan)
         self.pass_lat=np.full(self.N_reps, np.nan)
@@ -370,9 +371,9 @@ class ATL11_point:
         self.pass_y=np.full(self.N_reps, np.nan)
         # Table 4-4
         self.D.complex_surface_flag=0
-        self.D.fit_curvature=np.nan
-        self.D.fit_E_slope=np.nan
-        self.D.fit_N_slope=np.nan
+#        self.D.fit_curvature=np.nan
+#        self.D.fit_E_slope=np.nan
+#        self.D.fit_N_slope=np.nan
         self.D.ref_surf_poly_coeffs=np.full(self.N_coeffs, np.nan)
         self.D.ref_surf_poly_coeffs_sigma=np.full(self.N_coeffs, np.nan)
         # establish attributes: all possible exponent combinations for reference surface fit 
@@ -640,7 +641,7 @@ class ATL11_point:
 
         self.D.pass_h_shapecorr_sigma[self.ref_surf_passes.astype(int)-1]=self.z_cycle_sigma
 
-        print(self.x_atc_ctr,self.y_atc_ctr)
+        # calculate fit slopes and curvature
         northing=np.arange(self.x_atc_ctr-50,self.x_atc_ctr+50+10,10);
         easting=np.arange(self.y_atc_ctr-50,self.y_atc_ctr+50+10,10);
         [N,E]=np.meshgrid(northing,easting)
@@ -649,31 +650,29 @@ class ATL11_point:
         
         xg=N*cos_az + E*sin_az
         plt.figure(101);plt.clf()
-        plt.imshow( (xg-xg[6,6])/params_11.xy_scale);plt.colorbar()
+        plt.imshow( (xg-self.x_atc_ctr)/params_11.xy_scale);plt.colorbar()
         
         yg=-N*sin_az + E*cos_az
         plt.figure(102);plt.clf()
-        plt.imshow( (yg-yg[6,6])/params_11.xy_scale);plt.colorbar()
+        plt.imshow( (yg-self.y_atc_ctr)/params_11.xy_scale);plt.colorbar()
         
         zg=np.zeros_like(xg)
         for ii in np.arange(np.sum(self.poly_mask)):
-            xterm=( (xg-xg[6,6])/params_11.xy_scale )**self.degree_list_x[ii]
-            yterm=( (yg-yg[6,6])/params_11.xy_scale )**self.degree_list_y[ii]
+            xterm=( (xg-self.x_atc_ctr)/params_11.xy_scale )**self.degree_list_x[ii]
+            yterm=( (yg-self.y_atc_ctr)/params_11.xy_scale )**self.degree_list_y[ii]
             zg=zg+self.D.ref_surf_poly_coeffs[np.where(self.poly_mask)][ii] * xterm * yterm 
         plt.figure(100);plt.clf()
         plt.contourf(zg);plt.colorbar()
 
-        # fitting a plane as a function of N and E ? or xg and yg ?
-        M=np.transpose(np.vstack(( (N.ravel()-xg[6,6])/params_11.xy_scale,(E.ravel()-yg[6,6])/params_11.xy_scale)))
-        print(M.shape,zg.ravel().shape)
+        # fitting a plane as a function of N and E 
+        M=np.transpose(np.vstack(( (N.ravel()-self.x_atc_ctr)/params_11.xy_scale,(E.ravel()-self.y_atc_ctr)/params_11.xy_scale)))
         msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
-        print(msub,rr,rank,sing)
-        zg_plane=msub[0]*((N-N[6,6])/params_11.xy_scale) + msub[1]*((E-E[6,6])/params_11.xy_scale);
+        zg_plane=msub[0]*((N-self.x_atc_ctr)/params_11.xy_scale) + msub[1]*((E-self.y_atc_ctr)/params_11.xy_scale);
         plt.figure(104);plt.clf()
         plt.contourf(zg_plane);plt.colorbar()
         self.D.fit_N_slope=msub[0]/params_11.xy_scale
         self.D.fit_E_slope=msub[1]/params_11.xy_scale
-        self.D.curvature=rr
+        self.D.fit_curvature=rr
         
         return 
     
