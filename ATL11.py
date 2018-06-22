@@ -659,8 +659,8 @@ class ATL11_point:
 
         # calculate fit slopes and curvature
 
-        northing=np.arange(self.x_atc_ctr-50,self.x_atc_ctr+50+10,10);
-        easting=np.arange(self.y_atc_ctr-50,self.y_atc_ctr+50+10,10);
+        northing=np.arange(-50., 60,10);
+        easting=np.arange( -5.0, 60,10);
         [N,E]=np.meshgrid(northing,easting)
         cos_az=np.cos(self.track_azimuth*np.pi/180) # assuming in degrees
         sin_az=np.sin(self.track_azimuth*np.pi/180) 
@@ -684,17 +684,16 @@ class ATL11_point:
             plt.figure(100);plt.clf()
             plt.contourf(zg);plt.colorbar()
 
-
         # fitting a plane as a function of N and E 
-        M=np.transpose(np.vstack(( (N.ravel()-self.x_atc_ctr)/params_11.xy_scale,(E.ravel()-self.y_atc_ctr)/params_11.xy_scale)))
+        M=np.transpose(np.vstack(( (N.ravel()),(E.ravel()))))
         msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
-        zg_plane=msub[0]*((N-self.x_atc_ctr)/params_11.xy_scale) + msub[1]*((E-self.y_atc_ctr)/params_11.xy_scale);
+        zg_plane=msub[0]*N + msub[1]*E;
 
         if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
             plt.figure(104);plt.clf()
             plt.contourf(zg_plane);plt.colorbar()
-        self.D.fit_N_slope=msub[0]/params_11.xy_scale
-        self.D.fit_E_slope=msub[1]/params_11.xy_scale
+        self.D.fit_N_slope=msub[0] 
+        self.D.fit_E_slope=msub[1] 
         self.D.fit_curvature=rr
         
         return 
