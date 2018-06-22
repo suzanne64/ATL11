@@ -27,18 +27,18 @@ class ATL11_plot:
          
         xx=event.artist.get_xdata()
         ii=event.ind
-        x0=[temp.x_atc_ctr for temp in self.P11]
+        x0=[temp.D.reference_point.ref_pt_x_atc for temp in self.P11]
         this=np.where(x0==xx[ii])[0]
-        P11=self.P11[this]
+        D11=self.P11[this]
         print "x0=%d" % x0[this]
-        rsp= P11.ref_surf_passes.astype(int)-1
+        rsp= D11.ref_surf_passes.astype(int)-1
         plt.sca(self.ax2)
         plt.cla()
-        plt.errorbar(P11.pass_y, P11.pass_h_shapecorr, P11.pass_h_shapecorr_sigma, fmt='o')
-        plt.plot(P11.pass_y[rsp], P11.pass_h_shapecorr[rsp],'r*',markersize =12)
+        plt.errorbar(D11.pass_y, D11.pass_h_shapecorr, D11.pass_h_shapecorr_sigma, fmt='o')
+        plt.plot(D11.pass_y[rsp], D11.pass_h_shapecorr[rsp],'r*',markersize =12)
         plt.sca(self.ax3)
         plt.cla()
-        plt.errorbar(np.arange(P11.pass_x.shape[0]), P11.pass_h_shapecorr, P11.pass_h_shapecorr_sigma, fmt='o')
+        plt.errorbar(np.arange(D11.pass_x.shape[0]), D11.pass_h_shapecorr, D11.pass_h_shapecorr_sigma, fmt='o')
         plt.plot(P11.ref_surf_passes-1, P11.pass_h_shapecorr[rsp],'r*', markersize=12)
         plt.show(block=False)         
         return
