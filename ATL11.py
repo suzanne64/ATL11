@@ -131,13 +131,14 @@ class ATL11_data:
         n_cycles=self.corrected_h.pass_h_shapecorr.shape[1]
         HR=np.nan+np.zeros((n_cycles, 2))
         h=list()
+        plt.figure(1);plt.clf()
         for cycle in range(n_cycles):
             xx=self.ref_surf.ref_pt_x_atc
             zz=self.corrected_h.pass_h_shapecorr[:,cycle]
             ss=self.corrected_h.pass_h_shapecorr_sigma[:,cycle]
             good=np.abs(ss)<50   
             if np.any(good):
-                plt.figure(1);plt.clf()
+                 
                 h0=plt.errorbar(xx[good],zz[good],ss[good], marker='o',picker=None)
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
@@ -145,7 +146,7 @@ class ATL11_data:
         temp=self.corrected_h.pass_h_shapecorr.copy()
         temp[self.corrected_h.pass_h_shapecorr_sigma>20]=np.nan
         temp=np.nanmean(temp, axis=1)
-        plt.plot(xx, temp, 'k.')#, picker=5)
+        plt.plot(xx, temp, 'k.', picker=5)
         plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
         plt.xlim((np.nanmin(xx),  np.nanmax(xx)))
         return h
@@ -657,6 +658,7 @@ class ATL11_point:
         self.D.pass_h_shapecorr_sigma[self.ref_surf_passes.astype(int)-1]=self.z_cycle_sigma
 
         # calculate fit slopes and curvature
+
         northing=np.arange(self.x_atc_ctr-50,self.x_atc_ctr+50+10,10);
         easting=np.arange(self.y_atc_ctr-50,self.y_atc_ctr+50+10,10);
         [N,E]=np.meshgrid(northing,easting)
@@ -682,10 +684,12 @@ class ATL11_point:
             plt.figure(100);plt.clf()
             plt.contourf(zg);plt.colorbar()
 
+
         # fitting a plane as a function of N and E 
         M=np.transpose(np.vstack(( (N.ravel()-self.x_atc_ctr)/params_11.xy_scale,(E.ravel()-self.y_atc_ctr)/params_11.xy_scale)))
         msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
         zg_plane=msub[0]*((N-self.x_atc_ctr)/params_11.xy_scale) + msub[1]*((E-self.y_atc_ctr)/params_11.xy_scale);
+
         if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
             plt.figure(104);plt.clf()
             plt.contourf(zg_plane);plt.colorbar()
