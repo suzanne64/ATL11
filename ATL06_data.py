@@ -19,7 +19,8 @@ class ATL06_data:
             if NICK is not None:
                 field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
                             'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth'],
-                            'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','dh_fit_dy','h_robust_spread','signal_selection_source','snr_significance']} 
+                            'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','dh_fit_dy','h_robust_spread','signal_selection_source','snr_significance'],
+                            'geophysical':['bsnow_h','bsnow_conf','r_eff','tide_ocean']} 
             else:
                 field_dict={'land_ice_height':['delta_time','dh_fit_dx','dh_fit_dy','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
                             'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth'],
