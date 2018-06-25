@@ -65,7 +65,7 @@ class ATL11_data:
                                                    'y_atc_mean','x_atc_mean','strong_beam_number','mean_pass_lat','mean_pass_lon','sigma_g_h','sigma_g_x','sigma_g_y'], poly_fields=[])
         # Table 4-5
         #self.crossing_track_data=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
-                                      
+
         self.non_product=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['slope_change_t0'], full_fields=[], poly_fields=['poly_exponent_x','poly_exponent_y'])
          
     def all_fields(self):
@@ -81,7 +81,7 @@ class ATL11_data:
         di=vars(self)  # a dictionary
         print(di.keys(),P11_list)
         for group in di.keys():
-            # want the attribute 'list_of_fields' of ATL11_data attribute generic_group
+            # want the attribute 'list_of_fields' of ATL11_data attribute ATL11_group
             if hasattr(getattr(self,group),'list_of_fields'):
                 for field in getattr(self, group).per_pt_fields:
                     temp=np.ndarray(shape=[len(P11_list),],dtype=float)
