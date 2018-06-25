@@ -19,7 +19,7 @@ import h5py
 import re
 import collections
 
-class generic_group:
+class ATL11_group:
     def __init__(self, N_ref_pts, N_reps, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None):
         self.list_of_fields=list()
         if per_pt_fields is not None:
@@ -35,6 +35,7 @@ class generic_group:
         self.full_fields=full_fields
         self.poly_fields=poly_fields
         self.list_of_fields=self.per_pt_fields+self.full_fields+self.poly_fields
+        
                 
 class valid_mask:
     def __init__(self, dims, fields):
@@ -47,25 +48,25 @@ class ATL11_data:
         self.DOPLOT=None
         # define empty records here based on ATL11 ATBD
         # Table 4-1
-        self.corrected_h=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon'], #,'ref_pt_number'], 
+        self.corrected_h=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon'], #,'ref_pt_number'], 
                                        full_fields=['mean_pass_time','pass_h_shapecorr','pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'],
                                        poly_fields=[])   
         # Table 4-2
-        self.pass_quality_stats=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
+        self.pass_quality_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
                                               full_fields=['ATL06_summary_zero_count','min_SNR_significance','mean_uncorr_reflectance','min_signal_selection_source','pass_seg_count','pass_included_in_fit'],
                                               poly_fields=[])            
         # Table 4-3        
-        self.ref_surf=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','n_deg_x','n_deg_y','N_pass_avail','N_pass_used','ref_pt_number','ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth',
+        self.ref_surf=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','n_deg_x','n_deg_y','N_pass_avail','N_pass_used','ref_pt_number','ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth',
                                                                                 'slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma','surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'],
                                     full_fields=[], poly_fields=['poly_coeffs','poly_coeffs_sigma'])
         # Table 4-4
-        self.pass_stats=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
+        self.pass_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
                                       full_fields=['h_robust_spread_mean','h_li_rms_meann','r_eff_mean','tide_ocean_mean','cloud_flg_best','bsnow_h_mean','bsnow_conf_best',
                                                    'y_atc_mean','x_atc_mean','strong_beam_number','mean_pass_lat','mean_pass_lon','sigma_g_h','sigma_g_x','sigma_g_y'], poly_fields=[])
         # Table 4-5
-        #self.crossing_track_data=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
+        #self.crossing_track_data=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
                                       
-        self.non_product=generic_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['slope_change_t0'], full_fields=[], poly_fields=['poly_exponent_x','poly_exponent_y'])
+        self.non_product=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['slope_change_t0'], full_fields=[], poly_fields=['poly_exponent_x','poly_exponent_y'])
          
     def all_fields(self):
         all_vars=[]
@@ -76,11 +77,9 @@ class ATL11_data:
         all_vars=[y for x in all_vars for y in x] # flatten list of lists
         return all_vars
         
-#    def __setitem__(self,idx,value):
-#        self.generic_group[idx]=value
-
     def from_list(self, P11_list):  # list of output variables        
         di=vars(self)  # a dictionary
+        print(di.keys(),P11_list)
         for group in di.keys():
             # want the attribute 'list_of_fields' of ATL11_data attribute generic_group
             if hasattr(getattr(self,group),'list_of_fields'):
@@ -125,7 +124,7 @@ class ATL11_data:
                 list_vars=getattr(self,group).list_of_fields
                 if list_vars is not None:
                     for field in list_vars: 
-                        dset=grp.create_dataset(field,data=getattr(getattr(self,group),field))
+                        grp.create_dataset(field,data=getattr(getattr(self,group),field))
                             
         f.close()    
         return
@@ -170,8 +169,11 @@ class ATL11_point:
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.status=dict()
         self.DOPLOT=None
+        temp=ATL11_data(1, N_reps, N_coeffs)
+        
+        self.corrected_h=temp.corrected_h
         self.D=collections.namedtuple('D',ATL11_data(1, N_reps, N_coeffs).all_fields()) #,verbose=True)
-        self.D.x_atc=x_atc_ctr
+        self.D.x_atc_ctr=x_atc_ctr
         self.D.rgt_azimuth=track_azimuth
 
     def select_ATL06_pairs(self, D6, pair_data, params_11):   # x_polyfit_ctr is x_atc_ctr and seg_x_center
@@ -383,10 +385,6 @@ class ATL11_point:
         self.D.pass_h_shapecorr_sigma_systematic=np.full(self.N_reps, np.nan)
 #        # use np.logical_not because 0 = good.
         self.D.quality_summary=np.logical_not(np.logical_and( np.logical_and(self.D.min_signal_selection_source<=1, self.D.min_SNR_significance<0.02),self.D.ATL06_summary_zero_count>0 ))
-#        self.pass_lon=np.full(self.N_reps, np.nan)
-#        self.pass_lat=np.full(self.N_reps, np.nan)
-#        self.pass_x=np.full(self.N_reps, np.nan)
-#        self.pass_y=np.full(self.N_reps, np.nan)
         
         self.D.mean_pass_lat=np.full(self.N_reps, np.nan)
         self.D.mean_pass_lon=np.full(self.N_reps, np.nan)
@@ -396,11 +394,11 @@ class ATL11_point:
         self.D.bsnow_conf_best=np.full(self.N_reps, np.nan)
         self.D.r_eff_mean=np.full(self.N_reps, np.nan)
         self.D.tide_ocean_mean=np.full(self.N_reps, np.nan)
+        self.D.sigma_g_h=np.full(self.N_reps, np.nan) 
+        self.D.sigma_g_x=np.full(self.N_reps, np.nan)        
+        self.D.sigma_g_y=np.full(self.N_reps, np.nan)        
         # Table 4-3
         self.D.complex_surface_flag=0
-#        self.D.fit_curvature=np.nan
-#        self.D.fit_E_slope=np.nan
-#        self.D.fit_N_slope=np.nan
         self.D.poly_coeffs=np.zeros(self.N_coeffs)
         self.D.poly_coeffs_sigma=np.zeros(self.N_coeffs)
         # establish attributes: all possible exponent combinations for reference surface fit 
@@ -547,6 +545,7 @@ class ATL11_point:
             # 3h. Calculate model residuals for all segments
             r_seg=h_li-np.dot(self.G_surf,self.m_full)            
             r_fit=r_seg[selected_segs] 
+            print('rfit size',r_fit.shape)
             
             # 3i. Calculate the fitting tolerance, 
             r_tol = 3*RDE(r_fit/h_li_sigma[selected_segs])
@@ -574,23 +573,26 @@ class ATL11_point:
         self.D.surf_fit_misfit_RMS=RDE(r_fit)   # Robos Dispersion Estimate, half the diff bet the 16th and 84th percentiles of a distribution
         self.selected_segments[np.nonzero(self.selected_segments)]=selected_segs
 
-        segment_id=D6.segment_id[self.selected_segments]       
-        x_atc     =D6.x_atc[self.selected_segments]       
-        y_atc     =D6.y_atc[self.selected_segments]
-        lon       =D6.longitude[self.selected_segments]
-        lat       =D6.latitude[self.selected_segments]
-        delta_time=D6.delta_time[self.selected_segments]
-        h_li_sigma=D6.h_li_sigma[self.selected_segments]
-        h_li      =D6.h_li[self.selected_segments]        
-        cycle     =D6.cycle[self.selected_segments]
-        bsnow_h   =D6.bsnow_h[self.selected_segments]
-        bsnow_conf=D6.bsnow_conf[self.selected_segments]
-        r_eff     =D6.r_eff[self.selected_segments]
-        tide_ocean=D6.tide_ocean[self.selected_segments]
+        #segment_id  =D6.segment_id[self.selected_segments]       
+        x_atc       =D6.x_atc[self.selected_segments]       
+        y_atc       =D6.y_atc[self.selected_segments]
+        lon         =D6.longitude[self.selected_segments]
+        lat         =D6.latitude[self.selected_segments]
+        delta_time  =D6.delta_time[self.selected_segments]
+        h_li_sigma  =D6.h_li_sigma[self.selected_segments]
+        h_li        =D6.h_li[self.selected_segments]        
+        cycle       =D6.cycle[self.selected_segments]
+        bsnow_h     =D6.bsnow_h[self.selected_segments]
+        bsnow_conf  =D6.bsnow_conf[self.selected_segments]
+        r_eff       =D6.r_eff[self.selected_segments]
+        tide_ocean  =D6.tide_ocean[self.selected_segments]
+        print(D6.tide_ocean.shape,D6.sigma_geo_h.shape,D6.sigma_geo_at.shape,D6.sigma_geo_xt.shape)
+        sigma_geo_h =D6.sigma_geo_h[self.selected_segments]
+        sigma_geo_at=D6.sigma_geo_at[self.selected_segments]
+        sigma_geo_xt=D6.sigma_geo_xt[self.selected_segments]
 
         if self.slope_change_cols.shape[0]>0:
-            self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]
-            
+            self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]            
         else:
             self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.repeat_cols]]
     
@@ -645,9 +647,13 @@ class ATL11_point:
             self.D.pass_included_in_fit[cc.astype(int)-1]=1
             self.D.bsnow_h_mean[cc.astype(int)-1]=np.mean(bsnow_h[(cycle==cc)])
             self.D.bsnow_conf_best[cc.astype(int)-1]=np.max(bsnow_conf[(cycle==cc)])
-            # weighted means, per equation 14
+            # weighted means, per equation 14, concerning error in height
             self.D.r_eff_mean[cc.astype(int)-1]=np.sum((h_li_sigma[(cycle==cc)])**(-2) * r_eff[(cycle==cc)]) / np.sum((h_li_sigma[(cycle==cc)])**(-2))
             self.D.tide_ocean_mean[cc.astype(int)-1]=np.sum((h_li_sigma[(cycle==cc)])**(-2) * tide_ocean[(cycle==cc)]) / np.sum((h_li_sigma[(cycle==cc)])**(-2))
+            self.D.sigma_g_h[cc.astype(int)-1]=np.mean(sigma_geo_h[(cycle==cc)])
+            self.D.sigma_g_x[cc.astype(int)-1]=np.mean(sigma_geo_at[(cycle==cc)])
+            self.D.sigma_g_y[cc.astype(int)-1]=np.mean(sigma_geo_xt[(cycle==cc)])
+            
         self.D.N_pass_used=np.count_nonzero(self.ref_surf_passes)
 
         if self.D.N_pass_used<2:
@@ -768,7 +774,7 @@ class ATL11_point:
             lon=D6.longitude.ravel()[non_ref_segments]
             lat=D6.latitude.ravel()[non_ref_segments]
             bsnow_h=D6.bsnow_h.ravel()[non_ref_segments]
-            bsnow_conf=D6.bsnow_conf.ravel()[non_ref_segments]
+#            bsnow_conf=D6.bsnow_conf.ravel()[non_ref_segments]
             r_eff=D6.r_eff.ravel()[non_ref_segments]
             tide_ocean=D6.tide_ocean.ravel()[non_ref_segments]
             
@@ -805,8 +811,7 @@ class ATL11_point:
                 self.D.y_atc_mean[cc-1]  =y_atc[cycle==cc][best_seg]
                 self.D.mean_pass_time[cc-1]=delta_time[cycle==cc][best_seg]
                 self.D.pass_seg_count[cc-1]=1
-                self.D.bsnow_h_mean[cc-1]=bsnow_h[cycle==cc][best_seg]
-                self.D.bsnow_conf_best[cc-1]=bsnow_conf[cycle==cc][best_seg]
+                self.D.bsnow_h_mean[cc-1]=bsnow_h[cycle==cc][best_seg] # don't set bsnow_conf_best
                 self.D.r_eff_mean[cc-1]=r_eff[cycle==cc][best_seg]
                 self.D.tide_ocean_mean[cc-1]=tide_ocean[cycle==cc][best_seg]
         

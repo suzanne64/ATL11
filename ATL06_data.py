@@ -17,8 +17,8 @@ class ATL06_data:
     def __init__(self, filename=None, beam_pair=1, x_bounds=None, y_bounds=None, field_dict=None, list_of_fields=None, list_of_data=None, from_dict=None, NICK=None): 
         if field_dict is None:
             if NICK is not None:
-                field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
-                            'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth'],
+                field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id','sigma_geo_h'], 
+                            'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth','sigma_geo_at','sigma_geo_xt'],
                             'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','dh_fit_dy','h_robust_spread','signal_selection_source','snr_significance'],
                             'geophysical':['bsnow_h','bsnow_conf','r_eff','tide_ocean']} 
             else:

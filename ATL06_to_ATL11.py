@@ -32,7 +32,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
         D6_sub=D6.subset(np.any(np.abs(D6.x_atc-seg_x_center) < params_11.L_search_AT, axis=1), by_row=True) # len 144 = 12 xlocs, by 12 cycles where ylocs are diff for each cycle, xlocs the same for all cycles.
         if DEBUG:
             print('seg_x_center',seg_x_center)
-            print('D6 sub shape',D6_sub.x_atc.shape)
+            print('D6 sub shape',D6_sub.x_atc.shape,D6_sub.sigma_geo_h.shape)
         #2a. define representative x and y values for the pairs
         pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle','h_li'])   # this might go, similar to D6_sub
 
