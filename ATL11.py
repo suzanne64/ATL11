@@ -61,7 +61,7 @@ class ATL11_data:
                                     full_fields=[], poly_fields=['poly_coeffs','poly_coeffs_sigma'])
         # Table 4-4
         self.pass_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
-                                      full_fields=['h_robust_spread_mean','h_li_rms_meann','r_eff_mean','tide_ocean_mean','cloud_flg_best','bsnow_h_mean','bsnow_conf_best',
+                                      full_fields=['h_robust_spread_mean','h_li_rms_meann','r_eff_mean','tide_ocean_mean','cloud_flg_atm_best','cloud_flg_asr_best','bsnow_h_mean','bsnow_conf_best',
                                                    'y_atc_mean','x_atc_mean','strong_beam_number','mean_pass_lat','mean_pass_lon','sigma_g_h','sigma_g_x','sigma_g_y'], poly_fields=[])
         # Table 4-5
         #self.crossing_track_data=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
@@ -112,7 +112,12 @@ class ATL11_data:
         f.attrs['pairTrack']=m.group(1)
         m=re.search(r"Track(.*?)_Pair",fileout)
         f.attrs['ReferenceGroundTrack']=m.group(1)
-        
+        # put default parameters as top level attributes
+        params_di=vars(ATL11_defaults())
+        for ii, param in enumerate(params_di.keys()):
+            f.attrs[param]=params_di.values()[ii]
+
+        # write data to file            
         di=vars(self)  # a dictionary
         for group in di.keys():
             if hasattr(getattr(self,group),'list_of_fields'):
@@ -553,22 +558,24 @@ class ATL11_point:
         self.selected_segments[np.nonzero(self.selected_segments)]=selected_segs
 
         #segment_id  =D6.segment_id[self.selected_segments]       
-        x_atc       =D6.x_atc[self.selected_segments]       
-        y_atc       =D6.y_atc[self.selected_segments]
-        lon         =D6.longitude[self.selected_segments]
-        lat         =D6.latitude[self.selected_segments]
-        delta_time  =D6.delta_time[self.selected_segments]
-        h_li_sigma  =D6.h_li_sigma[self.selected_segments]
-        h_li        =D6.h_li[self.selected_segments]        
-        cycle       =D6.cycle[self.selected_segments]
-        bsnow_h     =D6.bsnow_h[self.selected_segments]
-        bsnow_conf  =D6.bsnow_conf[self.selected_segments]
-        r_eff       =D6.r_eff[self.selected_segments]
-        tide_ocean  =D6.tide_ocean[self.selected_segments]
+        x_atc        =D6.x_atc[self.selected_segments]       
+        y_atc        =D6.y_atc[self.selected_segments]
+        lon          =D6.longitude[self.selected_segments]
+        lat          =D6.latitude[self.selected_segments]
+        delta_time   =D6.delta_time[self.selected_segments]
+        h_li_sigma   =D6.h_li_sigma[self.selected_segments]
+        h_li         =D6.h_li[self.selected_segments]        
+        cycle        =D6.cycle[self.selected_segments]
+        bsnow_conf   =D6.bsnow_conf[self.selected_segments]
+        bsnow_h      =D6.bsnow_h[self.selected_segments]
+        cloud_flg_asr=D6.cloud_flg_asr[self.selected_segments]
+        cloud_flg_atm=D6.cloud_flg_atm[self.selected_segments]
+        r_eff        =D6.r_eff[self.selected_segments]
+        tide_ocean   =D6.tide_ocean[self.selected_segments]
         print(D6.tide_ocean.shape,D6.sigma_geo_h.shape,D6.sigma_geo_at.shape,D6.sigma_geo_xt.shape,D6.r_eff.shape)
-        sigma_geo_h =D6.sigma_geo_h[self.selected_segments]
-        sigma_geo_at=D6.sigma_geo_at[self.selected_segments]
-        sigma_geo_xt=D6.sigma_geo_xt[self.selected_segments]
+        sigma_geo_h  =D6.sigma_geo_h[self.selected_segments]
+        sigma_geo_at =D6.sigma_geo_at[self.selected_segments]
+        sigma_geo_xt =D6.sigma_geo_xt[self.selected_segments]
 
         if self.slope_change_cols.shape[0]>0:
             self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]            
@@ -623,8 +630,10 @@ class ATL11_point:
             self.pass_stats.y_atc_mean[0,cc.astype(int)-1]=np.mean(y_atc[(cycle==cc)])
             self.corrected_h.mean_pass_time[0,cc.astype(int)-1]=np.mean(delta_time[(cycle==cc)])
             self.pass_quality_stats.pass_seg_count[0,cc.astype(int)-1]=np.sum(self.selected_segments[D6.cycle==cc])
-            self.pass_quality_stats.pass_included_in_fit[0,cc.astype(int)-1]=1
+            self.pass_stats.cloud_flg_asr_best[0,cc.astype(int)-1]=np.min(cloud_flg_asr[(cycle==cc)])
+            self.pass_stats.cloud_flg_atm_best[0,cc.astype(int)-1]=np.min(cloud_flg_atm[(cycle==cc)])
             self.pass_stats.bsnow_h_mean[0,cc.astype(int)-1]=np.mean(bsnow_h[(cycle==cc)])
+            self.pass_quality_stats.pass_included_in_fit[0,cc.astype(int)-1]=1
             self.pass_stats.bsnow_conf_best[0,cc.astype(int)-1]=np.max(bsnow_conf[(cycle==cc)])
             # weighted means, per equation 14, concerning error in height
             self.pass_stats.r_eff_mean[0,cc.astype(int)-1]=np.sum((h_li_sigma[(cycle==cc)])**(-2) * r_eff[(cycle==cc)]) / np.sum((h_li_sigma[(cycle==cc)])**(-2))
