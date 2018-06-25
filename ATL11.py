@@ -20,8 +20,22 @@ import re
 import collections
 
 class ATL11_group:
+    # this is a data group for an ATL11 structure        
+    # in ATL11 groups, some datasets have one value per reference point (per_pt_fields)
+    # some have one value for each refrence point and each cycle (full_fields)
+    # some have one value for each point and each polynomial coefficient (poly_fields)
+    # all of these are initialized to arrays of the appropriate size, filled with NaNs
+
     def __init__(self, N_ref_pts, N_reps, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None):
-        self.list_of_fields=list()
+        # input variables:
+        #  N_ref_pts: Number of reference points to allocate
+        #  N_reps: Number of cycles of data to allocate
+        #  N_coeffs: Number of polynomial coefficients to allocate
+        #  per_pt_fields: list of fields that have one value per reference point
+        #  full_fields: list of fields that have one value per cycle per reference point
+        #  poly_fields: list of fields that have one value per polynomial degree combination per reference point        
+        
+        # assign fields of each type to their appropriate shape and size
         if per_pt_fields is not None:
             for field in per_pt_fields:
                 setattr(self, field, np.nan + np.zeros([N_ref_pts, 1]))
@@ -31,6 +45,7 @@ class ATL11_group:
         if poly_fields is not None:
             for field in poly_fields:
                 setattr(self, field, np.nan + np.zeros([N_ref_pts, N_coeffs]))
+        # assemble the field names into lists:
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
         self.poly_fields=poly_fields
@@ -38,11 +53,13 @@ class ATL11_group:
         
                 
 class valid_mask:
+    # class to hold validity flags for different attributes
     def __init__(self, dims, fields):
         for field in fields:
             setattr(self, field, np.zeros(dims, dtype='bool'))
 
 class ATL11_data:
+    # class to hold ATL11 data in ATL11_groups
     def __init__(self, N_ref_pts, N_reps, N_coeffs=9):
         self.Data=[]
         self.DOPLOT=None
@@ -69,6 +86,7 @@ class ATL11_data:
         self.non_product=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['slope_change_t0'], full_fields=[], poly_fields=['poly_exponent_x','poly_exponent_y'])
          
     def all_fields(self):
+        # return a list of all the fields in an ATL11 instance
         all_vars=[]
         di=vars(self)  # a dictionary
         for item in di.keys():
@@ -77,7 +95,9 @@ class ATL11_data:
         all_vars=[y for x in all_vars for y in x] # flatten list of lists
         return all_vars
         
-    def from_list(self, P11_list):  # list of output variables        
+    def from_list(self, P11_list):  
+        # Assemble an ATL11 data instance from a list of ATL11 points.  
+        # Input: list of ATL11 point instances        
         di=vars(self)  # a dictionary
         print(di.keys(),P11_list)
         for group in di.keys():
@@ -176,8 +196,12 @@ class ATL11_point:
         self.D.x_atc_ctr=x_atc_ctr
         self.D.rgt_azimuth=track_azimuth
 
-    def select_ATL06_pairs(self, D6, pair_data, params_11):   # x_polyfit_ctr is x_atc_ctr and seg_x_center
-        # this is section 5.1.2: select "valid pairs" for reference-surface calculation    
+    def select_ATL06_pairs(self, D6, pair_data, params_11):
+        # based on data-quality flags in ATL06 data, and consistency checks
+        # on the along-track and across-track slope in the data, select the 
+        # highest-quality segments from the input data
+        
+        # ATBD section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
         self.D.ATL06_summary_zero_count=np.zeros((self.N_reps,))
@@ -191,13 +215,14 @@ class ATL11_point:
                 self.D.min_signal_selection_source[cc-1]=np.amin(D6.signal_selection_source[D6.cycle==cc])
         self.D.N_pass_avail=np.count_nonzero(self.D.ATL06_summary_zero_count) 
         
-        # step 1b; the backup step here is UNDOCUMENTED AND UNTESTED
+        # step 1b: check if there are enough valid segments, quit if not
         if not np.any(self.valid_segs.data):
             self.status['atl06_quality_summary_all_nonzero']=1.0
             self.valid_segs.data[np.where(np.logical_or(D6.snr_significance<0.02, D6.signal_selection_source <=2))]=True
             if not np.any(self.valid_segs.data):
                 self.status['atl06_quality_all_bad']=1
                 return 
+        
         # 1b: Select segs by height error        
         seg_sigma_threshold=np.maximum(params_11.seg_sigma_threshold_min, 3*np.median(D6.h_li_sigma[np.where(self.valid_segs.data)]))
         self.status['N_above_data_quality_threshold']=np.sum(D6.h_li_sigma<seg_sigma_threshold)
