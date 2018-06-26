@@ -19,7 +19,7 @@ class ATL06_data:
             if NICK is not None:
                 field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id','sigma_geo_h'], 
                             'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth','sigma_geo_at','sigma_geo_xt'],
-                            'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','dh_fit_dy','h_robust_spread','signal_selection_source','snr_significance'],
+                            'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','dh_fit_dy','h_rms_misft','h_robust_spread','signal_selection_source','snr_significance'],
                             'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr','cloud_flg_atm','r_eff','tide_ocean']} 
             else:
                 field_dict={'land_ice_height':['delta_time','dh_fit_dx','dh_fit_dy','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
@@ -59,7 +59,6 @@ class ATL06_data:
           
     def read_from_file(self, filename, field_dict,  x_bounds=None, y_bounds=None, beam_pair=None, NICK=None): 
         beam_names=['gt%d%s' %(beam_pair, b) for b in ['l','r']]
-        print('beam_names',beam_names)
         h5_f=h5py.File(filename,'r')
         # find cycle number in filename
         m=re.search(r"TrackData_(.*?)/",filename)
