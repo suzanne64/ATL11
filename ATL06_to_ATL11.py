@@ -12,24 +12,28 @@ from mpl_toolkits.mplot3d import Axes3D
 
 def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, num_centers=None, DOPLOT=None, DEBUG=None):
     params_11=ATL11_defaults()
-
+    
     # read in the ATL06 data from all the repeats
     D6=ATL06_data(filename=ATL06_files, beam_pair=beam_pair, NICK=True) # two cols (two segs)
+
     # reoder data rows from D6 by cycle
     this_index=np.argsort(D6.cycle[:,0],axis=0)
     for field in D6.list_of_fields:
         tmp=getattr(D6,field)
         setattr(D6,field,tmp[this_index, :])
-        
+    
     P11_list=list()
     if seg_x_centers is None:
         # NO: select every nth center        
         seg_x_centers=np.arange(np.min(np.c_[D6.x_atc]), np.max(np.c_[D6.x_atc]), params_11.seg_atc_spacing) 
+        print('seg_x_centers',seg_x_centers)
     if num_centers is not None:
         seg_x_centers=seg_x_centers[0:int(num_centers)]
     for seg_x_center in seg_x_centers:
+        print('seg ctr',seg_x_center)
         # section 5.1.1 ?
-        D6_sub=D6.subset(np.any(np.abs(D6.x_atc-seg_x_center) < params_11.L_search_AT, axis=1), by_row=True) # len 144 = 12 xlocs, by 12 cycles where ylocs are diff for each cycle, xlocs the same for all cycles.
+        D6_sub=D6.subset(np.any(np.abs(D6.x_atc-seg_x_center) <= params_11.L_search_AT, axis=1), by_row=True) # len 144 = 12 xlocs, by 12 cycles where ylocs are diff for each cycle, xlocs the same for all cycles.
+        print('seg ids',np.unique(D6_sub.segment_id.ravel()))        
         if DEBUG:
             print('seg_x_center',seg_x_center)
             print('D6 sub shape',D6_sub.x_atc.shape,D6_sub.sigma_geo_h.shape)
