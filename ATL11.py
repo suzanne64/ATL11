@@ -164,8 +164,7 @@ class ATL11_data:
             zz=self.corrected_h.pass_h_shapecorr[:,cycle]
             ss=self.corrected_h.pass_h_shapecorr_sigma[:,cycle]
             good=np.abs(ss)<50   
-            if np.any(good):
-                 
+            if np.any(good):               
                 h0=plt.errorbar(xx[good],zz[good],ss[good], marker='o',picker=None)
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
@@ -632,28 +631,30 @@ class ATL11_point:
         h_li_sigma = D6.h_li_sigma[self.selected_segments]
         cycle      = D6.cycle[self.selected_segments]
         for cc in self.ref_surf_passes:
-            self.corrected_h.mean_pass_time[0,cc.astype(int)-1]       =np.mean(D6.delta_time[self.selected_segments][(cycle==cc)])            
+            cycle_mask=(cycle==cc)
+            self.corrected_h.mean_pass_time[0,cc.astype(int)-1]       =np.mean(D6.delta_time[self.selected_segments][cycle_mask])            
             self.pass_quality_stats.pass_seg_count[0,cc.astype(int)-1]=np.sum(self.selected_segments[D6.cycle==cc])
             self.pass_quality_stats.pass_included_in_fit[0,cc.astype(int)-1]=1            
-            self.pass_stats.mean_pass_lon[0,cc.astype(int)-1]         =np.mean(D6.longitude[self.selected_segments][(cycle==cc)])
-            self.pass_stats.mean_pass_lat[0,cc.astype(int)-1]         =np.mean(D6.latitude[self.selected_segments][(cycle==cc)])
-            self.pass_stats.x_atc_mean[0,cc.astype(int)-1]            =np.mean(D6.x_atc[self.selected_segments][(cycle==cc)])
-            self.pass_stats.y_atc_mean[0,cc.astype(int)-1]            =np.mean(D6.y_atc[self.selected_segments][(cycle==cc)])
-            self.pass_stats.cloud_flg_asr_best[0,cc.astype(int)-1]    =np.min(D6.cloud_flg_asr[self.selected_segments][(cycle==cc)])
-            self.pass_stats.cloud_flg_atm_best[0,cc.astype(int)-1]    =np.min(D6.cloud_flg_atm[self.selected_segments][(cycle==cc)])
-            self.pass_stats.bsnow_conf_best[0,cc.astype(int)-1]       =np.max(D6.bsnow_conf[self.selected_segments][(cycle==cc)])
+            self.pass_stats.mean_pass_lon[0,cc.astype(int)-1]         =np.mean(D6.longitude[self.selected_segments][cycle_mask])
+            self.pass_stats.mean_pass_lat[0,cc.astype(int)-1]         =np.mean(D6.latitude[self.selected_segments][cycle_mask])
+            self.pass_stats.x_atc_mean[0,cc.astype(int)-1]            =np.mean(D6.x_atc[self.selected_segments][cycle_mask])
+            self.pass_stats.y_atc_mean[0,cc.astype(int)-1]            =np.mean(D6.y_atc[self.selected_segments][cycle_mask])
+            self.pass_stats.cloud_flg_asr_best[0,cc.astype(int)-1]    =np.min(D6.cloud_flg_asr[self.selected_segments][cycle_mask])
+            self.pass_stats.cloud_flg_atm_best[0,cc.astype(int)-1]    =np.min(D6.cloud_flg_atm[self.selected_segments][cycle_mask])
+            self.pass_stats.bsnow_conf_best[0,cc.astype(int)-1]       =np.max(D6.bsnow_conf[self.selected_segments][cycle_mask])
             # weighted means
-            self.pass_stats.bsnow_h_mean[0,cc.astype(int)-1]        =np.sum( h_li_sigma[(cycle==cc)]**(-2) * D6.bsnow_h[self.selected_segments][(cycle==cc)] )         / np.sum((h_li_sigma[(cycle==cc)])**(-2))
-            self.pass_stats.r_eff_mean[0,cc.astype(int)-1]          =np.sum( h_li_sigma[(cycle==cc)]**(-2) * D6.r_eff[self.selected_segments][(cycle==cc)] )           / np.sum((h_li_sigma[(cycle==cc)])**(-2))
-            self.pass_stats.tide_ocean_mean[0,cc.astype(int)-1]     =np.sum( h_li_sigma[(cycle==cc)]**(-2) * D6.tide_ocean[self.selected_segments][(cycle==cc)] )      / np.sum((h_li_sigma[(cycle==cc)])**(-2))
-            self.pass_stats.h_robust_spread_mean[0,cc.astype(int)-1]=np.sum( h_li_sigma[(cycle==cc)]**(-2) * D6.h_robust_spread[self.selected_segments][(cycle==cc)] ) / np.sum((h_li_sigma[(cycle==cc)])**(-2))
-            self.pass_stats.h_li_rms_mean[0,cc.astype(int)-1]       =np.sum( h_li_sigma[(cycle==cc)]**(-2) * D6.h_rms_misft[self.selected_segments][(cycle==cc)] )     / np.sum((h_li_sigma[(cycle==cc)])**(-2))
-            self.pass_stats.sigma_geo_h_mean[0,cc.astype(int)-1]    =np.sum( h_li_sigma[(cycle==cc)]**(-2) * D6.sigma_geo_h[self.selected_segments][(cycle==cc)] )     / np.sum((h_li_sigma[(cycle==cc)])**(-2))
-            self.pass_stats.sigma_geo_at_mean[0,cc.astype(int)-1]   =np.sum( h_li_sigma[(cycle==cc)]**(-2) * D6.sigma_geo_at[self.selected_segments][(cycle==cc)] )    / np.sum((h_li_sigma[(cycle==cc)])**(-2))
-            self.pass_stats.sigma_geo_xt_mean[0,cc.astype(int)-1]   =np.sum( h_li_sigma[(cycle==cc)]**(-2) * D6.sigma_geo_xt[self.selected_segments][(cycle==cc)] )    / np.sum((h_li_sigma[(cycle==cc)])**(-2))
-#            self.corrected_h.pass_h_shapecorr_sigma_systematic[0,cc.astype(int)-1] = np.sqrt(term1[self.selected_segments][(cycle==cc)] +
-#                                                                                             term2[self.selected_segments][(cycle==cc)] +
-#                                                                                             term3[self.selected_segments][(cycle==cc)])
+            W_by_error=h_li_sigma[cycle_mask]**(-2)/np.sum(h_li_sigma[cycle_mask]**(-2))
+            self.pass_stats.bsnow_h_mean[0,cc.astype(int)-1]        =np.sum( W_by_error * D6.bsnow_h[self.selected_segments][cycle_mask] )         
+            self.pass_stats.r_eff_mean[0,cc.astype(int)-1]          =np.sum( W_by_error * D6.r_eff[self.selected_segments][cycle_mask] )           
+            self.pass_stats.tide_ocean_mean[0,cc.astype(int)-1]     =np.sum( W_by_error * D6.tide_ocean[self.selected_segments][cycle_mask] )       
+            self.pass_stats.h_robust_spread_mean[0,cc.astype(int)-1]=np.sum( W_by_error * D6.h_robust_spread[self.selected_segments][cycle_mask] )  
+            self.pass_stats.h_li_rms_mean[0,cc.astype(int)-1]       =np.sum( W_by_error * D6.h_rms_misft[self.selected_segments][cycle_mask] )     
+            self.pass_stats.sigma_geo_h_mean[0,cc.astype(int)-1]    =np.sum( W_by_error * D6.sigma_geo_h[self.selected_segments][cycle_mask] )     
+            self.pass_stats.sigma_geo_at_mean[0,cc.astype(int)-1]   =np.sum( W_by_error * D6.sigma_geo_at[self.selected_segments][cycle_mask] )    
+            self.pass_stats.sigma_geo_xt_mean[0,cc.astype(int)-1]   =np.sum( W_by_error * D6.sigma_geo_xt[self.selected_segments][cycle_mask] )    
+#            self.corrected_h.pass_h_shapecorr_sigma_systematic[0,cc.astype(int)-1] = np.sqrt(term1[self.selected_segments][cycle_mask] +
+#                                                                                             term2[self.selected_segments][cycle_mask] +
+#                                                                                             term3[self.selected_segments][cycle_mask])
             
         self.ref_surf.N_pass_used=np.count_nonzero(self.ref_surf_passes)
 
@@ -806,25 +807,26 @@ class ATL11_point:
             
             for cc in self.non_ref_surf_passes.astype(int):
                 best_seg=np.argmin(z_kc_sigma[cycle==cc])
+                best_seg_ind=np.where(non_ref_segments)[0][cycle==cc][best_seg]
                 self.corrected_h.pass_h_shapecorr[0,cc-1]      =z_kc[cycle==cc][best_seg]
                 self.corrected_h.pass_h_shapecorr_sigma[0,cc-1]=np.amin(z_kc_sigma[cycle==cc])
 #                self.corrected_h.pass_h_shapecorr_sigma_systematic[0,cc.astype(int)-1] = np.sqrt(term1.ravel()[non_ref_segments][(cycle==cc)][best_seg] +
 #                                                                                                 term2.ravel()[non_ref_segments][(cycle==cc)] +
 #                                                                                                 term3.ravel()[non_ref_segments][(cycle==cc)])
-                self.corrected_h.mean_pass_time[0,cc-1]        =D6.delta_time.ravel()[non_ref_segments][cycle==cc][best_seg]
+                self.corrected_h.mean_pass_time[0,cc-1]        =D6.delta_time.ravel()[best_seg_ind]
                 self.pass_quality_stats.pass_seg_count[0,cc-1] =1
-                self.pass_stats.mean_pass_lon[0,cc-1]          =D6.longitude.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.mean_pass_lat[0,cc-1]          =D6.latitude.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.x_atc_mean[0,cc-1]             =D6.x_atc.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.y_atc_mean[0,cc-1]             =D6.y_atc.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.bsnow_h_mean[0,cc-1]           =D6.bsnow_h.ravel()[non_ref_segments][cycle==cc][best_seg] 
-                self.pass_stats.r_eff_mean[0,cc-1]             =D6.r_eff.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.tide_ocean_mean[0,cc-1]        =D6.tide_ocean.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.h_robust_spread_mean[0,cc-1]   =D6.h_robust_spread.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.h_li_rms_mean[0,cc-1]          =D6.h_rms_misft.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.sigma_geo_h_mean[0,cc-1]       =D6.sigma_geo_h.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.sigma_geo_at_mean[0,cc-1]      =D6.sigma_geo_at.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_stats.sigma_geo_xt_mean[0,cc-1]      =D6.sigma_geo_xt.ravel()[non_ref_segments][cycle==cc][best_seg]
+                self.pass_stats.mean_pass_lon[0,cc-1]          =D6.longitude.ravel()[best_seg_ind]
+                self.pass_stats.mean_pass_lat[0,cc-1]          =D6.latitude.ravel()[best_seg_ind]
+                self.pass_stats.x_atc_mean[0,cc-1]             =D6.x_atc.ravel()[best_seg_ind]
+                self.pass_stats.y_atc_mean[0,cc-1]             =D6.y_atc.ravel()[best_seg_ind]
+                self.pass_stats.bsnow_h_mean[0,cc-1]           =D6.bsnow_h.ravel()[best_seg_ind] 
+                self.pass_stats.r_eff_mean[0,cc-1]             =D6.r_eff.ravel()[best_seg_ind]
+                self.pass_stats.tide_ocean_mean[0,cc-1]        =D6.tide_ocean.ravel()[best_seg_ind]
+                self.pass_stats.h_robust_spread_mean[0,cc-1]   =D6.h_robust_spread.ravel()[best_seg_ind]
+                self.pass_stats.h_li_rms_mean[0,cc-1]          =D6.h_rms_misft.ravel()[best_seg_ind]
+                self.pass_stats.sigma_geo_h_mean[0,cc-1]       =D6.sigma_geo_h.ravel()[best_seg_ind]
+                self.pass_stats.sigma_geo_at_mean[0,cc-1]      =D6.sigma_geo_at.ravel()[best_seg_ind]
+                self.pass_stats.sigma_geo_xt_mean[0,cc-1]      =D6.sigma_geo_xt.ravel()[best_seg_ind]
              
             # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
             self.segment_id_by_cycle=[]         
