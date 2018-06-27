@@ -48,22 +48,23 @@ class ATL11_data:
         self.DOPLOT=None
         # define empty records here based on ATL11 ATBD
         # Table 4-1
-        self.corrected_h=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon'], #,'ref_pt_number'], 
+        self.corrected_h=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
                                        full_fields=['mean_pass_time','pass_h_shapecorr','pass_h_shapecorr_sigma','pass_h_shapecorr_sigma_systematic','quality_summary'],
                                        poly_fields=[])   
-        # Table 4-2
-        self.pass_quality_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
-                                              full_fields=['ATL06_summary_zero_count','min_SNR_significance','mean_uncorr_reflectance','min_signal_selection_source','pass_seg_count','pass_included_in_fit'],
-                                              poly_fields=[])            
-        # Table 4-3        
-        self.ref_surf=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','n_deg_x','n_deg_y','N_pass_avail','N_pass_used','ref_pt_number','ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth',
-                                                                                'slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma','surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'],
+        # Table 4-2        
+        self.ref_surf=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','fit_curvature','fit_E_slope','fit_N_slope','n_deg_x','n_deg_y',
+                                                                              'N_pass_avail','N_pass_used','ref_pt_number','ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth',
+                                                                              'slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma',
+                                                                              'surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'],
                                     full_fields=[], poly_fields=['poly_coeffs','poly_coeffs_sigma'])
-        # Table 4-4
+        # Table 4-3
         self.pass_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
-                                      full_fields=['h_robust_spread_mean','h_li_rms_mean','r_eff_mean','tide_ocean_mean','cloud_flg_atm_best','cloud_flg_asr_best','bsnow_h_mean','bsnow_conf_best',
-                                                   'y_atc_mean','x_atc_mean','strong_beam_number','mean_pass_lat','mean_pass_lon','sigma_geo_h_mean','sigma_geo_at_mean','sigma_geo_xt_mean'], poly_fields=[])
-        # Table 4-5
+                                      full_fields=['ATL06_summary_zero_count','h_robust_spread_mean','h_li_rms_mean','r_eff_mean','tide_ocean_mean',
+                                                   'cloud_flg_atm_best','cloud_flg_asr_best','bsnow_h_mean','bsnow_conf_best',
+                                                   'y_atc_mean','x_atc_mean','ref_pt_number','pass_included_in_fit','pass_seg_count','strong_beam_number',
+                                                   'mean_pass_lat','mean_pass_lon','min_signal_selection_source','min_SNR_significance',
+                                                   'sigma_geo_h_mean','sigma_geo_at_mean','sigma_geo_xt_mean'], poly_fields=[])
+        # Table 4-4
         #self.crossing_track_data=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
                                       
         # this group is used to hold output data attributes                             
@@ -182,17 +183,18 @@ class ATL11_point:
         self.ref_surf.ref_pt_x_atc=x_atc_ctr
         self.ref_surf.rgt_azimuth=track_azimuth
 
+
     def select_ATL06_pairs(self, D6, pair_data, params_11):   # x_polyfit_ctr is x_atc_ctr and seg_x_center
         # this is section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
-        self.pass_quality_stats.ATL06_summary_zero_count=np.zeros((1,self.N_reps,))  # do we need to set to zeros?
+        self.pass_stats.ATL06_summary_zero_count=np.zeros((1,self.N_reps,))  # do we need to set to zeros?
         for cc in range(1,self.N_reps+1):
             if D6.cycle[D6.cycle==cc].shape[0] > 0:
-                self.pass_quality_stats.ATL06_summary_zero_count[0,cc-1]=np.sum(self.valid_segs.data[D6.cycle==cc])
-                self.pass_quality_stats.min_SNR_significance[0,cc-1]=np.amin(D6.snr_significance[D6.cycle==cc])
-                self.pass_quality_stats.min_signal_selection_source[0,cc-1]=np.amin(D6.signal_selection_source[D6.cycle==cc])
-        self.ref_surf.N_pass_avail=np.count_nonzero(self.pass_quality_stats.ATL06_summary_zero_count) 
+                self.pass_stats.ATL06_summary_zero_count[0,cc-1]=np.sum(self.valid_segs.data[D6.cycle==cc])
+                self.pass_stats.min_SNR_significance[0,cc-1]=np.amin(D6.snr_significance[D6.cycle==cc])
+                self.pass_stats.min_signal_selection_source[0,cc-1]=np.amin(D6.signal_selection_source[D6.cycle==cc])
+        self.ref_surf.N_pass_avail=np.count_nonzero(self.pass_stats.ATL06_summary_zero_count) 
         
         # step 1b; the backup step here is UNDOCUMENTED AND UNTESTED
         if not np.any(self.valid_segs.data):
@@ -374,7 +376,7 @@ class ATL11_point:
 
     def find_reference_surface(self, D6, params_11, DEBUG=None):  #5.1.4
 
-        self.corrected_h.quality_summary=np.logical_not(np.logical_and( np.logical_and(self.pass_quality_stats.min_signal_selection_source<=1, self.pass_quality_stats.min_SNR_significance<0.02),self.pass_quality_stats.ATL06_summary_zero_count>0 ))        
+        self.corrected_h.quality_summary=np.logical_not(np.logical_and( np.logical_and(self.pass_stats.min_signal_selection_source<=1, self.pass_stats.min_SNR_significance<0.02),self.pass_stats.ATL06_summary_zero_count>0 ))        
         self.ref_surf.complex_surface_flag=0
 
         # establish attributes: all possible exponent combinations for reference surface fit 
@@ -389,8 +391,8 @@ class ATL11_point:
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
         # Table 4-2        
-        self.pass_quality_stats.pass_seg_count=np.zeros((1,self.N_reps,))
-        self.pass_quality_stats.pass_included_in_fit=np.zeros((1,self.N_reps,))
+        self.pass_stats.pass_seg_count=np.zeros((1,self.N_reps,))
+        self.pass_stats.pass_included_in_fit=np.zeros((1,self.N_reps,))
 
         # establish new boolean arrays for selecting
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool) 
@@ -608,8 +610,8 @@ class ATL11_point:
         cycle      = D6.cycle[self.selected_segments]
         for cc in self.ref_surf_passes:
             self.corrected_h.mean_pass_time[0,cc.astype(int)-1]       =np.mean(D6.delta_time[self.selected_segments][(cycle==cc)])            
-            self.pass_quality_stats.pass_seg_count[0,cc.astype(int)-1]=np.sum(self.selected_segments[D6.cycle==cc])
-            self.pass_quality_stats.pass_included_in_fit[0,cc.astype(int)-1]=1            
+            self.pass_stats.pass_seg_count[0,cc.astype(int)-1]=np.sum(self.selected_segments[D6.cycle==cc])
+            self.pass_stats.pass_included_in_fit[0,cc.astype(int)-1]=1            
             self.pass_stats.mean_pass_lon[0,cc.astype(int)-1]         =np.mean(D6.longitude[self.selected_segments][(cycle==cc)])
             self.pass_stats.mean_pass_lat[0,cc.astype(int)-1]         =np.mean(D6.latitude[self.selected_segments][(cycle==cc)])
             self.pass_stats.x_atc_mean[0,cc.astype(int)-1]            =np.mean(D6.x_atc[self.selected_segments][(cycle==cc)])
@@ -787,7 +789,7 @@ class ATL11_point:
 #                                                                                                 term2.ravel()[non_ref_segments][(cycle==cc)] +
 #                                                                                                 term3.ravel()[non_ref_segments][(cycle==cc)])
                 self.corrected_h.mean_pass_time[0,cc-1]        =D6.delta_time.ravel()[non_ref_segments][cycle==cc][best_seg]
-                self.pass_quality_stats.pass_seg_count[0,cc-1] =1
+                self.pass_stats.pass_seg_count[0,cc-1] =1
                 self.pass_stats.mean_pass_lon[0,cc-1]          =D6.longitude.ravel()[non_ref_segments][cycle==cc][best_seg]
                 self.pass_stats.mean_pass_lat[0,cc-1]          =D6.latitude.ravel()[non_ref_segments][cycle==cc][best_seg]
                 self.pass_stats.x_atc_mean[0,cc-1]             =D6.x_atc.ravel()[non_ref_segments][cycle==cc][best_seg]
@@ -855,9 +857,9 @@ class ATL11_defaults:
         #self.min_slope_tol=0.02 # in degrees?
         #self.min_h_tol=0.1  # units? of height offset
         self.seg_sigma_threshold_min=0.05
-        #self.y_search=110 # meters
         self.beam_spacing=90 # meters
         self.seg_atc_spacing=100 # meters
+        self.N_search=self.L_search_AT/20 # segments to include +/- from seg_atc_ctr in each ref_pt analysis
         self.poly_max_degree_AT=3
         self.poly_max_degree_XT=3
         self.xy_scale=100.         # meters

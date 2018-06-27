@@ -75,12 +75,22 @@ class ATL06_data:
                         if group is None:
                             if 'delta_time' in field:
                                 setattr(self, field, np.c_[
-                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400,   # convert days to seconds
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400,   # add ref time, convert days to seconds
                                 np.array(h5_f[beam_names[1]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400])
+                            elif 'sigma_geo_h' in field:
+                                setattr(self, field, np.c_[np.full((1,h5_f[beam_names[0]]['land_ice_segments'][field].shape[1]),0.03).transpose(),  # temporarily filling 
+                                                           np.full((1,h5_f[beam_names[0]]['land_ice_segments'][field].shape[1]),0.03).transpose()])
+                            elif 'sigma_geo_at' in field:
+                                setattr(self, field, np.c_[np.full(h5_f[beam_names[0]]['land_ice_segments'][field].shape,6.5).transpose(), 
+                                                           np.full(h5_f[beam_names[0]]['land_ice_segments'][field].shape,6.5).transpose()])
+                            elif 'sigma_geo_xt' in field:
+                                setattr(self, field, np.c_[np.full(h5_f[beam_names[0]]['land_ice_segments'][field].shape,6.5).transpose(),
+                                                           np.full(h5_f[beam_names[0]]['land_ice_segments'][field].shape,6.5).transpose()])
                             else:                                
                                 setattr(self, field, np.c_[
                                 np.array(h5_f[beam_names[0]]['land_ice_segments'][field]).transpose(),  
                                 np.array(h5_f[beam_names[1]]['land_ice_segments'][field]).transpose()])
+                                
                         else:
                             if 'ground' in group and 'cycle' in field:  # currently all the cycle info is NaN
                                 setattr(self, field, np.c_[
