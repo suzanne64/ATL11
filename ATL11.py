@@ -188,6 +188,8 @@ class ATL11_point:
         self.z_poly_fit=None
         self.mx_poly_fit=None
         self.my_poly_fit=None
+        self.ref_surf_slope_x=np.NaN
+        self.ref_surf_slope_y=np.NaN
         self.valid_segs =valid_mask((N_pairs,2),  ('data','x_slope','y_slope' ))  #  2 cols, boolan, all F to start
         self.valid_pairs=valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
@@ -709,18 +711,24 @@ class ATL11_point:
         
         zg=np.zeros_like(xg)
         for ii in np.arange(np.sum(self.poly_mask)):
-            xterm=( (xg-self.x_atc_ctr)/params_11.xy_scale )**self.degree_list_x[ii]
-            yterm=( (yg-self.y_atc_ctr)/params_11.xy_scale )**self.degree_list_y[ii]
+            xterm=( xg/params_11.xy_scale )**self.degree_list_x[ii]
+            yterm=( yg/params_11.xy_scale )**self.degree_list_y[ii]
             zg=zg+self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)][0,ii] * xterm * yterm 
         if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
             plt.figure(100);plt.clf()
             plt.contourf(zg);plt.colorbar()
 
         # fitting a plane as a function of N and E 
-        M=np.transpose(np.vstack(( (N.ravel()),(E.ravel()))))
+        M=np.transpose(np.vstack(( (N.ravel()),(E.ravel()), np.ones_like(E.ravel()))))
         msub,rr,rank,sing=linalg.lstsq(M,zg.ravel())
         zg_plane=msub[0]*N + msub[1]*E;
-
+        
+        # perform the same fit in [xg,yg] to calculate the y slope for the unselected segments
+        M_xy=np.transpose(np.vstack(( (xg.ravel()),(yg.ravel()), np.ones_like(xg.ravel()))))
+        msub_xy,rr, rankxy, singxy=linalg.lstsq(M_xy, zg.ravel())
+        self.ref_surf_slope_x=msub_xy[0]
+        self.ref_surf_slope_y=msub_xy[1]
+        
         if self.DOPLOT is not None and "NE-vs-xy" in self.DOPLOT:
             plt.figure(104);plt.clf()
             plt.contourf(zg_plane);plt.colorbar()
