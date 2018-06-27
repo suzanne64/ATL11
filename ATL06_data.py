@@ -108,6 +108,9 @@ class ATL06_data:
                 except KeyError:
                     print "could not read %s/%s" % (group, field)
                     setattr(self, field, np.zeros_like(self.delta_time)+np.NaN)
+        self.sigma_geo_h =np.zeros_like(self.h_li)+0.03
+        self.sigma_geo_xt=np.zeros_like(self.h_li)+6.5
+        self.sigma_geo_at=np.zeros_like(self.h_li)+6.5
         return
 
     def append(self, D):
