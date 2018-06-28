@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 #from poly_ref_surf import poly_ref_surf
 
-def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, num_centers=None, DOPLOT=None, DEBUG=None):
+def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, num_centers=None, DOPLOT=None, DEBUG=None, slope_change_t0=None):
     params_11=ATL11_defaults()
     
     # read in the ATL06 data from all the repeats
@@ -41,22 +41,26 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
         #2a. define representative x and y values for the pairs
         pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle','h_li'])   # this might go, similar to D6_sub
 
+<<<<<<< HEAD
         P11=ATL11_point(N_pairs=len(pair_data.x), x_atc_ctr=seg_x_center, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_reps=len(ATL06_files),N_coeffs=9 )
         P11.ref_pt_number=ref_pt_number
+=======
+        P11=ATL11_point(N_pairs=len(pair_data.x), x_atc_ctr=seg_x_center, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_reps=len(ATL06_files), slope_change_t0=slope_change_t0 )
+>>>>>>> a2008f367bfd8385fc35d524e8d191aff91f932d
         
         P11.DOPLOT=DOPLOT
        # step 2: select pairs, based on reasonable slopes
-        P11.select_ATL06_pairs(D6_sub, pair_data, params_11)
+        P11.select_ATL06_pairs(D6_sub, pair_data)
         if 'no_valid_pairs' in P11.status and P11.status['no_valid_pairs']==1:
             #print('you have no valid pairs',seg_x_center)
             continue
-        P11.select_y_center(D6_sub, pair_data, params_11)
+        P11.select_y_center(D6_sub, pair_data)
                 
-        P11.corrected_h.ref_pt_lat,P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[seg_x_center,P11.y_atc_ctr])
-     
-        P11.find_reference_surface(D6_sub, params_11)
-        
-        P11.corr_heights_other_cycles(D6_sub, params_11)
+        P11.corrected_h.ref_pt_lat,P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[seg_x_center,P11.y_atc_ctr])     
+
+        P11.find_reference_surface(D6_sub)
+
+        P11.corr_heights_other_cycles(D6_sub)
 
         P11_list.append(P11)
         
