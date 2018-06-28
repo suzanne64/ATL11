@@ -8,15 +8,12 @@ Created on Thu Oct 26 11:08:33 2017f
 import numpy as np
 from poly_ref_surf import poly_ref_surf
 import matplotlib.pyplot as plt 
-from mpl_toolkits.mplot3d import Axes3D
 from RDE import RDE
 import scipy.sparse as sparse
 from scipy import linalg 
 from scipy import stats
-import scipy.sparse.linalg as sps_linalg
-import time
-import h5py
-import re
+import time, h5py, re, os
+ 
 #import collections
 
 class ATL11_group:
@@ -80,7 +77,7 @@ class ATL11_data:
                                                    'cloud_flg_atm_best','cloud_flg_asr_best','bsnow_h_mean','bsnow_conf_best',
                                                    'y_atc_mean','x_atc_mean','ref_pt_number','pass_included_in_fit','pass_seg_count','strong_beam_number',
                                                    'mean_pass_lat','mean_pass_lon','min_signal_selection_source','min_SNR_significance',
-                                                   'sigma_geo_h_mean','sigma_geo_at_mean','sigma_geo_xt_mean'], poly_fields=[])
+                                                   'sigma_geo_h_mean','sigma_geo_at_mean','sigma_geo_xt_mean','h_uncorr_mean'], poly_fields=[])
         # Table 4-4
         #self.crossing_track_data=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
                                  
@@ -127,6 +124,8 @@ class ATL11_data:
         return self
         
     def write_to_file(self, fileout):
+        if os.path.isfile(fileout):
+            os.remove(fileout)
         # Generic code to write data from an object to an h5 file 
         f = h5py.File(fileout,'w')
         # set file attributes
@@ -159,14 +158,14 @@ class ATL11_data:
         n_cycles=self.corrected_h.pass_h_shapecorr.shape[1]
         HR=np.nan+np.zeros((n_cycles, 2))
         h=list()
-        plt.figure(1);plt.clf()
+        #plt.figure(1);plt.clf()
         for cycle in range(n_cycles):
             xx=self.ref_surf.ref_pt_x_atc
             zz=self.corrected_h.pass_h_shapecorr[:,cycle]
             ss=self.corrected_h.pass_h_shapecorr_sigma[:,cycle]
             good=np.abs(ss)<50   
             if np.any(good):               
-                h0=plt.errorbar(xx[good],zz[good],ss[good], marker='o',picker=None)
+                h0=plt.errorbar(xx[good],zz[good],ss[good], marker='o',picker=5)
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
                 #plt.plot(xx[good], zz[good], 'k',picker=None)
@@ -308,8 +307,7 @@ class ATL11_point:
 
         #4c: Calculate along-track slope regression tolerance
         mx_regression_tol=np.maximum(0.01, 3*np.median(D6.dh_fit_dx_sigma[pairs_valid_for_x_fit,:].flatten())) 
-        for item in range(2):
-            # QUESTION: Do we need the "for item in range(2)" loop?  There are already 2 iterations in self.mx_poly_fit.fit
+        for iteration in range(2):
             # 4d: regression of along-track slope against x_pair and y_pair
             self.mx_poly_fit=poly_ref_surf(mx_regression_x_degree, mx_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
             if np.sum(pairs_valid_for_x_fit)>0:
@@ -636,8 +634,8 @@ class ATL11_point:
         for cc in self.ref_surf_passes.astype(int):
             cycle_segs=np.flatnonzero(self.selected_segments)[cycle==cc]
             self.corrected_h.mean_pass_time[0,cc-1]       =np.mean(D6.delta_time.ravel()[cycle_segs])            
-            self.pass_quality_stats.pass_seg_count[0,cc-1]=np.sum(self.selected_segments[D6.cycle==cc])
-            self.pass_quality_stats.pass_included_in_fit[0,cc-1]=1            
+            self.pass_stats.pass_included_in_fit[0,cc-1]=1
+            self.pass_stats.pass_seg_count[0, cc-1]=cycle_segs.size            
             self.pass_stats.mean_pass_lon[0,cc-1]         =np.mean(D6.longitude.ravel()[cycle_segs])
             self.pass_stats.mean_pass_lat[0,cc-1]         =np.mean(D6.latitude.ravel()[cycle_segs])
             self.pass_stats.x_atc_mean[0,cc-1]            =np.mean(D6.x_atc.ravel()[cycle_segs])
@@ -657,7 +655,7 @@ class ATL11_point:
             self.pass_stats.sigma_geo_xt_mean[0,cc-1]   =np.sqrt( np.sum( W_by_error * D6.sigma_geo_xt.ravel()[cycle_segs]**2 ) )    
             self.corrected_h.pass_h_shapecorr_sigma_systematic[0,cc-1] =\
                 np.sqrt(np.sum(W_by_error*(term1.ravel()[cycle_segs] + term2.ravel()[cycle_segs] + term3.ravel()[cycle_segs])))
-            
+            self.pass_stats.h_uncorr_mean[0,cc-1]=np.sum( W_by_error * D6.h_li.ravel()[cycle_segs] )
         self.ref_surf.N_pass_used=np.count_nonzero(self.ref_surf_passes)
 
         if self.ref_surf.N_pass_used<2:
@@ -834,7 +832,7 @@ class ATL11_point:
                 self.pass_stats.sigma_geo_h_mean[0,cc-1]       =D6.sigma_geo_h.ravel()[best_seg_ind]
                 self.pass_stats.sigma_geo_at_mean[0,cc-1]      =D6.sigma_geo_at.ravel()[best_seg_ind]
                 self.pass_stats.sigma_geo_xt_mean[0,cc-1]      =D6.sigma_geo_xt.ravel()[best_seg_ind]
-             
+                self.pass_stats.h_uncorr_mean[0, cc-1]         =D6.h_li.ravel()[best_seg_ind]
             # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
             self.segment_id_by_cycle=[]         
             self.selected_segments_by_cycle=[]         
@@ -899,7 +897,4 @@ class ATL11_defaults:
         self.max_fit_iterations = 20  # maximum iterations when computing the reference surface models
         self.equatorial_radius=6378137 # meters, on WGS84 spheroid
         self.polar_radius=6356752.3 # derived, https://www.eoas.ubc.ca/~mjelline/Planetary%20class/14gravity1_2.pdf
-
-        
-        
-        
+     
