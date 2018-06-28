@@ -42,6 +42,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, seg_x_centers=None, output_file=None, nu
         pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle','h_li'])   # this might go, similar to D6_sub
 
         P11=ATL11_point(N_pairs=len(pair_data.x), x_atc_ctr=seg_x_center, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_reps=len(ATL06_files),N_coeffs=9 )
+        P11.ref_pt_number=ref_pt_number
         
         P11.DOPLOT=DOPLOT
        # step 2: select pairs, based on reasonable slopes
