@@ -501,7 +501,7 @@ class ATL11_point(ATL11_data):
                 for c in range(G.shape[1]-1,-1,-1):   # check last col first, do in reverse order
                     if np.all(G[:,c]==G[0,c]):
                         fit_columns[c]=False
-                    # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
+                # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
                 if np.sum(np.logical_not(fit_columns[np.sum([poly_cols.shape,slope_change_cols.shape]):,])) > 2:
                     self.ref_surf.complex_surface_flag=1
                     # use all segments from the original G_surf     
@@ -518,12 +518,12 @@ class ATL11_point(ATL11_data):
             Cd, Cdi, G_g = gen_inv(self,G,h_li_sigma[selected_segs])
                         
             # inititalize the reference model 
-            self.m_surf=np.zeros(np.size(G_surf,1))            
+            self.m_surf=np.zeros(np.size(G_surf_original,1))            
             z=h_li[selected_segs]            
             self.m_surf[fit_columns]=np.dot(G_g,z)  
 
             # 3h. Calculate model residuals for all segments
-            r_seg=h_li-np.dot(G_surf,self.m_surf)            
+            r_seg=h_li-np.dot(G_surf_original,self.m_surf)            
             r_fit=r_seg[selected_segs] 
             
             # 3i. Calculate the fitting tolerance, 
