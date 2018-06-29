@@ -45,11 +45,11 @@ class ATL06_data:
         if filename is not None:
             # read a list of files if list provided
             if isinstance(filename, (list, tuple)):
-                D6_list=[ATL06_data(filename=thisfile, field_dict=field_dict, beam_pair=beam_pair, x_bounds=x_bounds, y_bounds=y_bounds) for thisfile in filename]
+                D6_list=[ATL06_data(filename=thisfile, field_dict=field_dict, beam_pair=beam_pair, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK) for thisfile in filename]
                 self.build_from_list_of_data(D6_list)
             elif isinstance(filename, (basestring)):
                 # this happens when the input filename is a string, not a list
-                self.read_from_file(filename, field_dict, beam_pair=beam_pair, x_bounds=x_bounds, y_bounds=y_bounds,NICK=True)
+                self.read_from_file(filename, field_dict, beam_pair=beam_pair, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK)
             else:
                 raise TypeError
         else:
@@ -58,11 +58,17 @@ class ATL06_data:
                 setattr(self, field, np.zeros((2,0)))       
           
     def read_from_file(self, filename, field_dict,  x_bounds=None, y_bounds=None, beam_pair=None, NICK=None): 
+        seconds_per_day=24*3600.
         beam_names=['gt%d%s' %(beam_pair, b) for b in ['l','r']]
         h5_f=h5py.File(filename,'r')
         # find cycle number in filename
-        m=re.search(r"TrackData_(.*?)/",filename)
-        
+        m=re.search(r"TrackData_(.*?)/Track_(.*?).h5",filename)
+        cycle_number=np.int(m.group(1))
+        track_number=np.int(m.group(2))
+        #N.B. with real ATL06 data we will not want to apply the reference time offset to the delta time.
+        time_offset=0.
+        if NICK:
+            time_offset=h5_f.attrs['reference_time']*seconds_per_day
         #print('line 61,',NICK,filename)
         if beam_names[0] not in h5_f.keys():
             return None
@@ -73,29 +79,13 @@ class ATL06_data:
                 try:
                     if NICK is not None:
                         if group is None:
-                            if 'delta_time' in field:
-                                setattr(self, field, np.c_[
-                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400,   # add ref time, convert days to seconds
-                                np.array(h5_f[beam_names[1]]['land_ice_segments'][field] + h5_f.attrs['reference_time']).transpose() * 86400])
-                            elif 'sigma_geo_h' in field:
-                                setattr(self, field, np.c_[np.full((1,h5_f[beam_names[0]]['land_ice_segments'][field].shape[1]),0.03).transpose(),  # temporarily filling 
-                                                           np.full((1,h5_f[beam_names[0]]['land_ice_segments'][field].shape[1]),0.03).transpose()])
-                            elif 'sigma_geo_at' in field:
-                                setattr(self, field, np.c_[np.full(h5_f[beam_names[0]]['land_ice_segments'][field].shape,6.5).transpose(), 
-                                                           np.full(h5_f[beam_names[0]]['land_ice_segments'][field].shape,6.5).transpose()])
-                            elif 'sigma_geo_xt' in field:
-                                setattr(self, field, np.c_[np.full(h5_f[beam_names[0]]['land_ice_segments'][field].shape,6.5).transpose(),
-                                                           np.full(h5_f[beam_names[0]]['land_ice_segments'][field].shape,6.5).transpose()])
-                            else:                                
-                                setattr(self, field, np.c_[
+                            setattr(self, field, np.c_[
                                 np.array(h5_f[beam_names[0]]['land_ice_segments'][field]).transpose(),  
                                 np.array(h5_f[beam_names[1]]['land_ice_segments'][field]).transpose()])
-                                
                         else:
-                            if 'ground' in group and 'cycle' in field:  # currently all the cycle info is NaN
-                                setattr(self, field, np.c_[
-                                np.ones( np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field]).transpose().shape ) * int(m.group(1)),  
-                                np.ones( np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field]).transpose().shape ) * int(m.group(1))])
+                            if 'ground' in group and 'cycle' in field:  # currently groundtrack/cycle NaN
+                                n_vals=np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field]).size
+                                setattr(self, field, np.zeros( [n_vals, 2])+cycle_number)
                             else:
                                 setattr(self, field, np.c_[
                                 np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field]).transpose(),  
@@ -108,9 +98,11 @@ class ATL06_data:
                 except KeyError:
                     print "could not read %s/%s" % (group, field)
                     setattr(self, field, np.zeros_like(self.delta_time)+np.NaN)
-        self.sigma_geo_h =np.zeros_like(self.h_li)+0.03
-        self.sigma_geo_xt=np.zeros_like(self.h_li)+6.5
-        self.sigma_geo_at=np.zeros_like(self.h_li)+6.5
+        if NICK is not None:
+            self.sigma_geo_h =np.zeros_like(self.h_li)+0.03
+            self.sigma_geo_xt=np.zeros_like(self.h_li)+6.5
+            self.sigma_geo_at=np.zeros_like(self.h_li)+6.5
+            self.delta_time=self.delta_time*24.*3600.+time_offset
         return
 
     def append(self, D):
