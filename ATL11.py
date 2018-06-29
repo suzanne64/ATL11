@@ -186,12 +186,13 @@ class ATL11_data:
         plt.xlim((np.nanmin(xx),  np.nanmax(xx)))
         return h
         
-class ATL11_point:
+class ATL11_point(ATL11_data):
     def __init__(self, N_pairs=1, ref_pt_number=None, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12, params_11=None, mission_time_bds=None):
         if params_11 is None:        
             self.params_11=ATL11_defaults()
         else:
             self.params_11=params_11
+        ATL11_data.__init__(self,1, N_reps, self.params_11.N_coeffs)
         self.N_pairs=N_pairs
         self.N_reps=N_reps     
         self.N_coeffs=self.params_11.N_coeffs
@@ -213,13 +214,6 @@ class ATL11_point:
         self.valid_pairs=valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.status=dict()
-        self.DOPLOT=None
-        # copy ATL11_groups to P11
-        temp_D11=ATL11_data(1, N_reps, N_coeffs=self.N_coeffs)
-        di=vars(temp_D11)
-        for item in di.keys():
-            if hasattr(getattr(temp_D11,item),'list_of_fields'):
-                setattr(self,item,getattr(temp_D11,item))
         self.ref_surf.ref_pt_x_atc=x_atc_ctr
         self.ref_surf.rgt_azimuth=track_azimuth
 
