@@ -145,9 +145,8 @@ class ATL11_data:
         for param in  params_di.keys():
             try:
                 f.attrs[param]=getattr(params_11, param)
-            except: 
-                print("write_to_file:could no automatically set parameter: %s" % param)
-
+            except:  
+                print("write_to_file:could not automatically set parameter: %s" % param)
         # write data to file            
         di=vars(self)  # a dictionary
         for group in di.keys():
@@ -188,7 +187,7 @@ class ATL11_data:
         return h
         
 class ATL11_point:
-    def __init__(self, N_pairs=1, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12, params_11=None, slope_change_t0=None):
+    def __init__(self, N_pairs=1, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12, params_11=None, mission_time_bds=None):
         if params_11 is None:        
             self.params_11=ATL11_defaults()
         else:
@@ -204,7 +203,11 @@ class ATL11_point:
         self.my_poly_fit=None
         self.ref_surf_slope_x=np.NaN
         self.ref_surf_slope_y=np.NaN
-        self.slope_change_t0=slope_change_t0
+        
+        if mission_time_bds is None:
+            mission_time_bds=np.array([0, N_reps*91*24*3600])
+        self.slope_change_t0=mission_time_bds[0]+0.5*(mission_time_bds[1]-mission_time_bds[0])
+        self.mission_time_bds=mission_time_bds
         self.valid_segs =valid_mask((N_pairs,2),  ('data','x_slope','y_slope' ))  #  2 cols, boolan, all F to start
         self.valid_pairs=valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
@@ -555,19 +558,18 @@ class ATL11_point:
                 break
   
         self.ref_surf.surf_fit_misfit_RMS=RDE(r_fit)   # Robust Dispersion Estimate, half the diff bet the 16th and 84th percentiles of a distribution        
-        self.selected_segments[np.nonzero(self.selected_segments)]=selected_segs #??? what happens to these?
+        self.selected_segments[np.nonzero(self.selected_segments)]=selected_segs 
 
         if self.slope_change_cols.shape[0]>0:
             self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.slope_change_cols.shape[0]+self.repeat_cols]]            
         else:
             self.ref_surf_passes=self.ref_surf_passes[fit_columns[self.poly_cols.shape[0]+self.repeat_cols]]
     
-        # report the selected segments 
+        # report the selected segments ####BEN_FIX_THIS
         selected_pair_out= self.valid_pairs.all.copy()
         selected_pair_out[selected_pair_out==True]=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
         
-        self.valid_pairs.iterative_fit=selected_pair_out
-        
+        self.valid_pairs.iterative_fit=selected_pair_out        
         self.valid_segs.iterative_fit=np.column_stack((self.valid_pairs.iterative_fit, self.valid_pairs.iterative_fit))
         
         if self.DOPLOT is not None and "3D time plot" in self.DOPLOT:
