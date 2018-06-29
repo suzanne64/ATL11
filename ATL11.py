@@ -187,7 +187,7 @@ class ATL11_data:
         return h
         
 class ATL11_point:
-    def __init__(self, N_pairs=1, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12, params_11=None, mission_time_bds=None):
+    def __init__(self, N_pairs=1, ref_pt_number=None, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12, params_11=None, mission_time_bds=None):
         if params_11 is None:        
             self.params_11=ATL11_defaults()
         else:
@@ -197,6 +197,7 @@ class ATL11_point:
         self.N_coeffs=self.params_11.N_coeffs
         self.x_atc_ctr=x_atc_ctr
         self.y_atc_ctr=y_atc_ctr
+        self.ref_pt_number=ref_pt_number
         self.track_azimuth=track_azimuth
         self.z_poly_fit=None
         self.mx_poly_fit=None
@@ -592,7 +593,7 @@ class ATL11_point:
             fig.colorbar(p, label='residual, m')
          
         # separate self.m_full
-        self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)]=self.m_full[self.poly_cols]
+        self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)]=self.m_surf[self.poly_cols]
 
         if self.slope_change_cols.shape[0]>0:
             self.ref_surf.slope_change_rate_x=np.array([self.m_surf[self.poly_cols.shape[0]+self.slope_change_cols[0]]])
