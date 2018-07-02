@@ -28,22 +28,24 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
     
     P11_list=list()
     if ref_pt_numbers is None:
-        # NO: select every nth center        
         first_ref_pt=np.floor(np.nanmin(D6.segment_id.ravel())/seg_number_skip)*seg_number_skip
         ref_pt_numbers=np.arange(first_ref_pt, np.max(D6.segment_id.ravel()), seg_number_skip) 
 
     if num_ref_pts is not None:
         ref_pt_numbers=ref_pt_numbers[0:int(num_ref_pts)]
-    for ref_pt_number in ref_pt_numbers:
+
+    for count, ref_pt_number in enumerate(ref_pt_numbers):
         x_atc_ctr=ref_pt_number*20.
         # section 5.1.1 
         D6_sub=D6.subset(np.any(np.abs(D6.segment_id-ref_pt_number) <= params_11.N_search, axis=1), by_row=True)
-   
+        if D6_sub.h_li.shape[0]<=1:
+            continue
+        
         #2a. define representative x and y values for the pairs
         pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle','h_li'])   # this might go, similar to D6_sub
 
-        P11=ATL11_point(N_pairs=len(pair_data.x), ref_pt_number=ref_pt_number, x_atc_ctr=x_atc_ctr, y_atc_ctr=None, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_reps=len(ATL06_files),  mission_time_bds=mission_time_bds )
-        
+        P11=ATL11_point(N_pairs=len(pair_data.x), ref_pt_number=ref_pt_number, x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_reps=len(ATL06_files),  mission_time_bds=mission_time_bds )
+         
         P11.DOPLOT=DOPLOT
        # step 2: select pairs, based on reasonable slopes
         P11.select_ATL06_pairs(D6_sub, pair_data)
@@ -51,15 +53,19 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
             #print('you have no valid pairs',seg_x_center)
             continue
         P11.select_y_center(D6_sub, pair_data)
-                
+        
         P11.corrected_h.ref_pt_lat,P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[x_atc_ctr,P11.y_atc_ctr])     
 
         P11.find_reference_surface(D6_sub)
+        if 'inversion failed' in P11.status:
+            continue
 
         P11.corr_heights_other_cycles(D6_sub)
 
+ 
         P11_list.append(P11)
-        
+        if np.mod(count, 1)==0:
+            print("completed %d segments, ref_pt_number= %d" %(count, ref_pt_number))    
         
     return P11_list
   
