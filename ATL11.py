@@ -13,13 +13,11 @@ import scipy.sparse as sparse
 from scipy import linalg 
 from scipy import stats
 import time, h5py, re, os
- 
-#import collections
 
 class ATL11_group:
-    # this is a data group for an ATL11 structure        
+    # Class to contain an ATL11 structure
     # in ATL11 groups, some datasets have one value per reference point (per_pt_fields)
-    # some have one value for each refrence point and each cycle (full_fields)
+    # some have one value for each reference point and each cycle (full_fields)
     # some have one value for each point and each polynomial coefficient (poly_fields)
     # all of these are initialized to arrays of the appropriate size, filled with NaNs
 
@@ -78,13 +76,10 @@ class ATL11_data:
                                                    'y_atc_mean','x_atc_mean','pass_included_in_fit','pass_seg_count','strong_beam_number',
                                                    'latitude_mean','longitude_mean','min_signal_selection_source','min_SNR_significance',
                                                    'sigma_geo_h_mean','sigma_geo_at_mean','sigma_geo_xt_mean','h_uncorr_mean'], poly_fields=[])
-        # Table 4-4
+        # Table 4-4, not yet implemented
         #self.crossing_track_data=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
-                                 
-        # this group is used to hold output data attributes                             
-        #self.non_product=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['slope_change_t0'], full_fields=[], poly_fields=['poly_exponent_x','poly_exponent_y'])
         self.slope_change_t0=None
-        
+
     def all_fields(self):
         # return a list of all the fields in an ATL11 instance
         all_vars=[]
@@ -97,43 +92,48 @@ class ATL11_data:
         
     def from_list(self, P11_list):  
         # Assemble an ATL11 data instance from a list of ATL11 points.  
-        # Input: list of ATL11 point instances        
-        di=vars(self)  # a dictionary
-        for group in di.keys():
-            # want the attribute 'list_of_fields' of ATL11_data attribute ATL11_group
-            if hasattr(getattr(self,group),'list_of_fields'):
-                for field in getattr(self, group).per_pt_fields:
-                    temp=np.ndarray(shape=[len(P11_list),],dtype=float)
-                    for ii, P11 in enumerate(P11_list):
-                        if hasattr(getattr(P11,group),field):
-                            if 'ref_pt_number' in field:
-                                temp[ii]=P11.ref_pt_number
-                            else:
-                                temp[ii]=getattr(getattr(P11,group), field)
-                    setattr(getattr(self,group),field,temp)
+        # Input: list of ATL11 point instances
+        # loop over variables in ATL11_data (self)
+        for group in vars(self).keys():
+            # check if each variable is an ATl11 group
+            if  not isinstance(getattr(self,group), ATL11_group):
+                continue
+            for field in getattr(self, group).per_pt_fields:
+                temp=np.ndarray(shape=[len(P11_list),],dtype=float)
+                for ii, P11 in enumerate(P11_list):
+                    if hasattr(getattr(P11,group),field):
+                        if 'ref_pt_number' in field:
+                            temp[ii]=P11.ref_pt_number
+                        else:
+                            temp[ii]=getattr(getattr(P11,group), field)
+                setattr(getattr(self,group),field,temp)
                         
-                for field in getattr(self,group).full_fields:
-                    temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_reps],dtype=float)
-                    for ii, P11 in enumerate(P11_list):
-                        if hasattr(getattr(P11,group),field):
-                            temp[ii,:]=getattr(getattr(P11,group), field)
-                    setattr(getattr(self,group),field,temp)                                    
+            for field in getattr(self,group).full_fields:
+                temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_reps],dtype=float)
+                for ii, P11 in enumerate(P11_list):
+                    if hasattr(getattr(P11,group),field):
+                        temp[ii,:]=getattr(getattr(P11,group), field)
+                setattr(getattr(self,group),field,temp)
                         
-                for field in getattr(self,group).poly_fields:
-                    temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_coeffs],dtype=float)
-                    for ii, P11 in enumerate(P11_list):
-                        if hasattr(getattr(P11,group),field):
-                            temp[ii,:]=getattr(getattr(P11,group), field)
-                    setattr(getattr(self,group),field,temp)
+            for field in getattr(self,group).poly_fields:
+                temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_coeffs],dtype=float)
+                for ii, P11 in enumerate(P11_list):
+                    if hasattr(getattr(P11,group),field):
+                        temp[ii,:]=getattr(getattr(P11,group), field)
+                setattr(getattr(self,group),field,temp)
         self.slope_change_t0=P11_list[0].slope_change_t0                                    
         return self
         
     def write_to_file(self, fileout, params_11=None):
+        # Generic code to write data from an ATL11 object to an h5 file
+        # Input:
+        #   fileout: filename of hdf5 filename to write
+        # Optional input:
+        #   parms_11: ATL11_defaults structure
         if os.path.isfile(fileout):
             os.remove(fileout)
-        # Generic code to write data from an object to an h5 file 
         f = h5py.File(fileout,'w')
-        # set file attributes
+        # This code is based on the filename structure used in our demonstration code.
         m=re.search(r"Pair(.*?).h5",fileout)
         f.attrs['pairTrack']=m.group(1)
         m=re.search(r"Track(.*?)_Pair",fileout)
@@ -141,15 +141,14 @@ class ATL11_data:
         # put default parameters as top level attributes
         if params_11 is None:
             params_11=ATL11_defaults()
-        params_di=vars(params_11)
-        for param in  params_di.keys():
+        # write each variable in params_11 as an attribute
+        for param in  vars(params_11).keys():
             try:
                 f.attrs[param]=getattr(params_11, param)
             except:  
                 print("write_to_file:could not automatically set parameter: %s" % param)
         # write data to file            
-        di=vars(self)  # a dictionary
-        for group in di.keys():
+        for group in vars(self).keys():
             if hasattr(getattr(self,group),'list_of_fields'):
                 grp = f.create_group(group)
                 if 'ref_surf' in group:
@@ -164,6 +163,7 @@ class ATL11_data:
         return
         
     def plot(self):
+        # method to plot the results.  At present, this plots corrected h AFN of x_atc
         n_cycles=self.corrected_h.pass_h_shapecorr.shape[1]
         HR=np.nan+np.zeros((n_cycles, 2))
         h=list()
@@ -187,17 +187,29 @@ class ATL11_data:
         return h
         
 class ATL11_point(ATL11_data):
-    def __init__(self, N_pairs=1, ref_pt_number=None, x_atc_ctr=np.NaN,  y_atc_ctr=np.NaN, track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12, params_11=None, mission_time_bds=None):
-        if params_11 is None:        
+    # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
+    def __init__(self, N_pairs=1, ref_pt_number=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12,  mission_time_bds=None, params_11=None):
+        # input variables:
+        # N_pairs: Number of distinct pairs in the ATL06 data
+        # ref_pt_number: the reference-point number for the ATL11 fit.  This is the geoseg number for the central segment of the fit
+        # x_atc_ctr: the along-track corresponding to ref_pt_number
+        # track_azimuth: the azimuth of the RGT for the ATL11 point
+        # optional parameters:
+        # max_poly_degree: the maximum degree of the along- and across-track polynomials
+        # N_reps: the number of repeats that might appear in the ATL06 data
+        # mission_time_bnds: The start and end of the mission, in delta_time units (seconds)
+        # params_11: ATL11_defaults structure
+
+        if params_11 is None:
             self.params_11=ATL11_defaults()
         else:
             self.params_11=params_11
+        # initialize the data structure using the ATL11_data __init__ method
         ATL11_data.__init__(self,1, N_reps, self.params_11.N_coeffs)
         self.N_pairs=N_pairs
         self.N_reps=N_reps     
         self.N_coeffs=self.params_11.N_coeffs
         self.x_atc_ctr=x_atc_ctr
-        self.y_atc_ctr=y_atc_ctr
         self.ref_pt_number=ref_pt_number
         self.track_azimuth=track_azimuth
         self.z_poly_fit=None
@@ -218,9 +230,11 @@ class ATL11_point(ATL11_data):
         self.ref_surf.rgt_azimuth=track_azimuth
 
     def select_ATL06_pairs(self, D6, pair_data):
-        # based on data-quality flags in ATL06 data, and consistency checks
-        # on the along-track and across-track slope in the data, select the 
-        # highest-quality segments from the input data
+        # Select ATL06 data based on data-quality flags in ATL06 data, and based on
+        # consistency checks on the along-track and across-track slope.
+        # inputs:
+        # D6: ATL06 data structure, containing data from a single RPT as Nx2 arrays
+        # pair_data: ATL06_pair structure
         
         # ATBD section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
@@ -279,7 +293,6 @@ class ATL11_point(ATL11_data):
         my_regression_tol=np.max(0.01, 3*np.median(y_slope_sigma))
 
         for iteration in range(2):
-            # QUESTION: Do we need the "for item in range(2)" loop?  There are already 2 iterations in self.my_poly_fit.fit
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
             self.my_poly_fit=poly_ref_surf(my_regression_x_degree, my_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
             y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
@@ -363,6 +376,11 @@ class ATL11_point(ATL11_data):
         return
         
     def select_y_center(self, D6, pair_data):  #5.1.3
+        # method to select the y_ctr coordinate that allows the maximum number of valid pairs to be included in the fit
+        # inputs:
+        # D6: ATL06 data structure, containing data from a single RPT as Nx2 arrays
+        # pair_data: ATL06_pair structure
+
         cycle=D6.cycle[self.valid_pairs.all,:]
         # find the middle of the range of the selected beams
         y0=(np.min(D6.y_atc[self.valid_pairs.all,:].ravel())+np.max(D6.y_atc[self.valid_pairs.all,:].ravel()))/2
@@ -408,14 +426,14 @@ class ATL11_point(ATL11_data):
         if self.DOPLOT is not None and "valid pair plot" in self.DOPLOT:     
             plt.figure(51);plt.clf()
             plt.plot(np.abs(pair_data.y - self.y_atc_ctr)<self.params_11.L_search_XT[self.valid_pairs.data])
-
         return 
 
-    def find_reference_surface(self, D6, DEBUG=None):  #5.1.4
-
+    def find_reference_surface(self, D6):  #5.1.4
+        # method to calculate the reference surface for a reference point
+        # Input:
+        # D6: ATL06 data structure
         self.corrected_h.quality_summary=np.logical_not(np.logical_and( np.logical_and(self.pass_stats.min_signal_selection_source<=1, self.pass_stats.min_SNR_significance<0.02),self.pass_stats.ATL06_summary_zero_count>0 ))        
         self.ref_surf.complex_surface_flag=0
-
         self.ref_surf.surf_fit_quality_summary=0
         
         # in this section we only consider segments in valid pairs
@@ -694,7 +712,11 @@ class ATL11_point(ATL11_data):
         return 
     
     def corr_heights_other_cycles(self, D6):
-        # find cycles not in ref_surface_passes 
+        # Calculate corrected heights and other parameters for cycles not included in the reference-surface fit
+        # input:
+        #   D6: ATL06 structure
+
+        # The cycles we are working on are the ones not in ref_surf_passes
         other_passes=np.unique(D6.cycle.ravel()[~np.in1d(D6.cycle.ravel(),self.ref_surf_passes)])
         # 1. find cycles not in ref_surface_passes, but have valid_segs.data and valid_segs.x_slope  
         non_ref_segments=np.logical_and(np.in1d(D6.cycle.ravel(),other_passes),np.logical_and(self.valid_segs.data.ravel(),self.valid_segs.x_slope.ravel()))
@@ -778,15 +800,22 @@ class ATL11_point(ATL11_data):
         self.selected_segments=np.logical_or(self.selected_segments,non_ref_segments.reshape(self.valid_pairs.all.shape[0],2))
         
 def gen_inv(self,G,sigma):
+    # calculate the generalized inverse of matrix G
+    # inputs:
+    #  G: (NxM) design matrix with one row per data point and one column per parameter
+    #  sigma: N-vector of per-data-point errors
+    # outputs:
+    #  C_d: Data covariance matrix (NxN, sparse)
+    #  C_di: Inverse of C_d
+    #  G_g: Generalized inverse of G
+
     # 3f. Generate data-covariance matrix
     C_d=sparse.diags(sigma**2)
     C_di=sparse.diags(1/sigma**2)
     G_sq=np.dot(np.dot(np.transpose(G),C_di.toarray()),G)
-            
     G_sqi=linalg.inv(G_sq)
     # calculate the generalized inverse of G
-    G_g=np.dot( np.dot(G_sqi,np.transpose(G)),C_di.toarray() )  
-            
+    G_g=np.dot( np.dot(G_sqi,np.transpose(G)),C_di.toarray() )
     return C_d, C_di, G_g
         
          
