@@ -584,8 +584,10 @@ class ATL11_point(ATL11_data):
         self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)]=m_surf_zp[poly_cols]
 
         if slope_change_cols.shape[0]>0:
-            self.ref_surf.slope_change_rate_x= m_surf_zp[poly_cols[0]] * self.params_11.t_scale
-            self.ref_surf.slope_change_rate_y= m_surf_zp[poly_cols[0]] * self.params_11.t_scale
+            # the slope change rate columns are scaled as delta_t/t_scale, so they should come out in units of
+            # t_scale, or per_year.
+            self.ref_surf.slope_change_rate_x= m_surf_zp[slope_change_cols[0]]  
+            self.ref_surf.slope_change_rate_y= m_surf_zp[slope_change_cols[1]]  
         else:
             self.ref_surf.slope_change_rate_x=np.nan
             self.ref_surf.slope_change_rate_y=np.nan
