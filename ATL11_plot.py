@@ -32,16 +32,16 @@ class ATL11_plot:
         print("this is %d" % this)
         D11=self.P11[this]
         print "x0=%d" % x0[this]
-        rsp=np.flatnonzero(D11.pass_stats.pass_included_in_fit)
+        rsp=np.flatnonzero(D11.cycle_stats.cycle_included_in_fit)
         print "rsp:" 
         print rsp
         plt.sca(self.ax2)
         plt.cla()
-        yy=D11.pass_stats.y_atc_mean.ravel()
-        hh=D11.corrected_h.pass_h_shapecorr.ravel()
-        ss=D11.corrected_h.pass_h_shapecorr_sigma.ravel()
+        yy=D11.cycle_stats.y_atc_mean.ravel()
+        hh=D11.corrected_h.cycle_h_shapecorr.ravel()
+        ss=D11.corrected_h.cycle_h_shapecorr_sigma.ravel()
         plt.errorbar(yy.ravel(), hh.ravel(), ss.ravel(), fmt='o')
-        plt.plot(yy.ravel(), D11.pass_stats.h_uncorr_mean.ravel(), 'kx')
+        plt.plot(yy.ravel(), D11.cycle_stats.h_uncorr_mean.ravel(), 'kx')
 
         
         print("yy.shape is %d" %yy.shape)
@@ -49,10 +49,10 @@ class ATL11_plot:
         plt.plot(yy[rsp], hh[rsp],'r*',markersize =12)
         plt.sca(self.ax3)
         plt.cla()
-        passes=np.arange(yy.size)
-        print passes
-        plt.errorbar(passes.ravel(), hh.ravel(), ss.ravel(), fmt='o')
-        plt.plot(passes[rsp], hh[rsp],'r*', markersize=12)
+        cycles=np.arange(yy.size)
+        print cycles
+        plt.errorbar(cycles.ravel(), hh.ravel(), ss.ravel(), fmt='o')
+        plt.plot(cycles[rsp], hh[rsp],'r*', markersize=12)
         plt.show(block=False)         
         return
               
