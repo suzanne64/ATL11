@@ -761,7 +761,7 @@ class ATL11_point(ATL11_data):
         self.non_ref_surf_passes=np.unique(cycle)
         # section 3.5
         # calculate corrected heights, z_kc, with non selected segs design matrix and surface shape polynomial from selected segments
-        z_kc=h_li - np.dot(G_other,surf_model).ravel()         
+        z_kc=h_li - np.dot(G_other,surf_model[self.surf_mask]).ravel()         
         z_kc_sigma = np.sqrt( np.diag( np.dot(np.dot(G_other,self.C_m_surf),np.transpose(G_other)) ) + h_li_sigma**2 ) # equation 11
          
         # get terms of pass_h_shapecorr_sigma_systematic, equation 12
