@@ -217,6 +217,7 @@ class ATL11_point(ATL11_data):
         self.my_poly_fit=None
         self.ref_surf_slope_x=np.NaN
         self.ref_surf_slope_y=np.NaN
+        self.calc_slope_change=False
         
         if mission_time_bds is None:
             mission_time_bds=np.array([0, N_reps*91*24*3600])
@@ -488,20 +489,27 @@ class ATL11_point(ATL11_data):
         # 3d. build the fitting matrix
         delta_time=D6.delta_time[self.valid_pairs.all,:].ravel()
 
+        # TOC is a table-of-contents dict identifying the meaning of the columns 
+        # of G_surf_zp_original
+        TOC=dict()
         if self.slope_change_t0/self.params_11.t_scale > 1.5/2.:
+            self.calc_slope_change=True
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
             G_surf_zp_original=np.concatenate( (S_fit_poly,S_fit_slope_change,G_zp.toarray()),axis=1 ) # G = [S St D]
-            poly_cols=np.arange(S_fit_poly.shape[1])
-            slope_change_cols=poly_cols[-1]+1+np.arange(S_fit_slope_change.shape[1])
-            zp_cols=slope_change_cols[-1]+1+np.arange(G_zp.toarray().shape[1])
+            TOC['poly']=np.arange(S_fit_poly.shape[1])
+            TOC['slope_change']=TOC['poly'][-1]+1+np.arange(S_fit_slope_change.shape[1])
+            TOC['zp']=TOC['slope_change'][-1]+1+np.arange(G_zp.toarray().shape[1])
         else:
             G_surf_zp_original=np.concatenate( (S_fit_poly,G_zp.toarray()),axis=1 ) # G = [S D]
-            poly_cols=np.arange(S_fit_poly.shape[1])
-            slope_change_cols=np.array([])
-            zp_cols=poly_cols[-1]+1+np.arange(G_zp.toarray().shape[1])
-            
+            TOC['poly']=np.arange(S_fit_poly.shape[1])
+            TOC['slope_change']=np.array([])
+            TOC['zp']=TOC['poly'][-1]+1+np.arange(G_zp.toarray().shape[1])
+        TOC['surf']=np.concatenate((TOC['poly'], TOC['slope_change']), axis=0)
+        
+        # fit_columns is a boolean array identifying those columns of zp_original 
+        # that survive the fitting process
         fit_columns=np.ones(G_surf_zp_original.shape[1],dtype=bool)
 
         # reduce these variables to the segments of the valid pairs only
@@ -514,28 +522,36 @@ class ATL11_point(ATL11_data):
             # 3e. If more than one repeat is present, subset 
             #fitting matrix, to include columns that are not uniform
             if self.ref_surf_passes.size > 1:
-                for c in range(G.shape[1]-1,-1,-1):   # check last col first, do in reverse order
-                    if np.all(G[:,c]==G[0,c]):
-                        fit_columns[c]=False
-                # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
-                if np.sum(np.logical_not(fit_columns[zp_cols])) > 2:
-                    self.ref_surf.complex_surface_flag=1
-                    # use all segments from the original G_surf     
-                    G=G_surf_zp_original
-                    selected_segs=np.ones( (np.sum(self.valid_pairs.all)*2),dtype=bool)      
-                    # use only the linear poly columns
-                    fit_columns[poly_cols[self.degree_list_x+self.degree_list_y>1]]=False
-                G=G[:, fit_columns]
+                columns_to_check=range(G.shape[1]-1,-1,-1)
             else:
+                #Otherwise, check only the surface columns
+                columns_to_check=range(TOC['zp'][0]-1, -1, -1)
                 self.ref_surf.surf_fit_quality_summary=1
+            for c in columns_to_check:   # check last col first, do in reverse order
+                if np.max(np.abs(G[:,c]-G[0,c])) < 0.0001:
+                        fit_columns[c]=False
+            # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
+            if np.sum(np.logical_not(fit_columns[TOC['zp']])) > 2:
+                self.ref_surf.complex_surface_flag=1
+                # use all segments from the original G_surf     
+                G=G_surf_zp_original
+                selected_segs=np.ones( (np.sum(self.valid_pairs.all)*2),dtype=bool)      
+                # use only the linear poly columns
+                fit_columns[TOC['poly'][self.degree_list_x+self.degree_list_y>1]]=False
+            G=G[:, fit_columns]
+            if G.shape[0] < G.shape[1]:
+                self.status['inversion failed']=True
+                return
 
-            # 3f. generate the data-covariance matrix
-            # 3g. equation 7
+            # 3f, 3g. generate the data-covariance matrix, its inverse, and 
+            # the generalized inverse of G
             C_d, C_di, G_g = gen_inv(self,G,h_li_sigma[selected_segs])
                         
-            # inititalize the combined surface and pass-height model 
+            # inititalize the combined surface and pass-height model, m_surf_zp 
             m_surf_zp=np.zeros(np.size(G_surf_zp_original,1))            
-            z=h_li[selected_segs]            
+            z=h_li[selected_segs]
+            # fill in the columns of m_surf_zp for which we are calculating values
+            # the rest are zero            
             m_surf_zp[fit_columns]=np.dot(G_g,z)  
 
             # 3h. Calculate model residuals for all segments
@@ -571,7 +587,7 @@ class ATL11_point(ATL11_data):
         self.ref_surf.surf_fit_misfit_RMS=RDE(r_fit)   # Robust Dispersion Estimate, half the diff bet the 16th and 84th percentiles of a distribution        
         self.selected_segments[np.nonzero(self.selected_segments)]=selected_segs #??? should this be valid.iterative_fit???
         # identify the ref_surf passes that survived the fit         
-        self.ref_surf_passes=self.ref_surf_passes[fit_columns[zp_cols]]            
+        self.ref_surf_passes=self.ref_surf_passes[fit_columns[TOC['zp']]]            
         
         # report the selected segments ####BEN_FIX_THIS???
         selected_pair_out= self.valid_pairs.all.copy()
@@ -580,14 +596,15 @@ class ATL11_point(ATL11_data):
         self.valid_pairs.iterative_fit=selected_pair_out        
         self.valid_segs.iterative_fit=np.column_stack((self.valid_pairs.iterative_fit, self.valid_pairs.iterative_fit))
  
-        # take apart m_surf_zp
-        self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)]=m_surf_zp[poly_cols]
+        # write the polynomial components in m_surf_zp to the appropriate columns of 
+        # self.ref_surf_poly_coeffs
+        self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)]=m_surf_zp[TOC['poly']]
 
-        if slope_change_cols.shape[0]>0:
+        if self.calc_slope_change:
             # the slope change rate columns are scaled as delta_t/t_scale, so they should come out in units of
             # t_scale, or per_year.
-            self.ref_surf.slope_change_rate_x= m_surf_zp[slope_change_cols[0]]  
-            self.ref_surf.slope_change_rate_y= m_surf_zp[slope_change_cols[1]]  
+            self.ref_surf.slope_change_rate_x= m_surf_zp[TOC['slope_change'][0]]  
+            self.ref_surf.slope_change_rate_y= m_surf_zp[TOC['slope_change'][1]]  
         else:
             self.ref_surf.slope_change_rate_x=np.nan
             self.ref_surf.slope_change_rate_y=np.nan
@@ -599,8 +616,8 @@ class ATL11_point(ATL11_data):
         
         # write out the corrected h values
         pass_ind=np.zeros(m_surf_zp.shape, dtype=int)-1
-        pass_ind[zp_cols]=np.arange(zp_cols.size, dtype=int)
-        zp_mask=zp_cols[fit_columns[zp_cols]]        
+        pass_ind[TOC['zp']]=np.arange(TOC['zp'].size, dtype=int)
+        zp_mask=TOC['zp'][fit_columns[TOC['zp']]]        
         self.corrected_h.pass_h_shapecorr[0,pass_ind[zp_mask]]=m_surf_zp[zp_mask]
       
         # get the square of pass_h_shapecorr_sigma_systematic, equation 12
@@ -644,17 +661,19 @@ class ATL11_point(ATL11_data):
         m_surf_zp_sigma=np.zeros_like(m_surf_zp)+np.nan
         m_surf_zp_sigma[fit_columns]=np.sqrt(C_m.diagonal())
         
-        # identify the surface-model columns that were included in the fit
-        self.surf_mask=np.concatenate((poly_cols, slope_change_cols), axis=0)
-        self.surf_mask=self.surf_mask[fit_columns[self.surf_mask]]
+        # identify which of the columns that were included in the fit belong to the surface model
+        surf_mask=np.arange(np.sum(fit_columns[TOC['surf']]))
         # write out the part of the covariance matrix corresponding to the surface model   
-        self.C_m_surf=C_m[self.surf_mask,:][:,self.surf_mask]
-                
+        self.C_m_surf=C_m[surf_mask,:][:,surf_mask]
+        # export the indices of the columns that represent the surface components
+        self.surf_mask=np.flatnonzero(fit_columns[TOC['surf']])
+        
+
         # write out the errors to the data parameters
-        self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)]=m_surf_zp_sigma[poly_cols]
-        if slope_change_cols.size>0:          
-            self.ref_surf.slope_change_rate_x_sigma=m_surf_zp_sigma[ slope_change_cols[0]] * self.params_11.t_scale
-            self.ref_surf.slope_change_rate_y_sigma=m_surf_zp_sigma[ slope_change_cols[1]] * self.params_11.t_scale
+        self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)]=m_surf_zp_sigma[TOC['poly']]
+        if self.calc_slope_change:          
+            self.ref_surf.slope_change_rate_x_sigma=m_surf_zp_sigma[ TOC['slope_change'][0]] 
+            self.ref_surf.slope_change_rate_y_sigma=m_surf_zp_sigma[ TOC['slope_change'][1]] 
         else:
             self.ref_surf.slope_change_rate_x_sigma= np.nan
             self.ref_surf.slope_change_rate_y_sigma= np.nan
@@ -741,7 +760,7 @@ class ATL11_point(ATL11_data):
                 y_term=( (y_atc[jj]-self.y_atc_ctr)/self.params_11.xy_scale )**self.degree_list_y[ii]
                 S_fit_poly[jj,ii]=x_term*y_term            
 
-        if np.isfinite(self.ref_surf.slope_change_rate_x):
+        if self.calc_slope_change:
             delta_time=D6.delta_time.ravel()[non_ref_segments]
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
