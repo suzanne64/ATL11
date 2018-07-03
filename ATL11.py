@@ -478,13 +478,8 @@ class ATL11_point(ATL11_data):
         # 3b. define polynomial matrix
         x_atc=D6.x_atc[self.valid_pairs.all,:].ravel()
         y_atc=D6.y_atc[self.valid_pairs.all,:].ravel()
-        S_fit_poly=np.zeros((len(x_atc),len(self.degree_list_x)),dtype=float)
-        for jj in range(len(x_atc)):
-            for ii in range(len(self.degree_list_x)):
-                x_term=( (x_atc[jj]-self.x_atc_ctr)/self.params_11.xy_scale )**self.degree_list_x[ii]
-                y_term=( (y_atc[jj]-self.y_atc_ctr)/self.params_11.xy_scale )**self.degree_list_y[ii]
-                S_fit_poly[jj,ii]=x_term*y_term                
-            
+        S_fit_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
+        
         # 3c. define slope-change matrix 
         # 3d. build the fitting matrix
         delta_time=D6.delta_time[self.valid_pairs.all,:].ravel()
@@ -756,12 +751,7 @@ class ATL11_point(ATL11_data):
         # 2. build design matrix, G_other, for non selected segments (poly and slope-change parts only)
         x_atc=D6.x_atc.ravel()[non_ref_segments]
         y_atc=D6.y_atc.ravel()[non_ref_segments]
-        S_fit_poly=np.zeros((len(x_atc),len(self.degree_list_x)),dtype=float)
-        for jj in range(len(x_atc)):
-            for ii in range(len(self.degree_list_x)):
-                x_term=( (x_atc[jj]-self.x_atc_ctr)/self.params_11.xy_scale )**self.degree_list_x[ii]
-                y_term=( (y_atc[jj]-self.y_atc_ctr)/self.params_11.xy_scale )**self.degree_list_y[ii]
-                S_fit_poly[jj,ii]=x_term*y_term            
+        S_fit_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
 
         if self.calc_slope_change:
             delta_time=D6.delta_time.ravel()[non_ref_segments]
