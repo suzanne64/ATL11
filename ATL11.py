@@ -67,7 +67,7 @@ class ATL11_data:
         self.ref_surf=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','fit_curvature','fit_E_slope','fit_N_slope','n_deg_x','n_deg_y',
                                                                               'N_cycle_avail','N_cycle_used','ref_pt_number','ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth',
                                                                               'slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma',
-                                                                              'surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'],
+                                                                              'surf_fit_misfit_chi2r','surf_fit_misfit_RMS','surf_fit_quality_summary'],
                                     full_fields=[], poly_fields=['poly_coeffs','poly_coeffs_sigma'])
         # Table 4-3
         self.cycle_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_number'],
@@ -561,12 +561,12 @@ class ATL11_point(ATL11_data):
             # 3i. Calculate the fitting tolerance, 
             r_tol = 3*RDE(r_fit/h_li_sigma[selected_segs])
             # reduce chi-squared value
-            self.ref_surf.surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),C_di.toarray()),r_fit)
+            surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),C_di.toarray()),r_fit)
 
             # calculate P value
             n_cols=np.sum(fit_columns)
             n_rows=np.sum(selected_segs)
-            P = 1 - stats.chi2.cdf(self.ref_surf.surf_fit_misfit_chi2, n_rows-n_cols)
+            P = 1 - stats.chi2.cdf(surf_fit_misfit_chi2, n_rows-n_cols)
             
             if self.ref_surf.complex_surface_flag==1:
                 break
@@ -583,7 +583,10 @@ class ATL11_point(ATL11_data):
             selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
             if P>0.025:
                 break
-  
+        if (n_rows-n_cols)>0:
+            self.ref_surf.surf_fit_misfit_chi2r=surf_fit_misfit_chi2/(n_rows-n_cols)
+        else:
+            self.ref_surf.surf_fit_misfit_chi2r=np.NaN
         self.ref_surf.surf_fit_misfit_RMS=RDE(r_fit)   # Robust Dispersion Estimate, half the diff bet the 16th and 84th percentiles of a distribution        
         self.selected_segments[np.nonzero(self.selected_segments)]=selected_segs #??? should this be valid.iterative_fit???
         # identify the ref_surf cycles that survived the fit         
