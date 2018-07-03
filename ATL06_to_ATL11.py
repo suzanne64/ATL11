@@ -3,8 +3,6 @@ import numpy as np
 from ATL06_data import ATL06_data
 
 from ATL11 import ATL11_data, ATL11_point, ATL11_defaults
-import matplotlib.pyplot as plt 
-import time
 
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -28,14 +26,19 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
     
     P11_list=list()
     if ref_pt_numbers is None:
-        first_ref_pt=np.floor(np.nanmin(D6.segment_id.ravel())/seg_number_skip)*seg_number_skip
-        ref_pt_numbers=np.arange(first_ref_pt, np.max(D6.segment_id.ravel()), seg_number_skip) 
-
+        uId, iId=np.unique(D6.segment_id.ravel(), return_index=True)
+        ctrSegs=np.mod(uId, seg_number_skip)==0
+        ref_pt_numbers=uId[ctrSegs]
+        ref_pt_x=D6.x_atc.ravel()[iId[ctrSegs]]
+    else:
+        ref_pt_x=ref_pt_numbers*20
+        
     if num_ref_pts is not None:
         ref_pt_numbers=ref_pt_numbers[0:int(num_ref_pts)]
+        ref_pt_x=ref_pt_x[0:int(num_ref_pts)]
 
     for count, ref_pt_number in enumerate(ref_pt_numbers):
-        x_atc_ctr=ref_pt_number*20.
+        x_atc_ctr=ref_pt_x[count]
         # section 5.1.1 
         D6_sub=D6.subset(np.any(np.abs(D6.segment_id-ref_pt_number) <= params_11.N_search, axis=1), by_row=True)
         if D6_sub.h_li.shape[0]<=1:
@@ -64,7 +67,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
 
  
         P11_list.append(P11)
-        if np.mod(count, 1)==0:
+        if np.mod(count, 1)==100:
             print("completed %d segments, ref_pt_number= %d" %(count, ref_pt_number))    
         
     return P11_list

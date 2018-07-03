@@ -14,7 +14,7 @@ from scipy import linalg
 from scipy import stats
 import time, h5py, re, os
 
-class ATL11_group:
+class ATL11_group(object):
     # Class to contain an ATL11 structure
     # in ATL11 groups, some datasets have one value per reference point (per_pt_fields)
     # some have one value for each reference point and each cycle (full_fields)
@@ -53,7 +53,7 @@ class valid_mask:
         for field in fields:
             setattr(self, field, np.zeros(dims, dtype='bool'))
 
-class ATL11_data:
+class ATL11_data(object):
     # class to hold ATL11 data in ATL11_groups
     def __init__(self, N_ref_pts, N_reps, N_coeffs=9):
         self.Data=[]
@@ -67,7 +67,7 @@ class ATL11_data:
         self.ref_surf=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','fit_curvature','fit_E_slope','fit_N_slope','n_deg_x','n_deg_y',
                                                                               'N_cycle_avail','N_cycle_used','ref_pt_number','ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth',
                                                                               'slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma',
-                                                                              'surf_fit_misfit_chi2','surf_fit_misfit_RMS','surf_fit_quality_summary'],
+                                                                              'surf_fit_misfit_chi2r','surf_fit_misfit_RMS','surf_fit_quality_summary'],
                                     full_fields=[], poly_fields=['poly_coeffs','poly_coeffs_sigma'])
         # Table 4-3
         self.cycle_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_number'],
@@ -295,7 +295,7 @@ class ATL11_point(ATL11_data):
 
         for iteration in range(2):
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
-            self.my_poly_fit=poly_ref_surf(my_regression_x_degree, my_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
+            self.my_poly_fit=poly_ref_surf(degree_xy=(my_regression_x_degree, my_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr)) 
             y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
             # update what is valid based on regression flag
             self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=y_slope_valid_flag                #re-establish pairs_valid for y fit
@@ -337,7 +337,7 @@ class ATL11_point(ATL11_data):
         mx_regression_tol=np.maximum(0.01, 3*np.median(D6.dh_fit_dx_sigma[pairs_valid_for_x_fit,:].flatten())) 
         for iteration in range(2):
             # 4d: regression of along-track slope against x_pair and y_pair
-            self.mx_poly_fit=poly_ref_surf(mx_regression_x_degree, mx_regression_y_degree, self.x_atc_ctr, self.y_polyfit_ctr) 
+            self.mx_poly_fit=poly_ref_surf(degree_xy=(mx_regression_x_degree, mx_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr)) 
             if np.sum(pairs_valid_for_x_fit)>0:
                 x_slope_model, x_slope_resid,  x_slope_chi2r, x_slope_valid_flag=self.mx_poly_fit.fit(D6.x_atc[pairs_valid_for_x_fit,:].ravel(), D6.y_atc[pairs_valid_for_x_fit,:].ravel(), D6.dh_fit_dx[pairs_valid_for_x_fit,:].ravel(), max_iterations=1, min_sigma=mx_regression_tol)
                 # update what is valid based on regression flag
@@ -478,13 +478,8 @@ class ATL11_point(ATL11_data):
         # 3b. define polynomial matrix
         x_atc=D6.x_atc[self.valid_pairs.all,:].ravel()
         y_atc=D6.y_atc[self.valid_pairs.all,:].ravel()
-        S_fit_poly=np.zeros((len(x_atc),len(self.degree_list_x)),dtype=float)
-        for jj in range(len(x_atc)):
-            for ii in range(len(self.degree_list_x)):
-                x_term=( (x_atc[jj]-self.x_atc_ctr)/self.params_11.xy_scale )**self.degree_list_x[ii]
-                y_term=( (y_atc[jj]-self.y_atc_ctr)/self.params_11.xy_scale )**self.degree_list_y[ii]
-                S_fit_poly[jj,ii]=x_term*y_term                
-            
+        S_fit_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
+        
         # 3c. define slope-change matrix 
         # 3d. build the fitting matrix
         delta_time=D6.delta_time[self.valid_pairs.all,:].ravel()
@@ -561,12 +556,12 @@ class ATL11_point(ATL11_data):
             # 3i. Calculate the fitting tolerance, 
             r_tol = 3*RDE(r_fit/h_li_sigma[selected_segs])
             # reduce chi-squared value
-            self.ref_surf.surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),C_di.toarray()),r_fit)
+            surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),C_di.toarray()),r_fit)
 
             # calculate P value
             n_cols=np.sum(fit_columns)
             n_rows=np.sum(selected_segs)
-            P = 1 - stats.chi2.cdf(self.ref_surf.surf_fit_misfit_chi2, n_rows-n_cols)
+            P = 1 - stats.chi2.cdf(surf_fit_misfit_chi2, n_rows-n_cols)
             
             if self.ref_surf.complex_surface_flag==1:
                 break
@@ -583,7 +578,10 @@ class ATL11_point(ATL11_data):
             selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
             if P>0.025:
                 break
-  
+        if (n_rows-n_cols)>0:
+            self.ref_surf.surf_fit_misfit_chi2r=surf_fit_misfit_chi2/(n_rows-n_cols)
+        else:
+            self.ref_surf.surf_fit_misfit_chi2r=np.NaN
         self.ref_surf.surf_fit_misfit_RMS=RDE(r_fit)   # Robust Dispersion Estimate, half the diff bet the 16th and 84th percentiles of a distribution        
         self.selected_segments[np.nonzero(self.selected_segments)]=selected_segs #??? should this be valid.iterative_fit???
         # identify the ref_surf cycles that survived the fit         
@@ -754,12 +752,7 @@ class ATL11_point(ATL11_data):
         # 2. build design matrix, G_other, for non selected segments (poly and slope-change parts only)
         x_atc=D6.x_atc.ravel()[non_ref_segments]
         y_atc=D6.y_atc.ravel()[non_ref_segments]
-        S_fit_poly=np.zeros((len(x_atc),len(self.degree_list_x)),dtype=float)
-        for jj in range(len(x_atc)):
-            for ii in range(len(self.degree_list_x)):
-                x_term=( (x_atc[jj]-self.x_atc_ctr)/self.params_11.xy_scale )**self.degree_list_x[ii]
-                y_term=( (y_atc[jj]-self.y_atc_ctr)/self.params_11.xy_scale )**self.degree_list_y[ii]
-                S_fit_poly[jj,ii]=x_term*y_term            
+        S_fit_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
 
         if self.calc_slope_change:
             delta_time=D6.delta_time.ravel()[non_ref_segments]

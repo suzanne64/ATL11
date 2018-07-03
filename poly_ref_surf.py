@@ -14,23 +14,25 @@ import scipy.sparse.linalg as sps_linalg
 from RDE import RDE
 
 
-class poly_ref_surf:
-    def __init__(self, degree_x, degree_y, x0, y0, skip_constant=False, xy_scale=1.0):  
-        self.degree_x=degree_x  # degree_x is 'of the regression', ie 0=constant, 1=linear
-        self.degree_y=degree_y
-        self.x0=x0
-        self.y0=y0
-        poly_exp_x, poly_exp_y=np.meshgrid(np.arange(0, self.degree_x+1), np.arange(0, self.degree_y+1))
-        temp=np.asarray(list(set(zip(poly_exp_x.ravel(), poly_exp_y.ravel()))))  # makes one array out of two
-        # sort the coefficients by x degree, then by y degree
-        temp=temp[np.sum(temp, axis=1)<=np.maximum(self.degree_x, self.degree_y),:];   # want no non-linear
-        # if the skip_constant option is chosen, eliminate the constant term        
-        if skip_constant:
-            temp=temp[np.all(temp>0, axis=1)]
-        # sort the exponents first by x, then by y    
-        temp=temp[(temp[:,0]+temp[:,1]/(temp.shape[0]+1.)).argsort()]  # orders the array: 0,0  0,1  1,0
-        self.exp_x=temp[:,0]  # [0,0,1]
-        self.exp_y=temp[:,1]  # [0,1,0]
+class poly_ref_surf(object):
+    def __init__(self, degree_xy=None, exp_xy=None, xy0=[0,0], skip_constant=False, xy_scale=1.0):  
+        self.x0=xy0[0]
+        self.y0=xy0[1]
+        if degree_xy is not None:
+            poly_exp_x, poly_exp_y=np.meshgrid(np.arange(0, degree_xy[0]+1), np.arange(0, degree_xy[1]+1))
+            temp=np.asarray(list(set(zip(poly_exp_x.ravel(), poly_exp_y.ravel()))))  # makes one array out of two
+            # Remove exponents with exp_x+exp_y larger that max(exp_x, exp_y)
+            temp=temp[np.sum(temp, axis=1)<=np.array(degree_xy).max(),:];    
+            # if the skip_constant option is chosen, eliminate the constant term        
+            if skip_constant:
+                temp=temp[np.all(temp>0, axis=1)]
+            # sort the exponents first by x, then by y    
+            temp=temp[(temp[:,0]+temp[:,1]/(temp.shape[0]+1.)).argsort()]  # orders the array: 0,0  0,1  1,0
+            self.exp_x=temp[:,0]  # [0,0,1]
+            self.exp_y=temp[:,1]  # [0,1,0]
+        if exp_xy is not None:
+            self.exp_x=np.array(exp_xy[0]).ravel()
+            self.exp_y=np.array(exp_xy[1]).ravel()
         # establish arrays for fitting
         self.poly_vals=np.NaN+np.zeros(self.exp_x.shape)
         self.model_cov_matrix=None
@@ -48,8 +50,7 @@ class poly_ref_surf:
         z.shape=x0.shape
         return z
     def fit(self, xd, yd, zd, sigma_d=None, max_iterations=1, min_sigma=0):
-        
-        
+             
         # asign poly_vals and cov_matrix with a linear fit to zd at points xd, yd
         # build the design matrix:      
         G=self.fit_matrix(xd, yd)
