@@ -14,7 +14,7 @@ from scipy import linalg
 from scipy import stats
 import time, h5py, re, os
 
-class ATL11_group:
+class ATL11_group(object):
     # Class to contain an ATL11 structure
     # in ATL11 groups, some datasets have one value per reference point (per_pt_fields)
     # some have one value for each reference point and each cycle (full_fields)
@@ -53,7 +53,7 @@ class valid_mask:
         for field in fields:
             setattr(self, field, np.zeros(dims, dtype='bool'))
 
-class ATL11_data:
+class ATL11_data(object):
     # class to hold ATL11 data in ATL11_groups
     def __init__(self, N_ref_pts, N_reps, N_coeffs=9):
         self.Data=[]
