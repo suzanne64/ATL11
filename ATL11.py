@@ -153,7 +153,7 @@ class ATL11_data:
                 grp = f.create_group(group)
                 if 'ref_surf' in group:
                     grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
-                    grp.attrs['poly_exponent_y']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int) 
+                    grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int) 
                     grp.attrs['slope_change_t0'] =np.mean(self.slope_change_t0).astype('int')
                 list_vars=getattr(self,group).list_of_fields
                 if list_vars is not None:
@@ -634,7 +634,8 @@ class ATL11_point(ATL11_data):
             for dataset in ('latitude','longitude','x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','h_robust_spread','h_rms_misft'):
                 mean_dataset=dataset+'_mean';
                 self.cycle_stats.__dict__[mean_dataset][0,cc-1]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
-               
+            self.cycle_stats.h_uncorr_mean[0,cc-1]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs]) 
+            
             # root mean weighted square:
             for dataset in ( 'sigma_geo_h','sigma_geo_at','sigma_geo_xt'):
                 mean_dataset=dataset+'_mean';
