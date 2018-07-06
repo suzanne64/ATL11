@@ -12,7 +12,7 @@ from RDE import RDE
 import scipy.sparse as sparse
 from scipy import linalg 
 from scipy import stats
-import time, h5py, re, os
+import time, h5py, re, os, csv, codecs
 
 class ATL11_group(object):
     # Class to contain an ATL11 structure
@@ -73,7 +73,7 @@ class ATL11_data(object):
         self.cycle_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_number'],
                                       full_fields=['ATL06_summary_zero_count','h_robust_spread_mean','h_rms_misft_mean','r_eff_mean','tide_ocean_mean',
                                                    'cloud_flg_atm_best','cloud_flg_asr_best','bsnow_h_mean','bsnow_conf_best',
-                                                   'y_atc_mean','x_atc_mean','cycle_included_in_fit','cycle_seg_count','strong_beam_number',
+                                                   'x_atc_mean','y_atc_mean','cycle_included_in_fit','cycle_seg_count','strong_beam_number',
                                                    'latitude_mean','longitude_mean','min_signal_selection_source','min_SNR_significance',
                                                    'sigma_geo_h_mean','sigma_geo_at_mean','sigma_geo_xt_mean','h_uncorr_mean'], poly_fields=[])
         # Table 4-4, not yet implemented
@@ -147,6 +147,27 @@ class ATL11_data(object):
                 f.attrs[param]=getattr(params_11, param)
             except:  
                 print("write_to_file:could not automatically set parameter: %s" % param)
+                
+#        with open('ATL11_output_attrs.csv') as infile:
+#            reader = csv.DictReader(codecs.EncodedFile(infile,'utf-8-sig','utf8'), delimiter=';')
+#            rs = csv.DictReader(codecs.open('ATL11_output_attrs.csv','r','utf-8'))
+#            for r in rs:
+#                print(r)
+##        attrfile=csv.DictReader(open('ATL11_output_attrs.csv','r',encoding='utf-8-sig'))   
+##        var_attrs={}
+#            for row in reader:
+#                print(row)
+#        print(var_attrs['ref_pt_lat'])
+        
+#       var_attrs={}  
+        with open('ATL11_output_attrs.csv','r') as attrfile:
+            reader=csv.DictReader(attrfile)
+            for row in reader:
+                print(row['field'])
+#                var_attrs
+#            results = dict(reader)
+#        print(results)
+        
         # write data to file            
         for group in vars(self).keys():
             if hasattr(getattr(self,group),'list_of_fields'):
