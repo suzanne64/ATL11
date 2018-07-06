@@ -641,4 +641,23 @@ class ATL11_point(ATL11_data):
                 self.segment_id_by_cycle.append(np.array([]))
 
         self.selected_segments=np.logical_or(self.selected_segments,non_ref_segments.reshape(self.valid_pairs.all.shape[0],2))
- 
+
+
+def gen_inv(self,G,sigma):
+    # calculate the generalized inverse of matrix G
+    # inputs:
+    #  G: (NxM) design matrix with one row per data point and one column per parameter
+    #  sigma: N-vector of per-data-point errors
+    # outputs:
+    #  C_d: Data covariance matrix (NxN, sparse)
+    #  C_di: Inverse of C_d
+    #  G_g: Generalized inverse of G
+
+    # 3f. Generate data-covariance matrix
+    C_d=sparse.diags(sigma**2)
+    C_di=sparse.diags(1/sigma**2)
+    G_sq=np.dot(np.dot(np.transpose(G),C_di.toarray()),G)
+    G_sqi=linalg.inv(G_sq)
+    # calculate the generalized inverse of G
+    G_g=np.dot( np.dot(G_sqi,np.transpose(G)),C_di.toarray() )
+    return C_d, C_di, G_g
