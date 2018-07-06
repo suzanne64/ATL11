@@ -12,7 +12,9 @@ from RDE import RDE
 import scipy.sparse as sparse
 from scipy import linalg 
 from scipy import stats
-import time, h5py, re, os, csv, codecs
+from ATL11_data import ATL11_data
+from ATL11_data import valid_mask
+from ATL11_misc import ATL11_defaults
  
 class ATL11_point(ATL11_data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data

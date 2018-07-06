@@ -6,13 +6,10 @@ Created on Thu Oct 26 11:08:33 2017f
 """
 
 import numpy as np
-from poly_ref_surf import poly_ref_surf
 import matplotlib.pyplot as plt 
-from RDE import RDE
-import scipy.sparse as sparse
-from scipy import linalg 
-from scipy import stats
-import time, h5py, re, os, csv, codecs
+import h5py, re, os, csv 
+from ATL11_misc import ATL11_defaults
+
 
 class ATL11_group(object):
     # Class to contain an ATL11 structure

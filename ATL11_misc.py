@@ -6,14 +6,7 @@ Created on Thu Oct 26 11:08:33 2017f
 """
 
 import numpy as np
-from poly_ref_surf import poly_ref_surf
-import matplotlib.pyplot as plt 
-from RDE import RDE
-import scipy.sparse as sparse
-from scipy import linalg 
-from scipy import stats
-import time, h5py, re, os, csv, codecs       
-  
+
          
 class ATL11_defaults:
     def __init__(self):
