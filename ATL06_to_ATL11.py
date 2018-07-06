@@ -1,8 +1,8 @@
 import numpy as np
-
 from ATL06_data import ATL06_data
+from ATL11_point import ATL11_point, 
+from ATL11_misc import ATL11_defaults
 
-from ATL11 import ATL11_data, ATL11_point, ATL11_defaults
 
 from mpl_toolkits.mplot3d import Axes3D
 
