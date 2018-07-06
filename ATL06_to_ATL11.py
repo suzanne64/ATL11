@@ -1,6 +1,6 @@
 import numpy as np
 from ATL06_data import ATL06_data
-from ATL11_point import ATL11_point, 
+from ATL11_point import ATL11_point 
 from ATL11_misc import ATL11_defaults
 
 
