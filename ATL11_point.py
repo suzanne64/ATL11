@@ -53,7 +53,7 @@ class ATL11_point(ATL11_data):
             mission_time_bds=np.array([0, N_reps*91*24*3600])
         self.slope_change_t0=mission_time_bds[0]+0.5*(mission_time_bds[1]-mission_time_bds[0])
         self.mission_time_bds=mission_time_bds
-        self.valid_segs =valid_mask((N_pairs,2),  ('data','x_slope','y_slope' ))  #  2 cols, boolan, all F to start
+        self.valid_segs =valid_mask((N_pairs,2), ('data','x_slope','y_slope' ))  #  2 cols, boolan, all F to start
         self.valid_pairs=valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.status=dict()
@@ -304,7 +304,7 @@ class ATL11_point(ATL11_data):
         #print(self.degree_list_x,self.degree_list_x.shape)
         self.degree_list_x = degree_x[self.poly_mask]
         self.degree_list_y = degree_y[self.poly_mask]
-
+        #print(self.degree_list_x,self.degree_list_x+self.degree_list_y)
         # 3b. define polynomial matrix
         x_atc=D6.x_atc[self.valid_pairs.all,:].ravel()
         y_atc=D6.y_atc[self.valid_pairs.all,:].ravel()

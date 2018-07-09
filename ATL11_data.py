@@ -56,6 +56,15 @@ class ATL11_data(object):
         self.Data=[]
         self.DOPLOT=None
         # define empty records here based on ATL11 ATBD
+        # read in parameters information in .csv
+        with open('ATL11_output_attrs_reps.csv','r') as attrfile:
+            reader=csv.DictReader(attrfile)  # must save excel file with format: Comma Separated Values (.csv) 
+            # get group names
+            grp_names=list(set([row['group'] for row in reader]))
+            for item in grp_names:
+                print(item)
+                #print(row['field'] for item in row['group'] in reader)
+            
         # Table 4-1
         self.corrected_h=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
                                        full_fields=['mean_cycle_time','cycle_h_shapecorr','cycle_h_shapecorr_sigma','cycle_h_shapecorr_sigma_systematic','quality_summary'],
@@ -147,8 +156,8 @@ class ATL11_data(object):
                 
         # put attrubutes into dict, where parameters from Tables 4- in ATBD are keys      
         with open('ATL11_output_attrs.csv','r') as attrfile:
-            reader=csv.DictReader(attrfile)  # must save exccel file with format: Comma Separated Values (.csv) 
-            attrs_list=[x for x in reader.fieldnames if x != 'field']
+            reader=csv.DictReader(attrfile)  # must save excel file with format: Comma Separated Values (.csv) 
+            attrs_list=[x for x in reader.fieldnames if x != 'field' and x != 'group']
             field_attrs={row['field']: {attrs_list[ii]:row[attrs_list[ii]] for ii in range(len(attrs_list))}  for row in reader}
 
         # write data to file            
