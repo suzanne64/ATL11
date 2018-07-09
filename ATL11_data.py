@@ -52,9 +52,10 @@ class valid_mask:
 
 class ATL11_data(object):
     # class to hold ATL11 data in ATL11_groups
-    def __init__(self, N_ref_pts, N_reps, N_coeffs=9):
+    def __init__(self, N_ref_pts=1, N_reps=1, N_coeffs=9, from_file=None):
         self.Data=[]
         self.DOPLOT=None
+ 
         # define empty records here based on ATL11 ATBD
         # Table 4-1
         self.corrected_h=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
@@ -91,6 +92,8 @@ class ATL11_data(object):
         # Assemble an ATL11 data instance from a list of ATL11 points.  
         # Input: list of ATL11 point instances
         # loop over variables in ATL11_data (self)
+        self.__init__(N_ref_pts=len(P11_list), N_reps=P11_list[0].corrected_h.cycle_h_shapecorr.shape[1], N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
+    
         for group in vars(self).keys():
             # check if each variable is an ATl11 group
             if  not isinstance(getattr(self,group), ATL11_group):
@@ -120,6 +123,18 @@ class ATL11_data(object):
                 setattr(getattr(self,group),field,temp)
         self.slope_change_t0=P11_list[0].slope_change_t0                                    
         return self
+    
+    def from_file(self, filename=None):
+      
+        FH=h5py.File(filename,'r')
+        N_ref_pts=FH['corrected_h']['cycle_h_shapecorr'].size[0]
+        N_reps=FH['corrected_h']['cycle_h_shapecorr'].size[1]
+        N_coeffs=FH['ref_surf']['poly_coeffs'].size[1]
+        self.__init__(N_ref_pts=N_ref_pts, N_reps=N_reps, N_coeffs=N_coeffs)
+        for group in ('corrected_h','ref_surf','pass_stats'):
+            for field in FH[group].keys():
+                setattr(getattr(self, group), field, np.array(FH[group][field]))
+        FH=None
         
     def write_to_file(self, fileout, params_11=None):
         # Generic code to write data from an ATL11 object to an h5 file
