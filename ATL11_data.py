@@ -145,26 +145,12 @@ class ATL11_data(object):
             except:  
                 print("write_to_file:could not automatically set parameter: %s" % param)
                 
-#        with open('ATL11_output_attrs.csv') as infile:
-#            reader = csv.DictReader(codecs.EncodedFile(infile,'utf-8-sig','utf8'), delimiter=';')
-#            rs = csv.DictReader(codecs.open('ATL11_output_attrs.csv','r','utf-8'))
-#            for r in rs:
-#                print(r)
-##        attrfile=csv.DictReader(open('ATL11_output_attrs.csv','r',encoding='utf-8-sig'))   
-##        var_attrs={}
-#            for row in reader:
-#                print(row)
-#        print(var_attrs['ref_pt_lat'])
-        
-#       var_attrs={}  
+        # put attrubutes into dict, where parameters from Tables 4- in ATBD are keys      
         with open('ATL11_output_attrs.csv','r') as attrfile:
-            reader=csv.DictReader(attrfile)
-            for row in reader:
-                print(row['field'])
-#                var_attrs
-#            results = dict(reader)
-#        print(results)
-        
+            reader=csv.DictReader(attrfile)  # must save exccel file with format: Comma Separated Values (.csv) 
+            attrs_list=[x for x in reader.fieldnames if x != 'field']
+            field_attrs={row['field']: {attrs_list[ii]:row[attrs_list[ii]] for ii in range(len(attrs_list))}  for row in reader}
+
         # write data to file            
         for group in vars(self).keys():
             if hasattr(getattr(self,group),'list_of_fields'):
@@ -176,7 +162,9 @@ class ATL11_data(object):
                 list_vars=getattr(self,group).list_of_fields
                 if list_vars is not None:
                     for field in list_vars: 
-                        grp.create_dataset(field,data=getattr(getattr(self,group),field))
+                        dset = grp.create_dataset(field,data=getattr(getattr(self,group),field))
+                        for attr in attrs_list:
+                            dset.attrs[attr] = field_attrs[field][attr]
         f.close()    
         return
         
