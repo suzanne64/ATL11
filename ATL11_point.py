@@ -35,7 +35,7 @@ class ATL11_point(ATL11_data):
         else:
             self.params_11=params_11
         # initialize the data structure using the ATL11_data __init__ method
-        ATL11_data.__init__(self,1, N_reps, self.params_11.N_coeffs)
+        ATL11_data.__init__(self,N_ref_pts=1, N_reps=N_reps, N_coeffs=self.params_11.N_coeffs)
         self.N_pairs=N_pairs
         self.N_reps=N_reps     
         self.N_coeffs=self.params_11.N_coeffs

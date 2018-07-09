@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class ATL11_plot:
-    def __init__(self, D11, P11_list):
+    def __init__(self, D11):
         self.D11=D11
-        self.P11=P11_list
+        
         fig=plt.figure()
         
         self.ax2=plt.axes([0.05,  0.05, 0.4, 0.375])
@@ -19,40 +19,41 @@ class ATL11_plot:
    
         self.h_errorbars=D11.plot()
 
-        fig.canvas.mpl_connect('pick_event', self.pick_event)
+        #fig.canvas.mpl_connect('pick_event', self.pick_event)
+        fig.canvas.mpl_connect('button_press_event', self.pick_event)
+
         plt.show(block=True)
         return
         
     def pick_event(self, event):
          
-        xx=event.artist.get_xdata()
-        ii=event.ind
-        x0=[temp.ref_surf.ref_pt_x_atc for temp in self.P11]
-        this=np.flatnonzero(x0==xx[ii])
+        #xx=event.artist.get_xdata()
+        xx=event.xdata
+        #ii=event.ind
+        D11=self.D11
+        x0=D11.ref_surf.ref_pt_x_atc
+        this=np.argmin(np.abs(x0-xx))
+        #this=np.flatnonzero(x0==xx[ii])
         print("this is %d" % this)
-        D11=self.P11[this]
         print "x0=%d" % x0[this]
-        rsp=np.flatnonzero(D11.cycle_stats.cycle_included_in_fit)
-        print "rsp:" 
-        print rsp
+        #inc are the selected cycles
+        inc=np.flatnonzero(D11.cycle_stats.cycle_included_in_fit[this,:])
+        #print "inc:" 
+        #print inc
         plt.sca(self.ax2)
         plt.cla()
-        yy=D11.cycle_stats.y_atc_mean.ravel()
-        hh=D11.corrected_h.cycle_h_shapecorr.ravel()
-        ss=D11.corrected_h.cycle_h_shapecorr_sigma.ravel()
-        plt.errorbar(yy.ravel(), hh.ravel(), ss.ravel(), fmt='o')
-        plt.plot(yy.ravel(), D11.cycle_stats.h_uncorr_mean.ravel(), 'kx')
-
-        
-        print("yy.shape is %d" %yy.shape)
-        print("yy.shape[rsp] is %d " % yy[rsp].shape)
-        plt.plot(yy[rsp], hh[rsp],'r*',markersize =12)
+        # plot the heights and 
+        yy=D11.cycle_stats.y_atc_mean[this,:].ravel()
+        hh=D11.corrected_h.cycle_h_shapecorr[this,:].ravel()
+        ss=D11.corrected_h.cycle_h_shapecorr_sigma[this,:].ravel()
+        plt.errorbar(yy, hh, ss, fmt='o')
+        plt.plot(yy, D11.cycle_stats.h_uncorr_mean[this,:].ravel(), 'kx')
+        plt.plot(yy[inc], hh[inc],'r*', markersize =12)
         plt.sca(self.ax3)
         plt.cla()
         cycles=np.arange(yy.size)
-        print cycles
         plt.errorbar(cycles.ravel(), hh.ravel(), ss.ravel(), fmt='o')
-        plt.plot(cycles[rsp], hh[rsp],'r*', markersize=12)
+        plt.plot(cycles[inc], hh[inc],'r*', markersize=12)
         plt.show(block=False)         
         return
               
