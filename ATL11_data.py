@@ -18,10 +18,10 @@ class ATL11_group(object):
     # some have one value for each point and each polynomial coefficient (poly_fields)
     # all of these are initialized to arrays of the appropriate size, filled with NaNs
 
-    def __init__(self, N_ref_pts, N_reps, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None):
+    def __init__(self, N_pts, N_cycles, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None):
         # input variables:
-        #  N_ref_pts: Number of reference points to allocate
-        #  N_reps: Number of cycles of data to allocate
+        #  N_pts: Number of reference points to allocate
+        #  N_cycles: Number of cycles of data to allocate
         #  N_coeffs: Number of polynomial coefficients to allocate
         #  per_pt_fields: list of fields that have one value per reference point
         #  full_fields: list of fields that have one value per cycle per reference point
@@ -30,13 +30,13 @@ class ATL11_group(object):
         # assign fields of each type to their appropriate shape and size
         if per_pt_fields is not None:
             for field in per_pt_fields:
-                setattr(self, field, np.nan + np.zeros([N_ref_pts, 1]))
+                setattr(self, field, np.nan + np.zeros([N_pts, 1]))
         if full_fields is not None:
             for field in full_fields:
-                setattr(self, field, np.nan + np.zeros([N_ref_pts, N_reps]))
+                setattr(self, field, np.nan + np.zeros([N_pts, N_cycles]))
         if poly_fields is not None:
             for field in poly_fields:
-                setattr(self, field, np.nan + np.zeros([N_ref_pts, N_coeffs]))
+                setattr(self, field, np.nan + np.zeros([N_pts, N_coeffs]))
         # assemble the field names into lists:
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
@@ -52,7 +52,7 @@ class valid_mask:
 
 class ATL11_data(object):
     # class to hold ATL11 data in ATL11_groups
-    def __init__(self, N_ref_pts=1, N_reps=1, N_coeffs=9, from_file=None):
+    def __init__(self, N_pts=1, N_cycles=1, N_coeffs=9, from_file=None):
         self.Data=[]
         self.DOPLOT=None
  
@@ -67,24 +67,24 @@ class ATL11_data(object):
                 #print(row['field'] for item in row['group'] in reader)
             
         # Table 4-1
-        self.corrected_h=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
+        self.corrected_h=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
                                        full_fields=['mean_cycle_time','cycle_h_shapecorr','cycle_h_shapecorr_sigma','cycle_h_shapecorr_sigma_systematic','quality_summary'],
                                        poly_fields=[])   
         # Table 4-2        
-        self.ref_surf=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['complex_surface_flag','fit_curvature','fit_E_slope','fit_N_slope','n_deg_x','n_deg_y',
+        self.ref_surf=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=['complex_surface_flag','fit_curvature','fit_E_slope','fit_N_slope','n_deg_x','n_deg_y',
                                                                               'N_cycle_avail','N_cycle_used','ref_pt_number','ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth',
                                                                               'slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma',
                                                                               'surf_fit_misfit_chi2r','surf_fit_misfit_RMS','surf_fit_quality_summary'],
                                     full_fields=[], poly_fields=['poly_coeffs','poly_coeffs_sigma'])
         # Table 4-3
-        self.cycle_stats=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=['ref_pt_number'],
+        self.cycle_stats=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=['ref_pt_number'],
                                       full_fields=['ATL06_summary_zero_count','h_robust_spread_mean','h_rms_misft_mean','r_eff_mean','tide_ocean_mean',
                                                    'cloud_flg_atm_best','cloud_flg_asr_best','bsnow_h_mean','bsnow_conf_best',
                                                    'x_atc_mean','y_atc_mean','cycle_included_in_fit','cycle_seg_count','strong_beam_number',
                                                    'latitude_mean','longitude_mean','min_signal_selection_source','min_SNR_significance',
                                                    'sigma_geo_h_mean','sigma_geo_at_mean','sigma_geo_xt_mean','h_uncorr_mean'], poly_fields=[])
         # Table 4-4, not yet implemented
-        #self.crossing_track_data=ATL11_group(N_ref_pts, N_reps, N_coeffs, per_pt_fields=[],
+        #self.crossing_track_data=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=[],
         self.slope_change_t0=None
 
     def all_fields(self):
@@ -101,7 +101,7 @@ class ATL11_data(object):
         # Assemble an ATL11 data instance from a list of ATL11 points.  
         # Input: list of ATL11 point instances
         # loop over variables in ATL11_data (self)
-        self.__init__(N_ref_pts=len(P11_list), N_reps=P11_list[0].corrected_h.cycle_h_shapecorr.shape[1], N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
+        self.__init__(N_pts=len(P11_list), N_cycles=P11_list[0].corrected_h.cycle_h_shapecorr.shape[1], N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
     
         for group in vars(self).keys():
             # check if each variable is an ATl11 group
@@ -118,7 +118,7 @@ class ATL11_data(object):
                 setattr(getattr(self,group),field,temp)
                         
             for field in getattr(self,group).full_fields:
-                temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_reps],dtype=float)
+                temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_cycles],dtype=float)
                 for ii, P11 in enumerate(P11_list):
                     if hasattr(getattr(P11,group),field):
                         temp[ii,:]=getattr(getattr(P11,group), field)
@@ -136,10 +136,10 @@ class ATL11_data(object):
     def from_file(self, filename=None):
       
         FH=h5py.File(filename,'r')
-        N_ref_pts=FH['corrected_h']['cycle_h_shapecorr'].shape[0]
-        N_reps=FH['corrected_h']['cycle_h_shapecorr'].shape[1]
+        N_pts=FH['corrected_h']['cycle_h_shapecorr'].shape[0]
+        N_cycles=FH['corrected_h']['cycle_h_shapecorr'].shape[1]
         N_coeffs=FH['ref_surf']['poly_coeffs'].shape[1]
-        self.__init__(N_ref_pts=N_ref_pts, N_reps=N_reps, N_coeffs=N_coeffs)
+        self.__init__(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs)
         for group in ('corrected_h','ref_surf','cycle_stats'):
             for field in FH[group].keys():
                 setattr(getattr(self, group), field, np.array(FH[group][field]))

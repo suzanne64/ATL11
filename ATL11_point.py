@@ -18,7 +18,7 @@ from ATL11_misc import ATL11_defaults
  
 class ATL11_point(ATL11_data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
-    def __init__(self, N_pairs=1, ref_pt_number=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], N_reps=12,  mission_time_bds=None, params_11=None):
+    def __init__(self, N_pairs=1, ref_pt_number=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], N_cycles=12,  mission_time_bds=None, params_11=None):
         # input variables:
         # N_pairs: Number of distinct pairs in the ATL06 data
         # ref_pt_number: the reference-point number for the ATL11 fit.  This is the geoseg number for the central segment of the fit
@@ -26,7 +26,7 @@ class ATL11_point(ATL11_data):
         # track_azimuth: the azimuth of the RGT for the ATL11 point
         # optional parameters:
         # max_poly_degree: the maximum degree of the along- and across-track polynomials
-        # N_reps: the number of repeats that might appear in the ATL06 data
+        # N_cycles: the number of repeats that might appear in the ATL06 data
         # mission_time_bnds: The start and end of the mission, in delta_time units (seconds)
         # params_11: ATL11_defaults structure
 
@@ -35,9 +35,9 @@ class ATL11_point(ATL11_data):
         else:
             self.params_11=params_11
         # initialize the data structure using the ATL11_data __init__ method
-        ATL11_data.__init__(self,N_ref_pts=1, N_reps=N_reps, N_coeffs=self.params_11.N_coeffs)
+        ATL11_data.__init__(self,N_pts=1, N_cycles=N_cycles, N_coeffs=self.params_11.N_coeffs)
         self.N_pairs=N_pairs
-        self.N_reps=N_reps     
+        self.N_cycles=N_cycles     
         self.N_coeffs=self.params_11.N_coeffs
         self.x_atc_ctr=x_atc_ctr
         self.ref_pt_number=ref_pt_number
@@ -50,7 +50,7 @@ class ATL11_point(ATL11_data):
         self.calc_slope_change=False
         
         if mission_time_bds is None:
-            mission_time_bds=np.array([0, N_reps*91*24*3600])
+            mission_time_bds=np.array([0, N_cycles*91*24*3600])
         self.slope_change_t0=mission_time_bds[0]+0.5*(mission_time_bds[1]-mission_time_bds[0])
         self.mission_time_bds=mission_time_bds
         self.valid_segs =valid_mask((N_pairs,2), ('data','x_slope','y_slope' ))  #  2 cols, boolan, all F to start
@@ -70,8 +70,8 @@ class ATL11_point(ATL11_data):
         # ATBD section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
-        self.cycle_stats.ATL06_summary_zero_count=np.zeros((1,self.N_reps,))  # do we need to set to zeros?
-        for cc in range(1,self.N_reps+1):
+        self.cycle_stats.ATL06_summary_zero_count=np.zeros((1,self.N_cycles,))  # do we need to set to zeros?
+        for cc in range(1,self.N_cycles+1):
             if D6.cycle[D6.cycle==cc].shape[0] > 0:
                 self.cycle_stats.ATL06_summary_zero_count[0,cc-1]=np.sum(self.valid_segs.data[D6.cycle==cc])
                 self.cycle_stats.min_SNR_significance[0,cc-1]=np.amin(D6.snr_significance[D6.cycle==cc])
@@ -270,8 +270,8 @@ class ATL11_point(ATL11_data):
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
         # Table 4-2        
-        self.cycle_stats.cycle_seg_count=np.zeros((1,self.N_reps,))
-        self.cycle_stats.cycle_included_in_fit=np.zeros((1,self.N_reps,))
+        self.cycle_stats.cycle_seg_count=np.zeros((1,self.N_cycles,))
+        self.cycle_stats.cycle_included_in_fit=np.zeros((1,self.N_cycles,))
 
         # establish new boolean arrays for selecting
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool) 
