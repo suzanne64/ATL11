@@ -127,14 +127,15 @@ class ATL11_data(object):
     def from_file(self, filename=None):
       
         FH=h5py.File(filename,'r')
-        N_ref_pts=FH['corrected_h']['cycle_h_shapecorr'].size[0]
-        N_reps=FH['corrected_h']['cycle_h_shapecorr'].size[1]
-        N_coeffs=FH['ref_surf']['poly_coeffs'].size[1]
+        N_ref_pts=FH['corrected_h']['cycle_h_shapecorr'].shape[0]
+        N_reps=FH['corrected_h']['cycle_h_shapecorr'].shape[1]
+        N_coeffs=FH['ref_surf']['poly_coeffs'].shape[1]
         self.__init__(N_ref_pts=N_ref_pts, N_reps=N_reps, N_coeffs=N_coeffs)
-        for group in ('corrected_h','ref_surf','pass_stats'):
+        for group in ('corrected_h','ref_surf','cycle_stats'):
             for field in FH[group].keys():
                 setattr(getattr(self, group), field, np.array(FH[group][field]))
         FH=None
+        return self
         
     def write_to_file(self, fileout, params_11=None):
         # Generic code to write data from an ATL11 object to an h5 file
