@@ -59,6 +59,7 @@ class ATL11_point(ATL11_data):
         self.status=dict()
         self.ref_surf.ref_pt_x_atc=x_atc_ctr
         self.ref_surf.rgt_azimuth=track_azimuth
+        self.ref_surf.surf_fit_quality_summary=0
 
     def select_ATL06_pairs(self, D6, pair_data):
         # Select ATL06 data based on data-quality flags in ATL06 data, and based on
@@ -69,6 +70,14 @@ class ATL11_point(ATL11_data):
         
         # ATBD section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
+        plt.figure(1);plt.clf()
+        plt.plot(D6.x_atc,'.')
+        plt.figure(2);plt.clf()
+        plt.plot(D6.y_atc,'.')
+        plt.figure(23);plt.clf()
+        plt.plot(D6.cycle,'.')
+        
+        print(D6.cycle.shape)
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
         self.cycle_stats.ATL06_summary_zero_count=np.zeros((1,self.N_cycles,))  # do we need to set to zeros?
         for cc in range(1,self.N_cycles+1):
@@ -78,13 +87,19 @@ class ATL11_point(ATL11_data):
                 self.cycle_stats.min_signal_selection_source[0,cc-1]=np.amin(D6.signal_selection_source[D6.cycle==cc])
         self.ref_surf.N_cycle_avail=np.count_nonzero(self.cycle_stats.ATL06_summary_zero_count) 
         
+        if self.ref_surf.N_cycle_avail<2:
+            self.status['Number_cycles_available_less_than_2']=True
+            if self.ref_surf.surf_fit_quality_summary==0:
+                self.ref_surf.surf_fit_quality_summary=1
+            return
+            
         # step 1b: check if there are enough valid segments, quit if not
-        if not np.any(self.valid_segs.data):
-            self.status['atl06_quality_summary_all_nonzero']=1.0
-            self.valid_segs.data[np.where(np.logical_or(D6.snr_significance<0.02, D6.signal_selection_source <=2))]=True
-            if not np.any(self.valid_segs.data):
-                self.status['atl06_quality_all_bad']=1
-                return 
+#        if not np.any(self.valid_segs.data):
+#            self.status['atl06_quality_summary_all_nonzero']=1.0
+#            self.valid_segs.data[np.where(np.logical_or(D6.snr_significance<0.02, D6.signal_selection_source <=2))]=True
+#            if not np.any(self.valid_segs.data):
+#                self.status['atl06_quality_all_bad']=1
+#                return 
         
         # 1b: Select segs by height error        
         seg_sigma_threshold=np.maximum(self.params_11.seg_sigma_threshold_min, 3*np.median(D6.h_li_sigma[np.where(self.valid_segs.data)]))
@@ -95,7 +110,9 @@ class ATL11_point(ATL11_data):
         # 1c: Map valid_segs.data to valid_pairs.data
         self.valid_pairs.data=np.logical_and(self.valid_segs.data[:,0], self.valid_segs.data[:,1])
         if not np.any(self.valid_pairs.data):
-            self.status['no_valid_pairs']=1
+            self.status['No_valid_pairs_after_height_error_check']=True
+            if self.ref_surf.surf_fit_quality_summary==0:
+                self.ref_surf.surf_fit_quality_summary=2
             return 
         # 2a. see ATL06_pair.py
         # 2b. Calculate the y center of the slope regression
@@ -202,8 +219,16 @@ class ATL11_point(ATL11_data):
         # 5: define selected pairs
         self.valid_pairs.all=np.logical_and(self.valid_pairs.data.ravel(), np.logical_and(self.valid_pairs.y_slope.ravel(), self.valid_pairs.x_slope.ravel()))
         if np.sum(self.valid_pairs.all)==0:
-            self.status['no_valid_pairs']=1
-
+            self.status['No_valid_pairs_after_slope_editing']=True
+            if self.ref_surf.surf_fit_quality_summary==0:
+                self.ref_surf.surf_fit_quality_summary=3
+            return    
+        
+        if np.unique(D6.x_atc[self.valid_pairs.all]).shape[0]==1:
+            self.status['Only_one_valid_pair_in_x_direction']=True
+            if self.ref_surf.surf_fit_quality_summary==0:
+                self.ref_surf.surf_fit_quality_summary=4  
+            
         return
         
     def select_y_center(self, D6, pair_data):  #5.1.3
@@ -263,9 +288,9 @@ class ATL11_point(ATL11_data):
         # method to calculate the reference surface for a reference point
         # Input:
         # D6: ATL06 data structure
+        ############ why does this line happen so late?
         self.corrected_h.quality_summary=np.logical_not(np.logical_and( np.logical_and(self.cycle_stats.min_signal_selection_source<=1, self.cycle_stats.min_SNR_significance<0.02),self.cycle_stats.ATL06_summary_zero_count>0 ))        
         self.ref_surf.complex_surface_flag=0
-        self.ref_surf.surf_fit_quality_summary=0
         
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
@@ -351,7 +376,7 @@ class ATL11_point(ATL11_data):
             else:
                 #Otherwise, check only the surface columns
                 columns_to_check=range(TOC['zp'][0]-1, -1, -1)
-                self.ref_surf.surf_fit_quality_summary=1
+                #self.ref_surf.surf_fit_quality_summary=1
             for c in columns_to_check:   # check last col first, do in reverse order
                 if np.max(np.abs(G[:,c]-G[0,c])) < 0.0001:
                         fit_columns[c]=False
@@ -366,7 +391,8 @@ class ATL11_point(ATL11_data):
             G=G[:, fit_columns]
             if G.shape[0] < G.shape[1]:
                 self.status['inversion failed']=True
-                return
+                if self.ref_surf.surf_fit_quality_summary==0:
+                    self.ref_surf.surf_fit_quality_summary=5
 
             # 3f, 3g. generate the data-covariance matrix, its inverse, and 
             # the generalized inverse of G
@@ -436,11 +462,6 @@ class ATL11_point(ATL11_data):
         else:
             self.ref_surf.slope_change_rate_x=np.nan
             self.ref_surf.slope_change_rate_y=np.nan
-
-        # check if slope change rate for either x or y is > 0.1 (see Table 4-4)     
-        if np.any((np.logical_or(np.abs(self.ref_surf.slope_change_rate_x)>0.1,np.isnan(self.ref_surf.slope_change_rate_x)),
-                   np.logical_or(np.abs(self.ref_surf.slope_change_rate_y)>0.1,np.isnan(self.ref_surf.slope_change_rate_y)))):
-            self.ref_surf.surf_fit_quality_summary=1
         
         # write out the corrected h values
         cycle_ind=np.zeros(m_surf_zp.shape, dtype=int)-1
@@ -478,8 +499,6 @@ class ATL11_point(ATL11_data):
             self.corrected_h.cycle_h_shapecorr_sigma_systematic[0,cc-1] =np.sqrt(np.sum(W_by_error*sigma_systematic_squared[cycle_segs] ))
 
         self.ref_surf.N_cycle_used=np.count_nonzero(self.ref_surf_cycles)
-        if self.ref_surf.N_cycle_used<2:
-            self.ref_surf.surf_fit_quality_summary=1
         
         # 3k. propagate the errors
         # calculate the data covariance matrix including the scatter component
@@ -500,6 +519,11 @@ class ATL11_point(ATL11_data):
 
         # write out the errors to the data parameters
         self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)]=m_surf_zp_sigma[TOC['poly']]
+        if np.any(self.ref_surf.poly_coeffs_sigma > 2):
+            self.status['Polynomial_coefficients_with_high_error']=True
+            if self.ref_surf.surf_fit_quality_summary==0:
+                self.ref_surf.surf_fit_quality_summary=6
+                
         if self.calc_slope_change:          
             self.ref_surf.slope_change_rate_x_sigma=m_surf_zp_sigma[ TOC['slope_change'][0]] 
             self.ref_surf.slope_change_rate_y_sigma=m_surf_zp_sigma[ TOC['slope_change'][1]] 
@@ -533,6 +557,10 @@ class ATL11_point(ATL11_data):
         self.ref_surf.fit_N_slope=msub[0] 
         self.ref_surf.fit_E_slope=msub[1] 
         self.ref_surf.fit_curvature=np.sqrt(rr)
+        if np.any((self.ref_surf.fit_N_slope>0.2,self.ref_surf.fit_E_slope>0.2)):
+            self.status['Surface_fit_slope_high']=1
+            if self.ref_surf.surf_fit_quality_summary==0:
+                self.ref_surf.surf_fit_quality_summary=7
 
         # perform the same fit in [xg,yg] to calculate the y slope for the unselected segments
         G_xy=np.transpose(np.vstack(( (xg.ravel()),(yg.ravel()), np.ones_like(xg.ravel()))))

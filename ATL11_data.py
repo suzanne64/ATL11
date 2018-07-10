@@ -58,13 +58,13 @@ class ATL11_data(object):
  
         # define empty records here based on ATL11 ATBD
         # read in parameters information in .csv
-        with open('ATL11_output_attrs_reps.csv','r') as attrfile:
-            reader=csv.DictReader(attrfile)  # must save excel file with format: Comma Separated Values (.csv) 
-            # get group names
-            grp_names=list(set([row['group'] for row in reader]))
-            for item in grp_names:
-                print(item)
-                #print(row['field'] for item in row['group'] in reader)
+#        with open('ATL11_output_attrs_reps.csv','r') as attrfile:
+#            reader=csv.DictReader(attrfile)  # must save excel file with format: Comma Separated Values (.csv) 
+#            # get group names
+#            grp_names=list(set([row['group'] for row in reader]))
+#            for item in grp_names:
+#                print(item)
+#                #print(row['field'] for item in row['group'] in reader)
             
         # Table 4-1
         self.corrected_h=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
