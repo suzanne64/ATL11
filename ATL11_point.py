@@ -70,14 +70,6 @@ class ATL11_point(ATL11_data):
         
         # ATBD section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
-        plt.figure(1);plt.clf()
-        plt.plot(D6.x_atc,'.')
-        plt.figure(2);plt.clf()
-        plt.plot(D6.y_atc,'.')
-        plt.figure(23);plt.clf()
-        plt.plot(D6.cycle,'.')
-        
-        print(D6.cycle.shape)
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
         self.cycle_stats.ATL06_summary_zero_count=np.zeros((1,self.N_cycles,))  # do we need to set to zeros?
         for cc in range(1,self.N_cycles+1):
@@ -92,15 +84,7 @@ class ATL11_point(ATL11_data):
             if self.ref_surf.surf_fit_quality_summary==0:
                 self.ref_surf.surf_fit_quality_summary=1
             return
-            
-        # step 1b: check if there are enough valid segments, quit if not
-#        if not np.any(self.valid_segs.data):
-#            self.status['atl06_quality_summary_all_nonzero']=1.0
-#            self.valid_segs.data[np.where(np.logical_or(D6.snr_significance<0.02, D6.signal_selection_source <=2))]=True
-#            if not np.any(self.valid_segs.data):
-#                self.status['atl06_quality_all_bad']=1
-#                return 
-        
+                    
         # 1b: Select segs by height error        
         seg_sigma_threshold=np.maximum(self.params_11.seg_sigma_threshold_min, 3*np.median(D6.h_li_sigma[np.where(self.valid_segs.data)]))
         self.status['N_above_data_quality_threshold']=np.sum(D6.h_li_sigma<seg_sigma_threshold)
