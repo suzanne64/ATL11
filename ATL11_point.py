@@ -208,7 +208,7 @@ class ATL11_point(ATL11_data):
                 self.ref_surf.surf_fit_quality_summary=3
             return    
         
-        if np.unique(D6.x_atc[self.valid_pairs.all]).shape[0]==1:
+        if np.unique(D6.segment_id[self.valid_pairs.all]).shape[0]==1:
             self.status['Only_one_valid_pair_in_x_direction']=True
             if self.ref_surf.surf_fit_quality_summary==0:
                 self.ref_surf.surf_fit_quality_summary=4  
