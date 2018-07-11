@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 #from poly_ref_surf import poly_ref_surf
 
-def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, num_ref_pts=None, DOPLOT=None, DEBUG=None, mission_time_bds=None):
+def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, num_ref_pts=None, first_ref_pt=None, DOPLOT=None, DEBUG=None, mission_time_bds=None):
     params_11=ATL11_defaults()
     seg_number_skip=int(params_11.seg_atc_spacing/20);
     if mission_time_bds is None:
@@ -32,7 +32,12 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
         ref_pt_x=D6.x_atc.ravel()[iId[ctrSegs]]
     else:
         ref_pt_x=ref_pt_numbers*20
-        
+    
+    if first_ref_pt is not None:
+        these=ref_pt_numbers>first_ref_pt
+        ref_pt_numbers=ref_pt_numbers[these]
+        ref_pt_x=ref_pt_x[these]
+    
     if num_ref_pts is not None:
         ref_pt_numbers=ref_pt_numbers[0:int(num_ref_pts)]
         ref_pt_x=ref_pt_x[0:int(num_ref_pts)]
@@ -46,17 +51,17 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
         
         #2a. define representative x and y values for the pairs
         pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle','h_li'])   # this might go, similar to D6_sub
-
         P11=ATL11_point(N_pairs=len(pair_data.x), ref_pt_number=ref_pt_number, x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_cycles=len(ATL06_files),  mission_time_bds=mission_time_bds )
-         
+ 
         P11.DOPLOT=DOPLOT
        # step 2: select pairs, based on reasonable slopes
-        P11.select_ATL06_pairs(D6_sub, pair_data)
-        if 'no_valid_pairs' in P11.status and P11.status['no_valid_pairs']==1:
-            #print('you have no valid pairs',seg_x_center)
+        P11.select_ATL06_pairs(D6_sub, pair_data)   
+        if P11.ref_surf.surf_fit_quality_summary > 0:
             continue
+
         P11.select_y_center(D6_sub, pair_data)
-        
+        if P11.ref_surf.surf_fit_quality_summary > 0:
+           continue
         P11.corrected_h.ref_pt_lat,P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[x_atc_ctr,P11.y_atc_ctr])     
 
         P11.find_reference_surface(D6_sub)
