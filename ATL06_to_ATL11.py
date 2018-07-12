@@ -63,7 +63,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
         if P11.ref_surf.surf_fit_quality_summary > 0:
            continue
         P11.corrected_h.ref_pt_lat,P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[x_atc_ctr,P11.y_atc_ctr])     
-
+        #print ref_pt_number
         P11.find_reference_surface(D6_sub)
         if 'inversion failed' in P11.status:
             continue
