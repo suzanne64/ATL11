@@ -34,7 +34,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
         ref_pt_x=ref_pt_numbers*20
     
     if first_ref_pt is not None:
-        these=ref_pt_numbers>first_ref_pt
+        these=ref_pt_numbers>=first_ref_pt
         ref_pt_numbers=ref_pt_numbers[these]
         ref_pt_x=ref_pt_x[these]
     
