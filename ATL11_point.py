@@ -308,10 +308,11 @@ class ATL11_point(ATL11_data):
         # 3a. define degree_list_x and degree_list_y.  These are stored in self.default.poly_exponent_list      
         degree_x=np.array([item[0] for item in self.params_11.poly_exponent_list], dtype=int)
         degree_y=np.array([item[1] for item in self.params_11.poly_exponent_list], dtype=int)
+            
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
         self.poly_mask=(degree_x + degree_y) <= np.maximum(self.ref_surf.n_deg_x,self.ref_surf.n_deg_y)
         self.poly_mask=np.logical_and(self.poly_mask, degree_x <= self.ref_surf.n_deg_x)
-        self.poly_mask=np.logical_and(self.poly_mask, degree_y <= self.ref_surf.n_deg_x)
+        self.poly_mask=np.logical_and(self.poly_mask, degree_y <= self.ref_surf.n_deg_y)
         #print(self.degree_list_x,self.degree_list_x.shape)
         self.degree_list_x = degree_x[self.poly_mask]
         self.degree_list_y = degree_y[self.poly_mask]
@@ -328,20 +329,20 @@ class ATL11_point(ATL11_data):
         # TOC is a table-of-contents dict identifying the meaning of the columns 
         # of G_surf_zp_original
         TOC=dict()
-        if self.slope_change_t0/self.params_11.t_scale > 1.5/2.:
+        TOC['poly']=np.arange(S_fit_poly.shape[1], dtype=int)
+        last_poly_col=S_fit_poly.shape[1]-1
+        if self.slope_change_t0/self.params_11.t_scale > 1.5/2. and self.ref_surf.n_deg_x > 0 and self.ref_surf.n_deg_y > 0:
             self.calc_slope_change=True
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
             G_surf_zp_original=np.concatenate( (S_fit_poly,S_fit_slope_change,G_zp.toarray()),axis=1 ) # G = [S St D]
-            TOC['poly']=np.arange(S_fit_poly.shape[1])
-            TOC['slope_change']=TOC['poly'][-1]+1+np.arange(S_fit_slope_change.shape[1])
-            TOC['zp']=TOC['slope_change'][-1]+1+np.arange(G_zp.toarray().shape[1])
+            TOC['slope_change']=last_poly_col+1+np.arange(S_fit_slope_change.shape[1], dtype=int)
+            TOC['zp']=TOC['slope_change'][-1]+1+np.arange(G_zp.toarray().shape[1], dtype=int)
         else:
-            G_surf_zp_original=np.concatenate( (S_fit_poly,G_zp.toarray()),axis=1 ) # G = [S D]
-            TOC['poly']=np.arange(S_fit_poly.shape[1])
-            TOC['slope_change']=np.array([])
-            TOC['zp']=TOC['poly'][-1]+1+np.arange(G_zp.toarray().shape[1])
+            G_surf_zp_original=np.concatenate( (S_fit_poly,G_zp.toarray()),axis=1 ) # G = [S D]  
+            TOC['slope_change']=np.array([], dtype=int)
+            TOC['zp']=last_poly_col+1+np.arange(G_zp.toarray().shape[1], dtype=int)
         TOC['surf']=np.concatenate((TOC['poly'], TOC['slope_change']), axis=0)
         
         # fit_columns is a boolean array identifying those columns of zp_original 
@@ -379,6 +380,7 @@ class ATL11_point(ATL11_data):
                 self.status['inversion failed']=True
                 if self.ref_surf.surf_fit_quality_summary==0:
                     self.ref_surf.surf_fit_quality_summary=5
+                return
 
             # 3f, 3g. generate the data-covariance matrix, its inverse, and 
             # the generalized inverse of G
