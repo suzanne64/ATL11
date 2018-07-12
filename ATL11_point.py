@@ -310,6 +310,8 @@ class ATL11_point(ATL11_data):
         degree_y=np.array([item[1] for item in self.params_11.poly_exponent_list], dtype=int)
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
         self.poly_mask=(degree_x + degree_y) <= np.maximum(self.ref_surf.n_deg_x,self.ref_surf.n_deg_y)
+        self.poly_mask=np.logical_and(self.poly_mask, degree_x <= self.ref_surf.n_deg_x)
+        self.poly_mask=np.logical_and(self.poly_mask, degree_y <= self.ref_surf.n_deg_x)
         #print(self.degree_list_x,self.degree_list_x.shape)
         self.degree_list_x = degree_x[self.poly_mask]
         self.degree_list_y = degree_y[self.poly_mask]
