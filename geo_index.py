@@ -51,9 +51,9 @@ class geo_index(dict):
         for ind in range(len(first)):
             key='%d_%d' % (delta[0]*x_bin[first[ind]], delta[1]*y_bin[first[ind]])
             if fake_offset_val is None:
-                self[key] = {'file_num':np.array(int(number), ndmin=1), 'ind_start':np.array(first[ind], ndmin=1), 'ind_end':np.array(last[ind], ndmin=1)}
+                self[key] = {'file_num':np.array(int(number), ndmin=1), 'offset_start':np.array(first[ind], ndmin=1), 'offset_end':np.array(last[ind], ndmin=1)}
             else:
-                self[key] = {'file_num':np.array(int(number), ndmin=1), 'ind_start':np.array(fake_offset_val, ndmin=1), 'ind_end':np.array(fake_offset_val, ndmin=1)}
+                self[key] = {'file_num':np.array(int(number), ndmin=1), 'offset_start':np.array(fake_offset_val, ndmin=1), 'offset_end':np.array(fake_offset_val, ndmin=1)}
 
         self.attrs['file_0']=filename
         self.attrs['type_0']=file_type
@@ -96,13 +96,13 @@ class geo_index(dict):
                 if bin in self:
                     #append_data(self[bin]['file_num'], newFileNums)
                     append_data(self[bin],'file_num', newFileNums)
-                    append_data(self[bin],'ind_start', index[bin]['ind_start'][keep])
-                    append_data(self[bin],'ind_end', index[bin]['ind_end'][keep])
+                    append_data(self[bin],'offset_start', index[bin]['offset_start'][keep])
+                    append_data(self[bin],'offset_end', index[bin]['offset_end'][keep])
                 else:
                     self[bin]=dict()
                     self[bin]['file_num']=newFileNums
-                    self[bin]['ind_start']=index[bin]['ind_start'][keep]
-                    self[bin]['ind_end']=index[bin]['ind_end'][keep]
+                    self[bin]['offset_start']=index[bin]['offset_start'][keep]
+                    self[bin]['offset_end']=index[bin]['offset_end'][keep]
                    
         self.attrs['n_files']=len(fileListTo)
         return self
@@ -126,7 +126,7 @@ class geo_index(dict):
         indexGrp.attrs['SRS_proj4'] = self.attrs['SRS_proj4']
         for key in self.keys():
             indexGrp.create_group(key)
-            for field in ['file_num','ind_start','ind_end']:
+            for field in ['file_num','offset_start','offset_end']:
                 indexGrp[key].create_dataset(field,data=self[key][field])
         for ii in range(self.attrs['n_files']):
             this_key='file_%d' % ii
@@ -155,14 +155,14 @@ class geo_index(dict):
             if bin_name in self:
                 temp_gi[bin_name]=self[bin_name]
         temp_dict=dict()
-        for field in ['file_num','ind_start','ind_end']:
+        for field in ['file_num','offset_start','offset_end']:
            temp_dict[field]=np.concatenate([temp_gi[key][field] for key in temp_gi.keys()])
         out_file_nums=np.unique(temp_dict['file_num'])
         out=dict()
         for out_file_num in out_file_nums:
             these=temp_dict['file_num']==out_file_num
-            i0=np.array(temp_dict['ind_start'][these], dtype=int)
-            i1=np.array(temp_dict['ind_end'][these], dtype=int)
+            i0=np.array(temp_dict['offset_start'][these], dtype=int)
+            i1=np.array(temp_dict['offset_end'][these], dtype=int)
             # cleanup the output: when the start of the next segment is within 
             #    1 of the end of the last, stick them together  
             ii=np.argsort(i0)
@@ -183,8 +183,8 @@ class geo_index(dict):
           
             out[self.attrs['file_%d' % out_file_num]]={
             'type':self.attrs['type_%d' % out_file_num],
-            'ind_start':i0,
-            'ind_end':i1}         
+            'offset_start':i0,
+            'offset_end':i1}         
         return out
 
     def query_xy_box(self, xr, yr):
