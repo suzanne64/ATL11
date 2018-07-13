@@ -192,9 +192,9 @@ class ATL11_point(ATL11_data):
                 pairs_valid_for_x_fit=np.logical_and(np.logical_and(self.valid_pairs.data.ravel(),self.valid_pairs.ysearch.ravel()), self.valid_pairs.x_slope.ravel()) 
 
                 if np.sum(pairs_valid_for_x_fit)==0:
-                    self.status['no_valid_pairs']=1
+                    self.status['no_valid_pairs_for_x_fit']=1
             else:
-                self.status['no_valid_pairs']=1
+                self.status['no_valid_pairs_for_x_fit']=1
                 
         # 4g. Use x model to evaluate all segments
         self.valid_segs.x_slope=np.abs(self.mx_poly_fit.z(D6.x_atc, D6.y_atc)- D6.dh_fit_dx) < x_slope_threshold #, max_iterations=2, min_sigma=mx_regression_tol)
@@ -202,12 +202,12 @@ class ATL11_point(ATL11_data):
     
         # 5: define selected pairs
         self.valid_pairs.all=np.logical_and(self.valid_pairs.data.ravel(), np.logical_and(self.valid_pairs.y_slope.ravel(), self.valid_pairs.x_slope.ravel()))
+        
         if np.sum(self.valid_pairs.all)==0:
             self.status['No_valid_pairs_after_slope_editing']=True
             if self.ref_surf.surf_fit_quality_summary==0:
                 self.ref_surf.surf_fit_quality_summary=3
-            return    
-        
+   
         if np.unique(D6.segment_id[self.valid_pairs.all]).shape[0]==1:
             self.status['Only_one_valid_pair_in_x_direction']=True
             if self.ref_surf.surf_fit_quality_summary==0:

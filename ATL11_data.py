@@ -155,6 +155,7 @@ class ATL11_data(object):
         if os.path.isfile(fileout):
             os.remove(fileout)
         f = h5py.File(fileout,'w')
+
         # This code is based on the filename structure used in our demonstration code.
         m=re.search(r"Pair(.*?).h5",fileout)
         f.attrs['pairTrack']=m.group(1)

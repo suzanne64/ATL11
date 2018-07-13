@@ -52,25 +52,28 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
         #2a. define representative x and y values for the pairs
         pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle','h_li'])   # this might go, similar to D6_sub
         P11=ATL11_point(N_pairs=len(pair_data.x), ref_pt_number=ref_pt_number, x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_cycles=len(ATL06_files),  mission_time_bds=mission_time_bds )
- 
+            
         P11.DOPLOT=DOPLOT
-       # step 2: select pairs, based on reasonable slopes
+        # step 2: select pairs, based on reasonable slopes
         P11.select_ATL06_pairs(D6_sub, pair_data)   
         if P11.ref_surf.surf_fit_quality_summary > 0:
+            P11_list.append(P11)
             continue
 
         P11.select_y_center(D6_sub, pair_data)
         if P11.ref_surf.surf_fit_quality_summary > 0:
-           continue
+            P11_list.append(P11)
+            continue
+
         P11.corrected_h.ref_pt_lat,P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[x_atc_ctr,P11.y_atc_ctr])     
-        #print ref_pt_number
+
         P11.find_reference_surface(D6_sub)
         if 'inversion failed' in P11.status:
+            P11_list.append(P11)
             continue
 
         P11.corr_heights_other_cycles(D6_sub)
-
- 
+        
         P11_list.append(P11)
         if np.mod(count, 1)==100:
             print("completed %d segments, ref_pt_number= %d" %(count, ref_pt_number))    
