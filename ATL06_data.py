@@ -14,7 +14,7 @@ import re
 
 class ATL06_data:
     np.seterr(invalid='ignore')
-    def __init__(self, filename=None, beam_pair=1, x_bounds=None, y_bounds=None, field_dict=None, list_of_fields=None, list_of_data=None, from_dict=None, NICK=None): 
+    def __init__(self, filename=None, beam_pair=1, x_bounds=None, y_bounds=None, index_range=None, field_dict=None, list_of_fields=None, list_of_data=None, from_dict=None, NICK=None): 
         if field_dict is None:
             if NICK is not None:
                 field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id','sigma_geo_h'], 
@@ -45,11 +45,11 @@ class ATL06_data:
         if filename is not None:
             # read a list of files if list provided
             if isinstance(filename, (list, tuple)):
-                D6_list=[ATL06_data(filename=thisfile, field_dict=field_dict, beam_pair=beam_pair, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK) for thisfile in filename]
+                D6_list=[ATL06_data(filename=thisfile, field_dict=field_dict, beam_pair=beam_pair, index_range=index_range, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK) for thisfile in filename]
                 self.build_from_list_of_data(D6_list)
             elif isinstance(filename, (basestring)):
                 # this happens when the input filename is a string, not a list
-                self.read_from_file(filename, field_dict, beam_pair=beam_pair, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK)
+                self.read_from_file(filename, field_dict, beam_pair=beam_pair, index_range=index_range, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK)
             else:
                 raise TypeError
         else:
@@ -57,14 +57,19 @@ class ATL06_data:
             for field in list_of_fields:
                 setattr(self, field, np.zeros((2,0)))       
           
-    def read_from_file(self, filename, field_dict,  x_bounds=None, y_bounds=None, beam_pair=None, NICK=None): 
+    def read_from_file(self, filename, field_dict, index_range=None, x_bounds=None, y_bounds=None, beam_pair=None, NICK=None): 
         seconds_per_day=24*3600.
+        h5_f=h5py.File(filename,'r')        
         beam_names=['gt%d%s' %(beam_pair, b) for b in ['l','r']]
-        h5_f=h5py.File(filename,'r')
+        if beam_names[0] not in h5_f or beam_names[1] not in h5_f:        
+            # return empty data structure
+            for group in field_dict:
+                for field in group:
+                    setattr(self, field, np.zeros((0,2)))
+            return
         # find cycle number in filename
         m=re.search(r"TrackData_(.*?)/Track_(.*?).h5",filename)
         cycle_number=np.int(m.group(1))
-        track_number=np.int(m.group(2))
         #N.B. with real ATL06 data we will not want to apply the reference time offset to the delta time.
         time_offset=0.
         if NICK:
@@ -72,6 +77,9 @@ class ATL06_data:
         #print('line 61,',NICK,filename)
         if beam_names[0] not in h5_f.keys():
             return None
+        if index_range is None:
+            index_range=[0, h5_f[beam_names[0]]['land_ice_segments']['h_li'].size]
+        
         for group in field_dict.keys():
             for field in field_dict[group]:
                 if field not in self.list_of_fields:
@@ -80,20 +88,20 @@ class ATL06_data:
                     if NICK is not None:
                         if group is None:
                             setattr(self, field, np.c_[
-                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field]).transpose(),  
-                                np.array(h5_f[beam_names[1]]['land_ice_segments'][field]).transpose()])
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field][0,index_range[0]:index_range[1]]).transpose(),  
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][field][0,index_range[0]:index_range[1]]).transpose()])
                         else:
                             if 'ground' in group and 'cycle' in field:  # currently groundtrack/cycle NaN
-                                n_vals=np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field]).size
+                                n_vals=np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field][0,index_range[0]:index_range[1]]).size
                                 setattr(self, field, np.zeros( [n_vals, 2])+cycle_number)
                             else:
                                 setattr(self, field, np.c_[
-                                np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field]).transpose(),  
-                                np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field]).transpose()])
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field][0,index_range[0]:index_range[1]]).transpose(),  
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field][0,index_range[0]:index_range[1]]).transpose()])
                     else:
                         setattr(self, field, np.c_[
-                        np.array(h5_f[beam_names[0]][group][field]).transpose(),  
-                        np.array(h5_f[beam_names[1]][group][field]).transpose()])
+                        np.array(h5_f[beam_names[0]][group][field][0,index_range[0]:index_range[1]]).transpose(),  
+                        np.array(h5_f[beam_names[1]][group][field][0,index_range[0]:index_range[1]]).transpose()])
                             
                 except KeyError:
                     print "could not read %s/%s" % (group, field)
