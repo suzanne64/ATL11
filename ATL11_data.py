@@ -171,14 +171,13 @@ class ATL11_data(object):
             except:  
                 print("write_to_file:could not automatically set parameter: %s" % param)
                 
-        # put attrubutes into dict, where parameters from Tables 4- in ATBD are keys      
+        # put groups, fields and associated attributes from .csv file      
         with open('ATL11_output_attrs.csv','r') as attrfile:
-            reader=csv.DictReader(attrfile)  # must save excel file with format: Comma Separated Values (.csv) 
-            attrs_list=[x for x in reader.fieldnames if x != 'field' and x != 'group']
-            field_attrs={row['field']: {attrs_list[ii]:row[attrs_list[ii]] for ii in range(len(attrs_list))}  for row in reader}
-
-        # write data to file            
-        for group in vars(self).keys():
+            reader=list(csv.DictReader(attrfile))  
+        group_names=set([row['group'] for row in reader])
+        attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']
+        field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader}
+        for group in group_names:
             if hasattr(getattr(self,group),'list_of_fields'):
                 grp = f.create_group(group)
                 if 'ref_surf' in group:
@@ -189,7 +188,7 @@ class ATL11_data(object):
                 if list_vars is not None:
                     for field in list_vars: 
                         dset = grp.create_dataset(field,data=getattr(getattr(self,group),field))
-                        for attr in attrs_list:
+                        for attr in attr_names:
                             dset.attrs[attr] = field_attrs[field][attr]
         f.close()    
         return
