@@ -384,7 +384,13 @@ class ATL11_point(ATL11_data):
 
             # 3f, 3g. generate the data-covariance matrix, its inverse, and 
             # the generalized inverse of G
-            C_d, C_di, G_g = gen_inv(self,G,h_li_sigma[selected_segs])
+            try:
+                C_d, C_di, G_g = gen_inv(self,G,h_li_sigma[selected_segs])
+            except:
+                self.status['inversion failed']=True
+                if self.ref_surf.surf_fit_quality_summary==0:
+                    self.ref_surf.surf_fit_quality_summary=5
+                return
                         
             # inititalize the combined surface and cycle-height model, m_surf_zp 
             m_surf_zp=np.zeros(np.size(G_surf_zp_original,1))            
