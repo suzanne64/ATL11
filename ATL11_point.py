@@ -122,7 +122,7 @@ class ATL11_point(ATL11_data):
     
         # 3c: Calculate the formal error in the y slope estimates
         y_slope_sigma=np.sqrt(np.sum(D6.h_li_sigma[pairs_valid_for_y_fit,:]**2, axis=1))/np.transpose(np.diff(D6.y_atc[pairs_valid_for_y_fit,:], axis=1)).ravel() #same shape as y_slope*
-        my_regression_tol=np.max(0.01, 3*np.median(y_slope_sigma))
+        my_regression_tol=np.maximum(0.01, 3*np.median(y_slope_sigma))
 
         for iteration in range(2):
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
@@ -135,7 +135,7 @@ class ATL11_point(ATL11_data):
             
             # 3e: calculate across-track slope threshold
             if y_slope_resid.size>1:
-                y_slope_threshold=np.max(my_regression_tol,3.*RDE(y_slope_resid))
+                y_slope_threshold=np.maximum(my_regression_tol,3.*RDE(y_slope_resid))
             else:
                 y_slope_threshold=my_regression_tol
             if ~pairs_valid_for_y_fit.any():
@@ -181,7 +181,7 @@ class ATL11_point(ATL11_data):
             
                 # 4e: calculate along-track slope threshold
                 if x_slope_resid.size > 1.:
-                    x_slope_threshold = np.max(mx_regression_tol,3*RDE(x_slope_resid))
+                    x_slope_threshold = np.maximum(mx_regression_tol,3*RDE(x_slope_resid))
                 else:   
                     x_slope_threshold=mx_regression_tol
 
