@@ -58,33 +58,16 @@ class ATL11_data(object):
  
         # define empty records here based on ATL11 ATBD
         # read in parameters information in .csv
-#        with open('ATL11_output_attrs_reps.csv','r') as attrfile:
-#            reader=csv.DictReader(attrfile)  # must save excel file with format: Comma Separated Values (.csv) 
-#            # get group names
-#            grp_names=list(set([row['group'] for row in reader]))
-#            for item in grp_names:
-#                print(item)
-#                #print(row['field'] for item in row['group'] in reader)
+        with open('ATL11_output_attrs.csv','r') as attrfile:
+            reader=list(csv.DictReader(attrfile))  
+        group_names = set([row['group'] for row in reader])
+        for group in group_names:
+            field_dims=[{k:v for k,v in ii.items()} for ii in reader if ii['group']==group]
+            per_pt_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts']
+            full_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_cycles']
+            poly_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_coeffs']
+            setattr(self,group,ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields,full_fields,poly_fields))
             
-        # Table 4-1
-        self.corrected_h=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=['ref_pt_lat','ref_pt_lon','ref_pt_number'], 
-                                       full_fields=['mean_cycle_time','cycle_h_shapecorr','cycle_h_shapecorr_sigma','cycle_h_shapecorr_sigma_systematic','quality_summary'],
-                                       poly_fields=[])   
-        # Table 4-2        
-        self.ref_surf=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=['complex_surface_flag','fit_curvature','fit_E_slope','fit_N_slope','n_deg_x','n_deg_y',
-                                                                              'N_cycle_avail','N_cycle_used','ref_pt_number','ref_pt_x_atc','ref_pt_y_atc','rgt_azimuth',
-                                                                              'slope_change_rate_x','slope_change_rate_y','slope_change_rate_x_sigma','slope_change_rate_y_sigma',
-                                                                              'surf_fit_misfit_chi2r','surf_fit_misfit_RMS','surf_fit_quality_summary'],
-                                    full_fields=[], poly_fields=['poly_coeffs','poly_coeffs_sigma'])
-        # Table 4-3
-        self.cycle_stats=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=['ref_pt_number'],
-                                      full_fields=['ATL06_summary_zero_count','h_robust_spread_mean','h_rms_misft_mean','r_eff_mean','tide_ocean_mean',
-                                                   'cloud_flg_atm_best','cloud_flg_asr_best','bsnow_h_mean','bsnow_conf_best',
-                                                   'x_atc_mean','y_atc_mean','cycle_included_in_fit','cycle_seg_count','strong_beam_number',
-                                                   'latitude_mean','longitude_mean','min_signal_selection_source','min_SNR_significance',
-                                                   'sigma_geo_h_mean','sigma_geo_at_mean','sigma_geo_xt_mean','h_uncorr_mean'], poly_fields=[])
-        # Table 4-4, not yet implemented
-        #self.crossing_track_data=ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields=[],
         self.slope_change_t0=None
 
     def all_fields(self):
