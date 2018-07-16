@@ -681,7 +681,7 @@ def gen_inv(self,G,sigma):
     C_d=sparse.diags(sigma**2)
     C_di=sparse.diags(1/sigma**2)
     G_sq=np.dot(np.dot(np.transpose(G),C_di.toarray()),G)
-    G_sqi=linalg.inv(G_sq)
+    
     # calculate the generalized inverse of G
-    G_g=np.dot( np.dot(G_sqi,np.transpose(G)),C_di.toarray() )
+    G_g=np.linalg.solve(G_sq, np.dot(np.transpose(G), C_di.toarray()))
     return C_d, C_di, G_g
