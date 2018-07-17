@@ -186,7 +186,9 @@ class ATL11_data(object):
             xx=self.ref_surf.ref_pt_x_atc
             zz=self.corrected_h.cycle_h_shapecorr[:,cycle]
             ss=self.corrected_h.cycle_h_shapecorr_sigma[:,cycle]
-            good=np.abs(ss)<50
+            good=np.abs(ss)<15
+            ss[~good]=np.NaN
+            zz[~good]=np.NaN
             if np.any(good):
                 h0=plt.errorbar(xx[good],zz[good],ss[good], marker='o',picker=5)
                 h.append(h0)
