@@ -60,6 +60,7 @@ class ATL11_point(ATL11_data):
         self.ref_surf.ref_pt_x_atc=x_atc_ctr
         self.ref_surf.rgt_azimuth=track_azimuth
         self.ref_surf.surf_fit_quality_summary=0
+        self.ref_surf.complex_surface_flag=0
 
     def select_ATL06_pairs(self, D6, pair_data):
         # Select ATL06 data based on data-quality flags in ATL06 data, and based on
@@ -71,9 +72,17 @@ class ATL11_point(ATL11_data):
         # ATBD section 5.1.2: select "valid pairs" for reference-surface calculation    
         # step 1a:  Select segs by data quality
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
-        self.cycle_stats.ATL06_summary_zero_count=np.zeros((1,self.N_cycles,))  # do we need to set to zeros?
+        valid_cycle_count_ATL06_flag=np.unique(D6.cycle[np.all(D6.atl06_quality_summary==0, axis=1),:]).size
+        valid_cycle_count_SNR=np.unique(D6.cycle[np.all(D6.snr_significance<0.02, axis=1),:]).size
+        if valid_cycle_count_ATL06_flag <   self.N_cycles/3:
+            self.ref_surf.complex_surface_flag=True
+            self.valid_segs.data[np.where(D6.snr_significance<0.02)]=True
+            self.N_cycles_avail=valid_cycle_count_SNR
+        else:
+            self.N_cycles_avail=valid_cycle_count_ATL06_flag
+        
         for cc in range(1,self.N_cycles+1):
-            if D6.cycle[D6.cycle==cc].shape[0] > 0:
+            if np.sum(D6.cycle==cc) > 0:
                 self.cycle_stats.ATL06_summary_zero_count[0,cc-1]=np.sum(self.valid_segs.data[D6.cycle==cc])
                 self.cycle_stats.min_SNR_significance[0,cc-1]=np.amin(D6.snr_significance[D6.cycle==cc])
                 self.cycle_stats.min_signal_selection_source[0,cc-1]=np.amin(D6.signal_selection_source[D6.cycle==cc])
@@ -274,8 +283,7 @@ class ATL11_point(ATL11_data):
         # D6: ATL06 data structure
         ############ why does this line happen so late?
         self.corrected_h.quality_summary=np.logical_not(np.logical_and( np.logical_and(self.cycle_stats.min_signal_selection_source<=1, self.cycle_stats.min_SNR_significance<0.02),self.cycle_stats.ATL06_summary_zero_count>0 ))        
-        self.ref_surf.complex_surface_flag=0
-        
+         
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
         # Table 4-2        
@@ -301,9 +309,12 @@ class ATL11_point(ATL11_data):
         # 2. determine polynomial degree, using unique x's and unique y's of segments in valid pairs
         x_atcU = np.unique(D6.x_atc[self.valid_pairs.all,:].ravel()) # np.unique orders the unique values
         y_atcU = np.unique(D6.y_atc[self.valid_pairs.all,:].ravel()) # np.unique orders the unique values
-        # Table 4-4
+        # Table 4-4         
         self.ref_surf.n_deg_x = np.minimum(self.params_11.poly_max_degree_AT,len(x_atcU)-1) 
         self.ref_surf.n_deg_y = np.minimum(self.params_11.poly_max_degree_XT,len(y_atcU)-1) 
+        if self.ref_surf.complex_surface_flag > 0:
+            self.ref_surf.n_deg_x = np.minimum(1, self.ref_surf.n_deg_x)
+            self.ref_surf.n_deg_y = np.minimum(1, self.ref_surf.n_deg_y)
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y.  These are stored in self.default.poly_exponent_list      
         degree_x=np.array([item[0] for item in self.params_11.poly_exponent_list], dtype=int)
@@ -437,7 +448,7 @@ class ATL11_point(ATL11_data):
         # identify the ref_surf cycles that survived the fit         
         self.ref_surf_cycles=self.ref_surf_cycles[fit_columns[TOC['zp']]]            
         
-        # report the selected segments ####BEN_FIX_THIS???
+        # report the selected segments 
         selected_pair_out= self.valid_pairs.all.copy()
         selected_pair_out[selected_pair_out==True]=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
         
@@ -457,18 +468,30 @@ class ATL11_point(ATL11_data):
             self.ref_surf.slope_change_rate_x=np.nan
             self.ref_surf.slope_change_rate_y=np.nan
         
+        # 3k. propagate the errors
+        # calculate the data covariance matrix including the scatter component
+        h_li_sigma = D6.h_li_sigma[self.selected_segments]
+        cycle      = D6.cycle[self.selected_segments]       
+        C_dp=sparse.diags(np.maximum(h_li_sigma**2,(RDE(r_fit))**2))  
+        # calculate the model covariance matrix
+        C_m = np.dot(np.dot(G_g,C_dp.toarray()),np.transpose(G_g))
+        # calculate the combined-model errors
+        m_surf_zp_sigma=np.zeros_like(m_surf_zp)+np.nan
+        m_surf_zp_sigma[fit_columns]=np.sqrt(C_m.diagonal())
+        
+        
         # write out the corrected h values
         cycle_ind=np.zeros(m_surf_zp.shape, dtype=int)-1
         cycle_ind[TOC['zp']]=np.arange(TOC['zp'].size, dtype=int)
-        zp_mask=TOC['zp'][fit_columns[TOC['zp']]]        
-        self.corrected_h.cycle_h_shapecorr[0,cycle_ind[zp_mask]]=m_surf_zp[zp_mask]
+        zp_used=TOC['zp'][fit_columns[TOC['zp']]]   
+        zp_nan_mask=np.ones_like(zp_used, dtype=float)
+        zp_nan_mask[m_surf_zp_sigma[zp_used]>15]=np.NaN
+        self.corrected_h.cycle_h_shapecorr[0,cycle_ind[zp_used]]=m_surf_zp[zp_used]*zp_nan_mask
       
         # get the square of cycle_h_shapecorr_sigma_systematic, equation 12
         sigma_systematic_squared=((D6.dh_fit_dx * D6.sigma_geo_at)**2 + \
             (D6.dh_fit_dy * D6.sigma_geo_xt)**2 + (D6.sigma_geo_h)**2).ravel() 
 
-        h_li_sigma = D6.h_li_sigma[self.selected_segments]
-        cycle      = D6.cycle[self.selected_segments]
         for cc in self.ref_surf_cycles.astype(int):
             cycle_segs=np.flatnonzero(self.selected_segments)[cycle==cc]
             W_by_error=h_li_sigma[cycle==cc]**(-2)/np.sum(h_li_sigma[cycle==cc]**(-2))
@@ -490,18 +513,10 @@ class ATL11_point(ATL11_data):
             self.cycle_stats.cloud_flg_asr_best[0,cc-1]    =np.min(D6.cloud_flg_asr.ravel()[cycle_segs])
             self.cycle_stats.cloud_flg_atm_best[0,cc-1]    =np.min(D6.cloud_flg_atm.ravel()[cycle_segs])
             self.cycle_stats.bsnow_conf_best[0,cc-1]       =np.max(D6.bsnow_conf.ravel()[cycle_segs])
-            self.corrected_h.cycle_h_shapecorr_sigma_systematic[0,cc-1] =np.sqrt(np.sum(W_by_error*sigma_systematic_squared[cycle_segs] ))
+            if np.isfinite(self.corrected_h.cycle_h_shapecorr[0,cc-1]):
+                self.corrected_h.cycle_h_shapecorr_sigma_systematic[0,cc-1] =np.sqrt(np.sum(W_by_error*sigma_systematic_squared[cycle_segs] ))
 
         self.ref_surf.N_cycle_used=np.count_nonzero(self.ref_surf_cycles)
-        
-        # 3k. propagate the errors
-        # calculate the data covariance matrix including the scatter component
-        C_dp=sparse.diags(np.maximum(h_li_sigma**2,(RDE(r_fit))**2))  
-        # calculate the model covariance matrix
-        C_m = np.dot(np.dot(G_g,C_dp.toarray()),np.transpose(G_g))
-        # calculate the combined-model errors
-        m_surf_zp_sigma=np.zeros_like(m_surf_zp)+np.nan
-        m_surf_zp_sigma[fit_columns]=np.sqrt(C_m.diagonal())
         
         # identify which of the columns that were included in the fit belong to the surface model
         surf_mask=np.arange(np.sum(fit_columns[TOC['surf']]))
@@ -526,7 +541,7 @@ class ATL11_point(ATL11_data):
             self.ref_surf.slope_change_rate_y_sigma= np.nan
         
         # write out the errors in h_shapecorr
-        self.corrected_h.cycle_h_shapecorr_sigma[0,cycle_ind[zp_mask]]=m_surf_zp_sigma[zp_mask]
+        self.corrected_h.cycle_h_shapecorr_sigma[0,cycle_ind[zp_used]]=m_surf_zp_sigma[zp_used]*zp_nan_mask
           
         # calculate fit slopes and curvature:
         # make a grid of northing and easting values
@@ -640,10 +655,12 @@ class ATL11_point(ATL11_data):
             for dataset in ('latitude','longitude','x_atc','y_atc','bsnow_h','r_eff','tide_ocean','h_robust_spread','sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
                 mean_dataset=dataset+'_mean';
                 self.cycle_stats.__dict__[mean_dataset][0,cc-1]=getattr(D6, dataset).ravel()[best_seg_ind]
-            self.corrected_h.cycle_h_shapecorr[0,cc-1]      =z_kc[cycle==cc][best_seg]
-            self.corrected_h.cycle_h_shapecorr_sigma[0,cc-1]= z_kc_sigma[cycle==cc][best_seg]
-            self.corrected_h.cycle_h_shapecorr_sigma_systematic[0,cc-1] = \
-                np.sqrt(term1.ravel()[best_seg_ind] + term2.ravel()[best_seg_ind]  + term3.ravel()[best_seg_ind])
+            if z_kc[cycle==cc][best_seg] < 15:
+                # edit out errors larger than 15 m
+                self.corrected_h.cycle_h_shapecorr[0,cc-1]      =z_kc[cycle==cc][best_seg]
+                self.corrected_h.cycle_h_shapecorr_sigma[0,cc-1]= z_kc_sigma[cycle==cc][best_seg]
+                self.corrected_h.cycle_h_shapecorr_sigma_systematic[0,cc-1] = \
+                    np.sqrt(term1.ravel()[best_seg_ind] + term2.ravel()[best_seg_ind]  + term3.ravel()[best_seg_ind])
             self.corrected_h.mean_cycle_time[0,cc-1]        =D6.delta_time.ravel()[best_seg_ind]
             self.cycle_stats.cycle_seg_count[0,cc-1]         =1
             self.cycle_stats.h_uncorr_mean[0, cc-1]         =D6.h_li.ravel()[best_seg_ind]
