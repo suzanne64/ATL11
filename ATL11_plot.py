@@ -36,7 +36,7 @@ class ATL11_plot:
         this=np.argmin(np.abs(x0-xx))
         #this=np.flatnonzero(x0==xx[ii])
         print("this is %d" % this)
-        print "x0=%d" % x0[this]
+        print("x0=%d" % x0[this])
         #inc are the selected cycles
         inc=np.flatnonzero(D11.cycle_stats.cycle_included_in_fit[this,:])
         #print "inc:" 

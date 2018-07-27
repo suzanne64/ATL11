@@ -96,7 +96,7 @@ class poly_ref_surf(object):
             print('sigma from RDE ',sigma)
             threshold=3.*np.max([sigma, min_sigma])
             mask=np.abs(rs)<threshold
-            print "\tsigma=%3.2f, f=%d/%d" % (sigma, np.sum(mask), len(mask))
+            print("\tsigma=%3.2f, f=%d/%d" % (sigma, np.sum(mask), len(mask)))
             # In the future, compute the LS coefficients using PySPQR (get from github.com/yig/PySPQR)
         self.poly_vals=m
         

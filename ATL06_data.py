@@ -47,7 +47,7 @@ class ATL06_data:
             if isinstance(filename, (list, tuple)):
                 D6_list=[ATL06_data(filename=thisfile, field_dict=field_dict, beam_pair=beam_pair, index_range=index_range, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK) for thisfile in filename]
                 self.build_from_list_of_data(D6_list)
-            elif isinstance(filename, (basestring)):
+            elif isinstance(filename, (str)):
                 # this happens when the input filename is a string, not a list
                 self.read_from_file(filename, field_dict, beam_pair=beam_pair, index_range=index_range, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK)
             else:
@@ -104,7 +104,7 @@ class ATL06_data:
                         np.array(h5_f[beam_names[1]][group][field][0,index_range[0]:index_range[1]]).transpose()])
                             
                 except KeyError:
-                    print "could not read %s/%s" % (group, field)
+                    print("could not read %s/%s" % (group, field))
                     setattr(self, field, np.zeros_like(self.delta_time)+np.NaN)
         if NICK is not None:
             self.sigma_geo_h =np.zeros_like(self.h_li)+0.03
