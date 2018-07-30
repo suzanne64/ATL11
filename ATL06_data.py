@@ -9,6 +9,7 @@ Class to read and manipulate ATL06 data.  Currently set up for Ben-style fake da
 import h5py
 import numpy as np
 from ATL06_pair import ATL06_pair
+from osgeo import osr
 import matplotlib.pyplot as plt 
 import re
 
@@ -112,7 +113,26 @@ class ATL06_data:
             self.sigma_geo_at=np.zeros_like(self.h_li)+6.5
             self.delta_time=self.delta_time*24.*3600.+time_offset
         return
-
+    
+    def get_xy(self, proj4_string, EPSG=None):
+        out_srs=osr.SpatialReference()
+        if proj4_string is None and EPSG is not None:
+            out_srs.ImportFromProj4(EPSG)
+        else:
+            out_srs.ImportFromProj4(proj4_string)
+        ll_srs=osr.SpatialReference()
+        ll_srs.ImportFromEPSG(4326)
+        ct=osr.CoordinateTransformation(ll_srs, out_srs)
+        #x, y, z = list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(D.longitude), np.ravel(D.latitude), np.zeros_like(np.ravel(D.latitude)))]))
+        if self.latitude.size==0:
+            self.x=np.zeros_like(self.latitude)
+            self.y=np.zeros_like(self.latitude)
+        else:
+            x, y, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(self.longitude), np.ravel(self.latitude), np.zeros_like(np.ravel(self.latitude)))]))
+            self.x=np.reshape(x, self.latitude.shape)
+            self.y=np.reshape(y, self.longitude.shape)
+        return self
+    
     def append(self, D):
         for field in self.list_of_fields:
             setattr(self, np.c_[getattr(self, field), getattr(D, field)])
@@ -126,7 +146,7 @@ class ATL06_data:
         except TypeError:
             for field in self.list_of_fields:
                 setattr(self, field, getattr(D6_list, field))
-        return 
+        return self
     
     def index(self, index):
         for field in self.list_of_fields:
