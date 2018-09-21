@@ -8,7 +8,7 @@ Class to read and manipulate ATL06 data.  Currently set up for Ben-style fake da
 """
 import h5py
 import numpy as np
-from ATL06_pair import ATL06_pair
+from ATL11.ATL06_pair import ATL06_pair
 from osgeo import osr
 import matplotlib.pyplot as plt 
 import re
@@ -35,7 +35,7 @@ class ATL06_data:
 
         self.list_of_fields=list_of_fields
         if list_of_data is not None:
-            self.build_from_list_of_data(list_of_data)
+            self.from_list(list_of_data)
             return None     
         if from_dict is not None:
             self.list_of_fields=list_of_fields
@@ -47,7 +47,7 @@ class ATL06_data:
             # read a list of files if list provided
             if isinstance(filename, (list, tuple)):
                 D6_list=[ATL06_data(filename=thisfile, field_dict=field_dict, beam_pair=beam_pair, index_range=index_range, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK) for thisfile in filename]
-                self.build_from_list_of_data(D6_list)
+                self.from_list(D6_list)
             elif isinstance(filename, (str)):
                 # this happens when the input filename is a string, not a list
                 self.read_from_file(filename, field_dict, beam_pair=beam_pair, index_range=index_range, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK)
@@ -115,6 +115,7 @@ class ATL06_data:
         return
     
     def get_xy(self, proj4_string, EPSG=None):
+        # method to get projected coordinates for the data.  Adds 'x' and 'y' fields to the data, optionally returns 'self'
         out_srs=osr.SpatialReference()
         if proj4_string is None and EPSG is not None:
             out_srs.ImportFromProj4(EPSG)
@@ -123,7 +124,6 @@ class ATL06_data:
         ll_srs=osr.SpatialReference()
         ll_srs.ImportFromEPSG(4326)
         ct=osr.CoordinateTransformation(ll_srs, out_srs)
-        #x, y, z = list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(D.longitude), np.ravel(D.latitude), np.zeros_like(np.ravel(D.latitude)))]))
         if self.latitude.size==0:
             self.x=np.zeros_like(self.latitude)
             self.y=np.zeros_like(self.latitude)
@@ -131,6 +131,8 @@ class ATL06_data:
             x, y, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(self.longitude), np.ravel(self.latitude), np.zeros_like(np.ravel(self.latitude)))]))
             self.x=np.reshape(x, self.latitude.shape)
             self.y=np.reshape(y, self.longitude.shape)
+        if 'x' not in self.list_of_fields:
+            self.list_of_fields += ['x','y']
         return self
     
     def append(self, D):
@@ -138,7 +140,7 @@ class ATL06_data:
             setattr(self, np.c_[getattr(self, field), getattr(D, field)])
         return        
 
-    def build_from_list_of_data(self, D6_list):
+    def from_list(self, D6_list):
         try:
             for field in self.list_of_fields:
                 data_list=[getattr(this_D6, field) for this_D6 in D6_list]       

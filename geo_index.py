@@ -7,18 +7,25 @@ Created on Wed Jul 11 20:58:19 2018
 This is a class that lets us generate a coarse-resolution database of the 
 data-point locations in a point-data file, and to build hierarchical indices
 to allow efficient searches for data.
-
+Coordinates below are always provided as tuples or lists, the first member of which is an array of x coordinates, the second is an array of y coordinates
 """
 import numpy as np
 import h5py
 from osgeo import osr
 import matplotlib.pyplot as plt
-from ATL06_data import ATL06_data        
+from ATL11.ATL06_data import ATL06_data        
+from IS2_calval.Qfit_data import Qfit_data
        
 class geo_index(dict):
-    def __init__(self, delta=[1000,1000], SRS_proj4=None):
+    def __init__(self, delta=[1000,1000], SRS_proj4=None, data=None):
         dict.__init__(self)
         self.attrs={'delta':delta,'SRS_proj4':SRS_proj4, 'n_files':0}
+        self.data=data
+        if self.data is not None:
+            if hasattr(data,'x'):
+                self.from_xy([data.x, data.y])
+            elif hasattr(data,'latitude'):
+                self.from_latlon(self.data.latitude, self.data.longitude)
         self.h5_file=None
         
     def __del__(self):
@@ -27,28 +34,68 @@ class geo_index(dict):
         return
 
     def __copy__(self):
-        out=dict()
+        # copy method,
+        out=geo_index()
         out.attrs=self.attrs.copy()
-        for field in self.keys():
-            out[field]=self[field].copy()
+        for field in self.keys:
+            out[field]=self[field].copy()     
+        out.data=self.data
+        return out    
+    
+    def copy_subset(self, xyBin=None, pad=None):
+        # copy method, may specify which bins to copy
+        out=geo_index()
+        for attr in self.attrs:
+            out.attrs[attr]=self.attrs[attr]
+        #out.attrs=self.attrs.copy()
+        if xyBin is None:
+            these_keys=self.keys()
+        else:
+            if pad is not None and pad >0:
+                xyBin=pad_bins(xyBin, pad, self.attrs['delta'])
+            these_keys=self.keys_from_xy(xyBin)          
+        for field in these_keys:
+            if isinstance(self[field], dict):
+                out[field]=self[field].copy()  
+            else:
+                if field not in out:
+                    out[field]=dict()
+                # this copies the reference to a h5 group
+                for key in self[field].keys():
+                    out[field][key]=self[field][key][:]
+        out.data=self.data
         return out
         
-    def from_xy(self, x, y, filename, file_type, number=0, fake_offset_val=None):  
+    def reduce_delta(self, delta, data=None):
+        # make a geo_index with a smaller delta value than the current
+        if data is None:
+            data=self.data
+        out=geo_index(delta=delta)
+        out.attrs=self.attrs.copy()
+        out.attrs['delta']=delta
+        for key in self.keys():
+            i0=self[key]['offset_start']
+            temp=geo_index().from_xy([data.x[i0:self[key]['offset_end']], data.y[i0:self[key]['offset_end']]])
+            for key1 in temp:
+                out[key]={'file_num':0, 'offset_start':i0+temp[key1]['offset_start'], 
+                   'offset_end':i0+temp[key1]['offset_end']}
+        return out 
+        
+    def from_xy(self, xy,  filename=None, file_type=None, number=0, fake_offset_val=None):  
         # build a geo_index from a list of x, y points, for a specified filename
         # and file_type.  If the file_type is 'geo_index', optionally sepecify a
         # value for 'fake_offset_val'
         delta=self.attrs['delta']
-        x_bin=np.round(x/delta[0])
-        y_bin=np.round(y/delta[1])
-        
+        xy_bin=np.round(np.c_[xy[0].ravel(), xy[1].ravel()]/delta)
+   
         # sort by magnitude of (x,y), then by angle
-        ordering=np.sqrt(x_bin**2+y_bin**2)+(np.arctan2(y_bin, x_bin)+np.pi)/2/np.pi
+        ordering=np.sqrt(np.sum(xy_bin**2, axis=1))+(np.arctan2(xy_bin[:,0], xy_bin[:,1])+np.pi)/2/np.pi
         uOrd, first=np.unique(ordering, return_index=True)
         uOrd, temp=np.unique(-ordering[::-1], return_index=True)
         last=len(ordering)-1-temp[::-1]
      
         for ind in range(len(first)):
-            key='%d_%d' % (delta[0]*x_bin[first[ind]], delta[1]*y_bin[first[ind]])
+            key='%d_%d' % (delta[0]*xy_bin[first[ind],0], delta[1]*xy_bin[first[ind],1])
             if fake_offset_val is None:
                 self[key] = {'file_num':np.array(int(number), ndmin=1), 'offset_start':np.array(first[ind], ndmin=1), 'offset_end':np.array(last[ind], ndmin=1)}
             else:
@@ -58,18 +105,30 @@ class geo_index(dict):
         self.attrs['type_0']=file_type
         self.attrs['n_files']=1
         return self
-          
+    
+    def from_latlon(self, lat, lon,  filename=None, file_type=None, number=0, fake_offset_val=None):
+        out_srs=osr.SpatialReference()
+        out_srs.ImportFromProj4(self.attrs['SRS_proj4'])
+        ll_srs=osr.SpatialReference()
+        ll_srs.ImportFromEPSG(4326)
+        ct=osr.CoordinateTransformation(ll_srs, out_srs).TransformPoint
+        #xy=[ct(*xyz)[0:2] for xyz in zip(np.ravel(lon), np.ravel(lat), np.zeros_like(lat).ravel())]
+        x, y, z = list(zip(*[ct(*xy) for xy in zip(np.ravel(lon), np.ravel(lat), np.zeros_like(lat).ravel())]))
+        return self.from_xy([np.array(x),np.array(y)], filename, file_type, number, fake_offset_val)
+    
     def from_list(self, index_list, delta=None, SRS_proj4=None, copy_first=False): 
         # build a geo_index from a list of geo_indices.  
         # Each bin in the resulting geo_index contains information for reading
         # the files indexed by the geo_indices in index_list
-        if copy_first:
-            self=index_list[0].copy
-        else:
-            self=index_list[0]
         if len(index_list)==0:
             return
-
+        if copy_first:
+            self=index_list[0].copy()
+        else:
+            self.attrs=index_list[0].attrs
+            for bin_name in index_list[0]:
+                self[bin_name]=index_list[0][bin_name]
+                    
         fileListTo=[self.attrs['file_%d' % fileNum] for fileNum in range(self.attrs['n_files'])]           
             
         for index in index_list[1:]:
@@ -99,8 +158,7 @@ class geo_index(dict):
                     #append_data(self[bin]['file_num'], newFileNums)
                     append_data(self[bin],'file_num', newFileNums)
                     for field in ('offset_start','offset_end'):
-                        append_data(self[bin], field, index[bin][field][keep])
-                    
+                        append_data(self[bin], field, index[bin][field][keep])                    
                 else:
                     self[bin]=dict()
                     self[bin]['file_num']=newFileNums
@@ -126,7 +184,7 @@ class geo_index(dict):
         return self
         
     def to_file(self, filename):
-        # write the current geoindex to hdf5 file 'filename'
+        # write the current geoindex to h5 file 'filename'
         indexF=h5py.File(filename,'a') 
         if 'index' in indexF:
             del indexF['index']
@@ -145,6 +203,31 @@ class geo_index(dict):
             indexGrp.attrs[this_type]=self.attrs[this_type]
         indexF.close()
         return
+
+    def for_file(self, filename, file_type, delta, SRS_proj4, number=0, dir_root=''):
+        # make a geo_index for file 'filename'
+        if dir_root is not None:
+            # eliminate the string in 'dir_root' from the filename
+            filename=filename.replace(dir_root,'')
+        if file_type in ['ATL06']: 
+            temp=list()
+            for beam_pair in (1, 2, 3):     
+                D=ATL06_data(filename=filename, beam_pair=beam_pair, NICK=True, field_dict={None:('latitude','longitude','h_li','delta_time')}).get_xy(SRS_proj4)
+                if D.latitude.shape[0] > 0:
+                    temp.append(geo_index(delta=delta, SRS_proj4=SRS_proj4).from_xy([np.nanmean(D.x, axis=1), np.nanmean(D.y, axis=1)], '%s:pair%d' % (filename, beam_pair), 'ATL06', number=number))
+            self.from_list(temp)
+        if file_type in ['ATM_Qfit']:
+            D=Qfit_data(filename=filename, field_dict={'latitiude','longitude', 'time'})
+            if D.latitude.shape[0] > 0:
+                self.from_latlon(D.latitude, D.longitude,  filename, 'ATM_Qfit', number=number)
+        if file_type in ['h5_geoindex']:         
+            # read the file as a collection of points
+            temp_GI=geo_index().from_file(filename)
+            xy_bin=temp_GI.bins_as_array()
+            for attr in temp_GI.attrs.keys():
+                self.attrs[attr]=temp_GI.attrs[attr]
+            self.from_xy(xy_bin, filename, file_type, number=number, fake_offset_val=-1)
+        return self
 
     def query_latlon(self, lat, lon, get_data=True, fields=None):
         # query the current geo_index for all bins that match the bin locations
@@ -165,16 +248,16 @@ class geo_index(dict):
         xy_bin=self.bins_as_array() 
         these=np.logical_and(np.logical_and(xy_bin[:,0] >= xr[0], xy_bin[:,0] <= xr[1]), 
             np.logical_and(xy_bin[:,1] >= yr[0], xy_bin[:,1] <= yr[1]))
-        return self.query_xy(xy_bin[these,0], xy_bin[these,1], get_data=get_data)
-    
-    def bins_as_array(self):
-        if len(self)>0:
-            xy_bin=np.c_[[np.fromstring(key, sep='_') for key in self.keys()]]
-        else:
-            xy_bin=np.c_[[np.fromstring(key, sep='_') for key in self.h5_file_index.keys()]]
-        return xy_bin
- 
-    def query_xy(self, xb, yb, delta=None, cleanup=True, get_data=True, fields=None, pad=None, dir_root=None):
+        return self.query_xy([xy_bin[these,0], xy_bin[these,1]], get_data=get_data)
+
+    def intersect(self, other, pad=[0, 0]):
+        bins_both=set(self.keys()).intersection(other.keys())
+        xyB=np.c_[[np.fromstring(key, sep='_') for key in bins_both]]
+        self_sub=self.copy_subset(xyBin=[xyB[:,0], xyB[:,1]], pad=pad[0])
+        other_sub=other.copy_subset(xyBin=[xyB[:,0], xyB[:,1]], pad=pad[1])
+        return self_sub, other_sub
+
+    def query_xy(self, xyb, cleanup=True, get_data=True, fields=None, pad=None, dir_root='', strict=False, default_type=None):
         # check if data exist within the current geo index for bins in lists/arrays
         #     xb and yb.  
         # If argument delta is provided, find the bins in the current geo_index
@@ -185,43 +268,22 @@ class geo_index(dict):
         #    and the offsets in the file corresponding to each.
         # If 'pad' is provided, include bins between xb-pad*delta and xp+pad*delta (inclusive)
         #     in the query (likewise for y)
-        if delta is None:
-            delta=self.attrs['delta']
-        if isinstance(xb, np.ndarray):
-            xb=xb.copy().ravel()
-            yb=yb.copy().ravel()
+        
+        delta=self.attrs['delta']
+        if isinstance(xyb[0], np.ndarray):
+            xyb=[xyb[0].copy().ravel(), xyb[1].copy().ravel()]            
         if pad is not None:
-            [xp,yp]=np.meshgrid(np.arange(-pad, pad+1)*delta[0], np.arange(-pad, pad+1)*delta[1])
-            xp=xp.ravel(); yp=yp.ravel();
-            xb=np.concatenate([xpi+xb for xpi in xp]).ravel()
-            yb=np.concatenate([ypi+yb for ypi in yp]).ravel()
-            # keep only the unique members of xb and yb
-            xb, yb = unique_points(xb, yb, delta)
+            xyb=pad_bins(xyb, pad, delta)
 
         # make a temporary geo_index to hold the subset of the current geoindex
-        # corresponding to xb and yb
-        temp_gi=geo_index(delta=self.attrs['delta'], SRS_proj4=self.attrs['SRS_proj4'])
-        if (np.array(delta)==np.array(self.attrs['delta'])).all():  
-            # query self at its native resolution
-            for bin in set(zip(xb, yb)):
-               bin_name='%d_%d' % bin
-               if bin_name in self:
-                   temp_gi[bin_name]=self[bin_name]
-               elif hasattr(self, 'h5_file_index') and bin_name in self.h5_file_index:
-                   temp_gi[bin_name]=self.h5_file_index[bin_name]
-        else:
-            # query self at a different (coarser?) resolution: need to query bins at the finer resolution
-            self_delta=self.attrs['delta']
-            for bin in set(zip(xb, yb)):
-                x0=self_delta[0]*np.round(np.arange(bin[0]-delta[0]/2, bin[0]+delta[0]/2, self_delta[0])/self_delta[0]) 
-                y0=self_delta[1]*np.round(np.arange(bin[1]-delta[1]/2, bin[1]+delta[1]/2, self_delta[1])/self_delta[0]) 
-                for bin_x in x0:
-                    for bin_y in y0:
-                        bin_name=u'%d_%d' % (bin_x, bin_y)
-                        if bin_name in self:
-                            temp_gi[bin_name]=self[bin_name]
-                        elif hasattr(self, 'h5_file_index') and bin_name in self.h5_file_index:
-                            temp_gi[bin_name]=self.h5_file_index[bin_name]  
+        # corresponding to xb and yb      
+        temp_gi=geo_index(delta=self.attrs['delta'], SRS_proj4=self.attrs['SRS_proj4'])       
+        for bin in set(zip(xyb[0], xyb[1])):
+           bin_name='%d_%d' % bin
+           if bin_name in self:
+               temp_gi[bin_name]=self[bin_name]
+           elif hasattr(self, 'h5_file_index') and bin_name in self.h5_file_index:
+               temp_gi[bin_name]=self.h5_file_index[bin_name]
         if len(temp_gi.keys())==0:
             return None        
         temp_dict=dict()
@@ -238,7 +300,7 @@ class geo_index(dict):
             xy=xy0[these,:]
             if cleanup:
                 # clean up the output: when the start of the next segment is 
-                #within 1 of the end of the previous, stick them together  
+                #before or adjacent to the end of the previous, stick them together  
                 ii=np.argsort(i0)
                 i0=i0[ii]
                 i1=i1[ii]
@@ -247,49 +309,109 @@ class geo_index(dict):
                 this=0
                 keep[this]=True
                 for kk in np.arange(1,len(i0)):
-                    if i0[kk]==i1[this]+1:
+                    if i0[kk]<=i1[this]+1 and i0[kk] > 0 and i0[kk] > 0:
                         keep[kk]=False
-                        i1[this]=i1[kk]
+                        i1[this]=np.maximum(i1[this], i1[kk])
                     else:
                         this=kk
                         keep[kk]=True
                 i0=i0[keep]
                 i1=i1[keep]
-                xy=xy[keep,:]
-            query_results[self.attrs['file_%d' % out_file_num]]={
+                xy=xy[keep,:]   
+            query_results[self.attrs['file_%d' % out_file_num]]={ 
             'type':self.attrs['type_%d' % out_file_num],
             'offset_start':i0,
             'offset_end':i1,
             'x':xy[:,0],
             'y':xy[:,1]}  
         if get_data:
-             query_results=get_data_for_geo_index(query_results, delta=self.attrs['delta'], fields=fields, dir_root=dir_root)
+            query_results=get_data_for_geo_index(query_results, delta=self.attrs['delta'], fields=fields, dir_root=dir_root)
+            if strict is True:
+                # take the subset of data that rounds exactly to the query (OTW, may get data that extend outside)
+                keep=np.zeros_like(query_results.x, dtype=bool)
+                xr=np.round(query_results/delta)*delta
+                yr=np.round(query_results/delta)*delta
+                for xybi in zip(xyb[0], xyb[1]):
+                    ii=np.logical_and(xr==xybi[0], yr==xybi[1])
+                    keep[ii]=True
+                query_results.subset(keep)    
         return query_results
+    
+    def bins_as_array(self):
+        if len(self)>0:
+            xy_bin=np.c_[[np.fromstring(key, sep='_') for key in self.keys()]]
+        else:
+            xy_bin=np.c_[[np.fromstring(key, sep='_') for key in self.h5_file_index.keys()]]
+        return (xy_bin[:,0].ravel(), xy_bin[:,1].ravel())
 
-def get_data_for_geo_index(query_results, delta=None, fields=None, dir_root=None):
+    def bin_latlon(self):
+        xy_bin=self.bins_as_array()
+        internal_srs=osr.SpatialReference()
+        internal_srs.ImportFromProj4(self.attrs['SRS_proj4'])
+        ll_srs=osr.SpatialReference()
+        ll_srs.ImportFromEPSG(4326)
+        ct=osr.CoordinateTransformation( internal_srs, ll_srs)
+        lon, lat, z0 = list(zip(*[ct.TransformPoint(*xy) for xy in zip(np.ravel(xy_bin[:,0]), np.ravel(xy_bin[:,1]), np.ravel(np.zeros_like(xy_bin[:,1])))]))
+        return (lat, lon)
+        
+    def keys_from_xy(self, xy):
+        pts=unique_points((xy[0].ravel(), xy[1].ravel()), delta=self.attrs['delta'])
+        result=[p1 for p1 in ['%d_%d' % p0 for p0 in zip(pts[0], pts[1])] if p1 in self]
+        return result
+        
+def get_data_for_geo_index(query_results, delta=None, fields=None, data=None, dir_root=''):
     # read the data from a set of query results  
     # Currently the function knows how to read h5_geoindex and ATL06 data.  
     # Append more cases as needed
-    if dir_root is not None:
+    if len(dir_root)>0:
         dir_root += '/'
-    data=list()
+    out_data=list()
     for file_key, result in query_results.items():
+        #print(result.__class__)       
+        if dir_root is not None:
+            this_file = dir_root+file_key
+        else:
+            this_file=file_key
         if result['type'] == 'h5_geoindex':
-            data += geo_index().from_file(dir_root+file_key).query_xy(result['x'], result['y'], delta=delta, fields=fields, get_data=True)
+            out_data += geo_index().from_file(this_file).query_xy((result['x'], result['y']),  fields=fields, get_data=True)
         if result['type'] == 'ATL06':
             if fields is None:
                 fields={None:(u'latitude',u'longitude',u'h_li',u'delta_time')}
-            D6_file, pair=file_key.split(':pair')             
-            D6=[ATL06_data(filename=dir_root+D6_file, beam_pair=int(pair), index_range=np.array(temp), NICK=True, field_dict=fields) for temp in zip(result['offset_start'], result['offset_end'])]           
+            D6_file, pair=this_file.split(':pair')             
+            D6=[ATL06_data(filename=D6_file, beam_pair=int(pair), index_range=np.array(temp), NICK=True, field_dict=fields) for temp in zip(result['offset_start'], result['offset_end'])]           
             if isinstance(D6,list):
-                data += D6  
+                out_data += D6  
             else:
                 data.append(D6)
-    return data
+        if result['type'] == 'ATM_Qfit':
+            Qfit_temp=[Qfit_data(filename=this_file, index_range=np.array(temp)) for temp in zip(result['offset_start'], result['offset_end'])]           
+            if isinstance(Qfit_temp,list):
+                out_data += Qfit_temp
+            else:
+                out_data.append(Qfit_temp)
+        if result['type'] is None:
+            out_data=[data.subset(np.arange(temp[0], temp[1])) for temp in zip(result['offset_start'], result['offset_end'])]           
+    return out_data
 
-def unique_points(x, y, delta=[1, 1]):
-    xyb=np.concatenate([np.array(xybi).reshape([1,2]) for xybi in set(zip(np.round(np.array(x)/delta[0])*delta[0], np.round(np.array(y)/delta[0])*delta[0]))], axis=0)
-    return xyb[:,0], xyb[:,1]
+def unique_points(xy, delta=[1, 1]):
+    xr=(np.round(np.array(xy[0])/delta[0])*delta[0]).ravel().tolist()
+    yr=(np.round(np.array(xy[1])/delta[1])*delta[1]).ravel().tolist()
+    xyb=np.concatenate([np.array(xybi).reshape([1,2]) for xybi in set(zip(xr, yr))], axis=0)
+    return [xyb[:,0], xyb[:,1]]
+
+def pad_bins(xyb, pad, delta):
+    [xp,yp]=np.meshgrid(np.arange(-pad, pad+1)*delta[0], np.arange(-pad, pad+1)*delta[1])
+    xp=xp.ravel(); yp=yp.ravel();
+    if isinstance(xyb[0],int) or isinstance(xyb[0],float):
+        xyb[0]=np.array([xpi+xyb[0] for xpi in xp]) 
+        xyb[1]=np.array([ypi+xyb[1] for ypi in yp]) 
+    else:
+        xyb[0]=np.concatenate([xpi+xyb[0] for xpi in xp]).ravel()
+        xyb[1]=np.concatenate([ypi+xyb[1] for ypi in yp]).ravel()
+
+    # keep only the unique members of xb and yb
+    xyb = unique_points(xyb, delta)
+    return xyb
 
 def append_data(group, field, newdata):  
     # utility function that can append data either to an hdf5 field or a dict of numpy array
@@ -303,31 +425,8 @@ def append_data(group, field, newdata):
         group[field]=np.concatenate((group[field], newdata), axis=0)
     return
 
-def index_list_for_files(filename_list, file_type, delta, SRS_proj4, dir_root=None):
+def index_list_for_files(filename_list, file_type, delta, SRS_proj4, dir_root=''):
     index_list=list()
-    out_srs=osr.SpatialReference()
-    out_srs.ImportFromProj4(SRS_proj4)
-    ll_srs=osr.SpatialReference()
-    ll_srs.ImportFromEPSG(4326)
-    ct=osr.CoordinateTransformation(ll_srs, out_srs)
-    for number, filename in enumerate(filename_list):
-        if dir_root is not None:
-            # eliminate the string in 'dir_root' from the filename
-            filename=filename.replace(dir_root,'')
-        if file_type in ['ATL06']:   
-            for beam_pair in (1, 2, 3):     
-                D=ATL06_data(filename=filename, beam_pair=beam_pair, NICK=True, field_dict={None:('latitude','longitude','h_li','delta_time')})
-                if D.latitude.shape[0] > 0:
-                    x, y, z = list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(D.longitude), np.ravel(D.latitude), np.zeros_like(np.ravel(D.latitude)))]))
-                    x=np.array(x).reshape(D.latitude.shape)
-                    y=np.array(y).reshape(D.latitude.shape)                     
-                    xp=np.nanmean(x, axis=1)
-                    yp=np.nanmean(y, axis=1)
-                    index_list.append(geo_index(delta=delta, SRS_proj4=SRS_proj4).from_xy(xp, yp, '%s:pair%d' % (filename, beam_pair), 'ATL06', number=number))
-        if file_type in ['h5_geoindex']:         
-            # read the file as a collection of points
-            temp_gi=geo_index().from_file(filename)
-            xy_bin=np.c_[[np.fromstring(key, sep='_') for key in temp_gi.keys()]] 
-            index_list.append(geo_index(delta=delta, SRS_proj4=SRS_proj4).from_xy(xy_bin[:,0], xy_bin[:,1], filename, file_type, number=0, fake_offset_val=-1))
-                 
+    for filename in filename_list:
+        index_list.append(geo_index().for_file(filename, file_type, delta, SRS_proj4, dir_root=dir_root, number=0))
     return index_list
