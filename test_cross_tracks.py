@@ -38,7 +38,7 @@ x, y, z = list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(D11.correct
  
 xb,yb=unique_points(x,y, [1000., 1000.])
 
-query_out=geo_index().from_file(all_track_file, read_file=False).query_xy(xb, yb, delta=[1000, 1000], pad=1, get_data=False)
+query_out=geo_index().from_file(all_track_file, read_file=False).query_xy([xb, yb], delta=[1000, 1000], pad=1, get_data=False)
 plt.figure(); 
 plt.plot(xb,yb,'k.')
 
