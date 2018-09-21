@@ -40,14 +40,14 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
         ref_pt_x=ref_pt_x[0:int(num_ref_pts)]
 
     for count, ref_pt_number in enumerate(ref_pt_numbers):
-        #print "ref_pt_number=%d" % ref_pt_number
+        #print("ref_pt_number=%d" % ref_pt_number)
         x_atc_ctr=ref_pt_x[count]
         try:
             # section 5.1.1
             D6_sub=D6.subset(np.any(np.abs(D6.segment_id-ref_pt_number) <= params_11.N_search, axis=1), by_row=True)
             if D6_sub.h_li.shape[0]<=1:
                 if verbose:
-                    print "not enough data at ref pt=%d" % ref_pt_number
+                    print("not enough data at ref pt=%d" % ref_pt_number)
                 continue
 
             #2a. define representative x and y values for the pairs
@@ -60,14 +60,14 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
             if P11.ref_surf.surf_fit_quality_summary > 0:
                 P11_list.append(P11)
                 if verbose:
-                    print "surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number)
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number))
                 continue
 
             P11.select_y_center(D6_sub, pair_data)
             if P11.ref_surf.surf_fit_quality_summary > 0:
                 P11_list.append(P11)
                 if verbose:
-                    print "surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number)
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number))
                 continue
 
             P11.corrected_h.ref_pt_lat,P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'],[x_atc_ctr,P11.y_atc_ctr])
@@ -76,7 +76,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
             if 'inversion failed' in P11.status:
                 P11_list.append(P11)
                 if verbose:
-                    print "surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number)
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number))
 
                 continue
 
@@ -84,7 +84,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
 
             P11_list.append(P11)
         except:
-            print "uncaught exception for ref_pt=%d" % ref_pt_number
+            print("uncaught exception for ref_pt=%d" % ref_pt_number)
         if np.mod(count, 1)==100:
             print("completed %d segments, ref_pt_number= %d" %(count, ref_pt_number))
 
@@ -119,10 +119,10 @@ def main():
     args=parser.parse_args()
     ATL06_files=glob(args.ATL06_glob)
     if args.verbose:
-        print "working on :"
-        print ATL06_files
+        print("working on :")
+        print(ATL06_files)
     if len(ATL06_files) <1:
-        print "no files found for %s" % args.ATL06_glob
+        print("no files found for %s" % args.ATL06_glob)
         exit()
 
     P11_list=fit_ATL11(ATL06_files, beam_pair=args.pair, verbose=args.verbose) # defined in ATL06_to_ATL11
