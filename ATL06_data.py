@@ -23,16 +23,16 @@ class ATL06_data:
                             'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','dh_fit_dy','h_rms_misft','h_robust_spread','signal_selection_source','snr_significance'],
                             'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr','cloud_flg_atm','r_eff','tide_ocean']} 
             else:
-                field_dict={'land_ice_height':['delta_time','dh_fit_dx','dh_fit_dy','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
-                            'ground_track':['cycle','x_atc', 'y_atc','seg_azimuth'],
-                            'fit_statistics':['dh_fit_dx_sigma','h_robust_spread','snr_significance','signal_selection_source']} 
+                field_dict={None:['delta_time', 'h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id'], 
+                            'ground_track':['x_atc', 'y_atc','seg_azimuth'],
+                            'fit_statistics':['dh_fit_dx','dh_fit_dy','dh_fit_dx_sigma','h_robust_spread','snr_significance','signal_selection_source']} 
 
         if list_of_fields is None:
             list_of_fields=list()
             for group in field_dict.keys():
                 for field in field_dict[group]:
                     list_of_fields.append(field)
-
+        self.beam_pair=beam_pair
         self.list_of_fields=list_of_fields
         if list_of_data is not None:
             self.from_list(list_of_data)
@@ -50,7 +50,7 @@ class ATL06_data:
                 self.from_list(D6_list)
             elif isinstance(filename, (str)):
                 # this happens when the input filename is a string, not a list
-                self.read_from_file(filename, field_dict, beam_pair=beam_pair, index_range=index_range, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK)
+                self.read_from_file(filename, field_dict,  index_range=index_range, x_bounds=x_bounds, y_bounds=y_bounds, NICK=NICK)
             else:
                 raise TypeError
         else:
@@ -58,10 +58,9 @@ class ATL06_data:
             for field in list_of_fields:
                 setattr(self, field, np.zeros((2,0)))       
           
-    def read_from_file(self, filename, field_dict, index_range=None, x_bounds=None, y_bounds=None, beam_pair=None, NICK=None): 
-        seconds_per_day=24*3600.
+    def read_from_file(self, filename, field_dict, index_range=None, x_bounds=None, y_bounds=None, NICK=None): 
         h5_f=h5py.File(filename,'r')        
-        beam_names=['gt%d%s' %(beam_pair, b) for b in ['l','r']]
+        beam_names=['gt%d%s' %(self.beam_pair, b) for b in ['l','r']]
         if beam_names[0] not in h5_f or beam_names[1] not in h5_f:        
             # return empty data structure
             for group in field_dict:
@@ -69,12 +68,21 @@ class ATL06_data:
                     setattr(self, field, np.zeros((0,2)))
             return
         # find cycle number in filename
-        m=re.search(r"TrackData_(.*?)/Track_(.*?).h5",filename)
-        cycle_number=np.int(m.group(1))
-        #N.B. with real ATL06 data we will not want to apply the reference time offset to the delta time.
+        if NICK:
+            m=re.search(r"TrackData_v._(.*?)/Track_(.*?).h5",filename)
+            if m is not None:
+                cycle_number=np.int(m.group(1))
+            else:
+                cycle_number=-1
+        else:
+            cycle_number=h5_f['ancillary_data']['start_cycle']            
+         #N.B. with real ATL06 data we will not want to apply the reference time offset to the delta time.
         time_offset=0.
         if NICK:
-            time_offset=h5_f.attrs['reference_time']*seconds_per_day
+            try:
+                time_offset=h5_f['metadata']['granule_start_seconds'][0]+(17.*365.+9*30.+15.)*24.*3600.
+            except KeyError:
+                time_offset=0.
         #print('line 61,',NICK,filename)
         if beam_names[0] not in h5_f.keys():
             return None
@@ -100,10 +108,14 @@ class ATL06_data:
                                 np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field][0,index_range[0]:index_range[1]]).transpose(),  
                                 np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field][0,index_range[0]:index_range[1]]).transpose()])
                     else:
-                        setattr(self, field, np.c_[
-                        np.array(h5_f[beam_names[0]][group][field][0,index_range[0]:index_range[1]]).transpose(),  
-                        np.array(h5_f[beam_names[1]][group][field][0,index_range[0]:index_range[1]]).transpose()])
-                            
+                        if group is None:
+                            setattr(self, field, np.c_[
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][field][index_range[0]:index_range[1]]).transpose(),  
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][field][index_range[0]:index_range[1]]).transpose()])
+                        else:
+                            setattr(self, field, np.c_[
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field][index_range[0]:index_range[1]]).transpose(),  
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field][index_range[0]:index_range[1]]).transpose()])                            
                 except KeyError:
                     print("could not read %s/%s" % (group, field))
                     setattr(self, field, np.zeros_like(self.delta_time)+np.NaN)
@@ -164,10 +176,10 @@ class ATL06_data:
                 dd[field]=getattr(self, field)[index,:]
             else:
                 dd[field]=getattr(self, field)[index,:].ravel()[index]
-        return ATL06_data(from_dict=dd, list_of_fields=datasets)
+        return ATL06_data(from_dict=dd, list_of_fields=datasets, beam_pair=self.beam_pair)
             
     def copy(self):
-        return ATL06_data(list_of_data=(self), list_of_fields=self.list_of_fields)
+        return ATL06_data(list_of_data=(self), list_of_fields=self.list_of_fields, beam_pair=self.beam_pair)
     
     def plot(self, valid_pairs=None, valid_segs=None):
         colors=('r','b')
