@@ -86,8 +86,9 @@ class ATL06_data:
         #print('line 61,',NICK,filename)
         if beam_names[0] not in h5_f.keys():
             return None
-        if index_range is None:
+        if index_range is None or index_range[1]==-1:
             index_range=[0, h5_f[beam_names[0]]['land_ice_segments']['h_li'].size]
+        n_vals=index_range[-1]-index_range[0]+1
         
         for group in field_dict.keys():
             for field in field_dict[group]:
@@ -118,7 +119,7 @@ class ATL06_data:
                                 np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field][index_range[0]:index_range[1]]).transpose()])                            
                 except KeyError:
                     print("could not read %s/%s" % (group, field))
-                    setattr(self, field, np.zeros_like(self.delta_time)+np.NaN)
+                    setattr(self, field, np.zeros( [n_vals, 2])+np.NaN)
         if NICK is not None:
             self.sigma_geo_h =np.zeros_like(self.h_li)+0.03
             self.sigma_geo_xt=np.zeros_like(self.h_li)+6.5
