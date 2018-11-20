@@ -15,6 +15,7 @@ from osgeo import osr
 import matplotlib.pyplot as plt
 from ATL11.ATL06_data import ATL06_data        
 from IS2_calval.Qfit_data import Qfit_data
+from ATL11.point_data import point_data
        
 class geo_index(dict):
     def __init__(self, delta=[1000,1000], SRS_proj4=None, data=None):
@@ -81,21 +82,26 @@ class geo_index(dict):
                    'offset_end':i0+temp[key1]['offset_end']}
         return out 
         
-    def from_xy(self, xy,  filename=None, file_type=None, number=0, fake_offset_val=None):  
+    def from_xy(self, xy,  filename=None, file_type=None, number=0, fake_offset_val=None, first_last=None):  
         # build a geo_index from a list of x, y points, for a specified filename
         # and file_type.  If the file_type is 'geo_index', optionally sepecify a
         # value for 'fake_offset_val'
         delta=self.attrs['delta']
         xy_bin=np.round(np.c_[xy[0].ravel(), xy[1].ravel()]/delta)
-   
-        # sort by magnitude of (x,y), then by angle
-        ordering=np.sqrt(np.sum(xy_bin**2, axis=1))+(np.arctan2(xy_bin[:,0], xy_bin[:,1])+np.pi)/2/np.pi
-        uOrd, first=np.unique(ordering, return_index=True)
-        uOrd, temp=np.unique(-ordering[::-1], return_index=True)
-        last=len(ordering)-1-temp[::-1]
-     
-        for ind in range(len(first)):
-            key='%d_%d' % (delta[0]*xy_bin[first[ind],0], delta[1]*xy_bin[first[ind],1])
+        if first_last is None:
+            # If the inputs haven't provided the first and last index for each bin, need to calculate it:
+            # sort by magnitude of (x,y), then by angle
+            ordering=np.sqrt(np.sum(xy_bin**2, axis=1))+(np.arctan2(xy_bin[:,0], xy_bin[:,1])+np.pi)/2/np.pi
+            uOrd, first=np.unique(ordering, return_index=True)
+            uOrd, temp=np.unique(-ordering[::-1], return_index=True)
+            last=len(ordering)-1-temp[::-1]
+            keys=['%d_%d' % (delta[0]*xy_bin[first[ind],0], delta[1]*xy_bin[first[ind],1]) for ind  in range(len(first))]
+        else:
+            # assume that the first_last values match the bins
+            first, last=first_last
+            keys=['%d_%d' % (xy_bin[ind,0]*delta[0], xy_bin[ind,1]*delta[1]) for ind in range(first.size)]
+                        
+        for ind, key in enumerate(keys):
             if fake_offset_val is None:
                 self[key] = {'file_num':np.array(int(number), ndmin=1), 'offset_start':np.array(first[ind], ndmin=1), 'offset_end':np.array(last[ind], ndmin=1)}
             else:
@@ -227,6 +233,20 @@ class geo_index(dict):
             for attr in temp_GI.attrs.keys():
                 self.attrs[attr]=temp_GI.attrs[attr]
             self.from_xy(xy_bin, filename, file_type, number=number, fake_offset_val=-1)
+        if file_type in ['indexed_h5']:
+            self.attrs['SRS_proj4']=SRS_proj4
+            h5f=h5py.File(filename,'r')
+            xy=[np.array(h5f['INDEX']['bin_x']), np.array(h5f['INDEX']['bin_y'])]
+            if 'bin_index' in h5f['INDEX']:
+                # this is the type of indexed h5 that has all of the data in single datasets
+                i0_i1=h5f['INDEX']['bin_index']
+                first_last=[i0_i1[0,:].ravel(), i0_i1[1,:].ravel()]
+                fake_offset=None
+            else:
+                first_last=None
+                fake_offset=-1
+            self.from_xy(xy, filename, file_type, number=number, first_last=first_last, fake_offset_val=fake_offset)
+            h5f.close()
         return self
 
     def query_latlon(self, lat, lon, get_data=True, fields=None):
@@ -389,6 +409,8 @@ def get_data_for_geo_index(query_results, delta=None, fields=None, data=None, di
                 out_data += Qfit_temp
             else:
                 out_data.append(Qfit_temp)
+        if result['type'] == 'indexed_h5':
+            out_data += [read_indexed_h5_file(this_file, [result['x'], result['y']],  fields=fields, index_range=[result['offset_start'], result['offset_end']])]
         if result['type'] is None:
             out_data=[data.subset(np.arange(temp[0], temp[1])) for temp in zip(result['offset_start'], result['offset_end'])]           
     return out_data
@@ -412,6 +434,29 @@ def pad_bins(xyb, pad, delta):
     # keep only the unique members of xb and yb
     xyb = unique_points(xyb, delta)
     return xyb
+
+def read_indexed_h5_file(filename, xy_bin,  fields=['x','y','time'], index_range=[[-1],[-1]]):
+    out_data={field:list() for field in fields}
+    h5f=h5py.File(filename,'r')
+    blank_fields=list()
+    if index_range[0][0]>=0:
+        # All the geo bins are together.  Use the index_range variable to read
+        for field in fields:
+            for i0_i1 in zip(index_range):
+                if field in h5f:
+                    out_data[field].append([h5f[field][i0_i1[0]:i0_i1[1]]])
+                else:
+                    blank_fields.append(field)
+    else:
+        # this is a file with distinct bins, each with its own set of datasets
+        for xy in zip(xy_bin):
+            bin_name='%dE_%dN' % xy
+            for field in fields:
+                if field in h5f[bin_name]:
+                    out_data[field].append([h5f[bin_name][field]])
+                else:
+                    blank_fields.append(field)
+    return point_data().from_list(out_data, list_of_fields=fields)
 
 def append_data(group, field, newdata):  
     # utility function that can append data either to an hdf5 field or a dict of numpy array
