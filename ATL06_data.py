@@ -18,9 +18,9 @@ class ATL06_data:
         """
         Initialize an ATl06 data structure. 
         
-        ATL06_data has one private attribute:
-            __list_of_fields: list of all the fields defined for the current structure
-        and it has public attributes:
+        ATL06_data has attributes:
+            list_of_fields: list of all the fields defined for the current structure
+            field_dict: dictionary that shows how to read data from the file.
             beam_pair:  The ICESat-2 beam pair from which the data come
             size: the number of elements in each of its data fields
             shape: the shape of each of its data fields
@@ -29,16 +29,18 @@ class ATL06_data:
         data from the left and right beams of the ATL06 pair (gtxl and gtxr)
         """
         if field_dict is None:
-            field_dict=self.__default_field_dict__()
-        
+            self.field_dict=self.__default_field_dict__()
+        else:
+            self.field_dict=field_dict
+            
         if list_of_fields is None:
             list_of_fields=list()
-            for group in field_dict.keys():
-                for field in field_dict[group]:
+            for group in self.field_dict.keys():
+                for field in self.field_dict[group]:
                     list_of_fields.append(field)
                     
         self.beam_pair=beam_pair
-        self.__list_of_fields=list_of_fields
+        self.list_of_fields=list_of_fields
         for field in list_of_fields:
             setattr(self, field, np.zeros((0,2)))   
         self.size=0
@@ -48,7 +50,7 @@ class ATL06_data:
         """
         When data size and shape may have changed, update the size and shape atttributes
         """
-        temp=getattr(self, self.__list_of_fields[0])
+        temp=getattr(self, self.list_of_fields[0])
         self.size=temp.size
         self.shape=temp.shape
         return self
@@ -69,31 +71,30 @@ class ATL06_data:
                             'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr','cloud_flg_atm','r_eff','tide_ocean']}         
         return field_dict
         
-    def from_file(self, filename, field_dict=None, index_range=None, x_bounds=None, y_bounds=None): 
+    def from_file(self, filename, index_range=None, x_bounds=None, y_bounds=None): 
         """
         Read data from a file.
         """
-        h5_f=h5py.File(filename,'r')        
-        if field_dict is None:
-            field_dict=self.__default_field_dict__()
+        h5_f=h5py.File(filename,'r')
         
         beam_names=['gt%d%s' %(self.beam_pair, b) for b in ['l','r']]
         if beam_names[0] not in h5_f or beam_names[1] not in h5_f:        
             # return empty data structure
             for group in self.field_dict:
-                for field in group:
+                for field in self.field_dict[group]:
                     setattr(self, field, np.zeros((0,2)))
-            return
+                self.__update_size_and_shape__()
+            return self
         if beam_names[0] not in h5_f.keys():
             return None
         if index_range is None or index_range[1]==-1:
             index_range=[0, h5_f[beam_names[0]]['land_ice_segments']['h_li'].size]
-        n_vals=index_range[-1]-index_range[0]+1
+        n_vals=index_range[-1]-index_range[0]
         
-        for group in field_dict.keys():
-            for field in field_dict[group]:
-                if field not in self.__list_of_fields:
-                    self.__list_of_fields.append(field)
+        for group in self.field_dict.keys():
+            for field in self.field_dict[group]:
+                if field not in self.list_of_fields:
+                    self.list_of_fields.append(field)
                 try:
                     if group is None:
                         #The None group corresponds to the top level of the land_ice_segments hirearchy
@@ -106,6 +107,8 @@ class ATL06_data:
                         data=np.c_[
                             np.array(h5_f[beam_names[0]]['land_ice_segments'][field][index_range[0]:index_range[1]]).transpose(),  
                             np.array(h5_f[beam_names[1]]['land_ice_segments'][field][index_range[0]:index_range[1]]).transpose()]
+                    elif group is "orbit_info":
+                        data=np.zeros((n_vals, 2))+h5_f['orbit_info'][field]
                     else:
                         # All other groups are under the land_ice_segments/group hirearchy
                          try:
@@ -125,13 +128,14 @@ class ATL06_data:
                 except KeyError:
                     print("could not read %s/%s" % (group, field))
                     setattr(self, field, np.zeros( [n_vals, 2])+np.NaN)
-        # add a non-broken version of the atl06 quality summary
-        setattr(self, 'atl06_quality_summary', (self.h_li_sigma > 1) | (self.h_robust_sprd > 1) | (self.snr_significance > 0.02))
+        if 'atl06_quality_summary' in self.list_of_fields:
+            # add a non-broken version of the atl06 quality summary                    
+            setattr(self, 'atl06_quality_summary', (self.h_li_sigma > 1) | (self.h_robust_sprd > 1) | (self.snr_significance > 0.02))
         h5_f.close()
         self.__update_size_and_shape__()
         # assign fields that must be copied from single-value attributes in the 
         # h5 file
-        if 'cycle_number' in self.__list_of_fields:
+        if 'cycle_number' in self.list_of_fields:
             # get the cycle number
             try:
                 cycle_number=h5_f['ancillary_data']['start_cycle']  
@@ -157,15 +161,15 @@ class ATL06_data:
             x, y, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(self.longitude), np.ravel(self.latitude), np.zeros_like(np.ravel(self.latitude)))]))
             self.x=np.reshape(x, self.latitude.shape)
             self.y=np.reshape(y, self.longitude.shape)
-        if 'x' not in self.__list_of_fields:
-            self.__list_of_fields += ['x','y']
+        if 'x' not in self.list_of_fields:
+            self.list_of_fields += ['x','y']
         return self
     
     def append(self, D):
         """
         Append the fields of two ATL06_data instances
         """
-        for field in self.__list_of_fields:
+        for field in self.list_of_fields:
             setattr(self, np.c_[getattr(self, field), getattr(D, field)])
         self.__update_size_and_shape__()    
         return self
@@ -175,11 +179,11 @@ class ATL06_data:
         Append the fields of several ATL06_data instances.
         """
         try:
-            for field in self.__list_of_fields:
+            for field in self.list_of_fields:
                 data_list=[getattr(this_D6, field) for this_D6 in D6_list]       
                 setattr(self, field, np.concatenate(data_list, 0))
         except TypeError:
-            for field in self.__list_of_fields:
+            for field in self.list_of_fields:
                 setattr(self, field, getattr(D6_list, field))
         self.__update_size_and_shape__()
         return self
@@ -188,7 +192,7 @@ class ATL06_data:
         """
         Build an ATL06_data from a dictionary
         """
-        for field in self.__list_of_fields:
+        for field in self.list_of_fields:
             try:
                 setattr(self, field, D6_dict[field])
             except KeyError:
@@ -200,7 +204,7 @@ class ATL06_data:
         """
         Select a subset of rows within a given ATL06_data instance (modify in place)
         """
-        for field in self.__list_of_fields:
+        for field in self.list_of_fields:
             setattr(self, field, getattr(self, field)[rows,:])
         self.__update_size_and_shape__()
         return self
@@ -211,16 +215,16 @@ class ATL06_data:
         """
         dd=dict()
         if datasets is None:
-            datasets=self.__list_of_fields
+            datasets=self.list_of_fields
         for field in datasets:
             if by_row is not None and by_row:
                 dd[field]=getattr(self, field)[index,:]
             else:
                 dd[field]=getattr(self, field)[index,:].ravel()[index]
-        return ATL06_data.from_dict(dd, list_of_fields=datasets, beam_pair=self.beam_pair)
+        return ATL06_data(list_of_fields=datasets, beam_pair=self.beam_pair).from_dict(dd)
     
     def copy(self):
-        return ATL06_data( list_of_fields=self.__list_of_fields, beam_pair=self.beam_pair).from_list((self))
+        return ATL06_data( list_of_fields=self.list_of_fields, beam_pair=self.beam_pair).from_list((self))
     
     def plot(self, valid_pairs=None, valid_segs=None):
         colors=('r','b')
