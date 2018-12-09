@@ -9,8 +9,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
     params_11=ATL11_defaults()
     seg_number_skip=int(params_11.seg_atc_spacing/20);
     if mission_time_bds is None:
-        mission_time_bds=np.array([0, 365.25*3.*24.*3600.])
-
+        mission_time_bds=np.array([0, 365.25*3.*24.*3600.])+(17.*365.+9*30.+15.)*24.*3600
 
     # read in the ATL06 data from all the repeats
     D6=ATL06_data(filename=ATL06_files, beam_pair=beam_pair, NICK=True)
@@ -40,7 +39,6 @@ def fit_ATL11(ATL06_files, beam_pair=1, ref_pt_numbers=None, output_file=None, n
         ref_pt_x=ref_pt_x[0:int(num_ref_pts)]
 
     for count, ref_pt_number in enumerate(ref_pt_numbers):
-        #print("ref_pt_number=%d" % ref_pt_number)
         x_atc_ctr=ref_pt_x[count]
         try:
             # section 5.1.1
@@ -117,6 +115,7 @@ def main():
     parser.add_argument('--ATL06_glob','-A', default=None, required=True)
     parser.add_argument('--out_file','-o', default=None, required=True)
     args=parser.parse_args()
+    
     ATL06_files=glob(args.ATL06_glob)
     if args.verbose:
         print("working on :")
