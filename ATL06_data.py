@@ -40,6 +40,10 @@ class ATL06_data:
                     list_of_fields.append(field)
                     
         self.beam_pair=beam_pair
+        self.beam_type=['weak','strong'] # defaults for the early part of the mission
+        self.orbit=np.NaN
+        self.rgt=np.NaN
+        self.file=None
         self.list_of_fields=list_of_fields
         for field in list_of_fields:
             setattr(self, field, np.zeros((0,2)))   
@@ -66,15 +70,17 @@ class ATL06_data:
         Define the default fields that get read from the h5 file
         """
         field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id','sigma_geo_h'], 
-                            'ground_track':['x_atc', 'y_atc','seg_azimuth','sigma_geo_at','sigma_geo_xt'],
-                            'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','dh_fit_dy','h_rms_misfit','h_robust_sprd','signal_selection_source','snr_significance'],
-                            'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr','cloud_flg_atm','r_eff','tide_ocean']}         
+                    'ground_track':['x_atc', 'y_atc','seg_azimuth','sigma_geo_at','sigma_geo_xt'],
+                    'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','h_mean', 'dh_fit_dy','h_rms_misfit','h_robust_sprd','n_fit_photons', 'signal_selection_source','snr_significance','w_surface_window_final'],
+                    'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr','cloud_flg_atm','r_eff','tide_ocean'],
+                    'derived':['valid']}         
         return field_dict
         
     def from_file(self, filename, index_range=None, x_bounds=None, y_bounds=None): 
         """
         Read data from a file.
         """
+        self.file=filename
         h5_f=h5py.File(filename,'r')
         
         beam_names=['gt%d%s' %(self.beam_pair, b) for b in ['l','r']]
@@ -87,6 +93,18 @@ class ATL06_data:
             return self
         if beam_names[0] not in h5_f.keys():
             return None
+        # get the strong/weak beam info
+        for count, beam_name in enumerate(beam_names):
+            try:
+                self.beam_type[count]=h5_f[beam_name]['atlas_beam_type']
+            except KeyError:
+                pass  # leave the beam type as the default
+        # read the orbit number
+        try:
+            self.rgt=int(h5_f['orbit_info']['rgt'][0])
+            self.orbit=int(h5_f['orbit_info']['orbit_number'][0])
+        except:
+            pass
         if index_range is None or index_range[1]==-1:
             index_range=[0, h5_f[beam_names[0]]['land_ice_segments']['h_li'].size]
         n_vals=index_range[-1]-index_range[0]
@@ -96,6 +114,7 @@ class ATL06_data:
                 if field not in self.list_of_fields:
                     self.list_of_fields.append(field)
                 try:
+                    #bad_val=-9999 # default value, works for most groups
                     if group is None:
                         #The None group corresponds to the top level of the land_ice_segments hirearchy
                         # most datasets have a __fillValue attribute marking good data, but some don't
@@ -109,19 +128,29 @@ class ATL06_data:
                             np.array(h5_f[beam_names[1]]['land_ice_segments'][field][index_range[0]:index_range[1]]).transpose()]
                     elif group is "orbit_info":
                         data=np.zeros((n_vals, 2))+h5_f['orbit_info'][field]
+                        bad_val=-9999
+                    elif group is "derived" and field is "valid":
+                        data=np.ones((index_range[1]-index_range[0], 2), dtype='bool')
+                        bad_val=0
                     else:
+                        
                         # All other groups are under the land_ice_segments/group hirearchy
                          try:
                             bad_val=h5_f[beam_names[0]]['land_ice_segments'][group][field].attrs['_FillValue']
                          except KeyError:
                             #flags don't have fill values, but -9999 works OK.
                             bad_val=-9999
-                         data=np.c_[
-                            np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field][index_range[0]:index_range[1]]).transpose(),  
-                            np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field][index_range[0]:index_range[1]]).transpose()]
+                         try:
+                             data=np.c_[
+                                np.array(h5_f[beam_names[0]]['land_ice_segments'][group][field][index_range[0]:index_range[1]]).transpose(),  
+                                np.array(h5_f[beam_names[1]]['land_ice_segments'][group][field][index_range[0]:index_range[1]]).transpose()]
+                         except KeyError:
+                             print("missing hdf field for land_ice_segments/%s/%s" % (group, field))
+                             data=np.zeros((index_range[1]+1-index_range[0], 2))+bad_val
                     # identify the bad data elements before converting the field to double
                     bad=data==bad_val
-                    data=data.astype(np.float64)
+                    if field is not 'valid':
+                        data=data.astype(np.float64)
                     # mark data that are invalid (according to the h5 file) with NaNs
                     data[bad]=np.NaN
                     setattr(self, field, data)                            

@@ -254,6 +254,15 @@ class geo_index(dict):
                 fake_offset=-1
             self.from_xy(xy, filename, file_type, number=number, first_last=first_last, fake_offset_val=fake_offset)
             h5f.close()
+        if file_type in ['indexed_h5_from_matlab']:
+            self.attrs['SRS_proj4']=SRS_proj4
+            h5f=h5py.File(filename,'r')
+            xy=[np.array(h5f['INDEX']['bin_x'])*1000, np.array(h5f['INDEX']['bin_y'])*1000]
+            first_last=None
+            fake_offset=-1
+            self.from_xy(xy, filename, file_type, number=number, first_last=first_last, fake_offset_val=fake_offset)
+            h5f.close()
+
         return self
 
     def query_latlon(self, lat, lon, get_data=True, fields=None):
