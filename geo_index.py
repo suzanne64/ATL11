@@ -14,7 +14,7 @@ import h5py
 from osgeo import osr
 import matplotlib.pyplot as plt
 from ATL11.ATL06_data import ATL06_data        
-from IS2_calval.Qfit_data import Qfit_data
+from IS2_calval.qfit_data import Qfit_data
 from ATL11.point_data import point_data
        
 class geo_index(dict):
@@ -31,7 +31,10 @@ class geo_index(dict):
         
     def __del__(self):
         if self.h5_file is not None:
-            self.h5_file.close()
+            try:
+                self.h5_file.close()
+            except SystemError as err:
+                print("SYSTEM ERROR: %s" % str(err))
         return
 
     def __copy__(self):
@@ -122,7 +125,7 @@ class geo_index(dict):
         x, y, z = list(zip(*[ct(*xy) for xy in zip(np.ravel(lon), np.ravel(lat), np.zeros_like(lat).ravel())]))
         return self.from_xy([np.array(x),np.array(y)], filename, file_type, number, fake_offset_val)
     
-    def from_list(self, index_list, delta=None, SRS_proj4=None, copy_first=False): 
+    def from_list(self, index_list, copy_first=False):
         # build a geo_index from a list of geo_indices.  
         # Each bin in the resulting geo_index contains information for reading
         # the files indexed by the geo_indices in index_list
@@ -212,7 +215,7 @@ class geo_index(dict):
         indexF.close()
         return
 
-    def for_file(self, filename, file_type, delta, SRS_proj4, number=0, dir_root=''):
+    def for_file(self, filename, file_type, number=0, dir_root=''):
         # make a geo_index for file 'filename'
         if dir_root is not None:
             # eliminate the string in 'dir_root' from the filename
@@ -221,9 +224,9 @@ class geo_index(dict):
             temp=list()
             this_field_dict={None:('latitude','longitude','h_li','delta_time')}
             for beam_pair in (1, 2, 3):     
-                D=ATL06_data(beam_pair=beam_pair, field_dict=this_field_dict).from_file(filename).get_xy(SRS_proj4)
+                D=ATL06_data(beam_pair=beam_pair, field_dict=this_field_dict).from_file(filename).get_xy(self.attrs['SRS_proj4'])
                 if D.latitude.shape[0] > 0:
-                    temp.append(geo_index(delta=delta, SRS_proj4=SRS_proj4).from_xy([np.nanmean(D.x, axis=1), np.nanmean(D.y, axis=1)], '%s:pair%d' % (filename, beam_pair), 'ATL06', number=number))
+                    temp.append(geo_index(delta=self.attrs['delta'], SRS_proj4=self.attrs['SRS_proj4']).from_xy([np.nanmean(D.x, axis=1), np.nanmean(D.y, axis=1)], '%s:pair%d' % (filename, beam_pair), 'ATL06', number=number))
             self.from_list(temp)
         if file_type in ['ATM_Qfit']:
             D=Qfit_data(filename=filename, field_dict={'latitiude','longitude', 'time'})
@@ -241,7 +244,6 @@ class geo_index(dict):
                 self.attrs[attr]=temp_GI.attrs[attr]
             self.from_xy(xy_bin, filename, file_type, number=number, fake_offset_val=-1)
         if file_type in ['indexed_h5']:
-            self.attrs['SRS_proj4']=SRS_proj4
             h5f=h5py.File(filename,'r')
             xy=[np.array(h5f['INDEX']['bin_x']), np.array(h5f['INDEX']['bin_y'])]
             if 'bin_index' in h5f['INDEX']:
@@ -255,7 +257,6 @@ class geo_index(dict):
             self.from_xy(xy, filename, file_type, number=number, first_last=first_last, fake_offset_val=fake_offset)
             h5f.close()
         if file_type in ['indexed_h5_from_matlab']:
-            self.attrs['SRS_proj4']=SRS_proj4
             h5f=h5py.File(filename,'r')
             xy=[np.array(h5f['INDEX']['bin_x'])*1000, np.array(h5f['INDEX']['bin_y'])*1000]
             first_last=None
@@ -282,9 +283,9 @@ class geo_index(dict):
     def query_xy_box(self, xr, yr, get_data=True, fields=None):
         # query the current geo_index for all bins in the box specified by box [xr,yr]
         xy_bin=self.bins_as_array() 
-        these=np.logical_and(np.logical_and(xy_bin[:,0] >= xr[0], xy_bin[:,0] <= xr[1]), 
-            np.logical_and(xy_bin[:,1] >= yr[0], xy_bin[:,1] <= yr[1]))
-        return self.query_xy([xy_bin[these,0], xy_bin[these,1]], get_data=get_data)
+        these=(xy_bin[0] >= xr[0]) & (xy_bin[0] <= xr[1]) &\
+            (xy_bin[1] >= yr[0]) & (xy_bin[1] <= yr[1])
+        return self.query_xy([xy_bin[0][these], xy_bin[1][these]], get_data=get_data, fields=fields)
 
     def intersect(self, other, pad=[0, 0]):
         """
@@ -418,7 +419,10 @@ def get_data_for_geo_index(query_results, delta=None, fields=None, data=None, di
     for file_key, result in query_results.items():
         #print(result.__class__)       
         if dir_root is not None:
-            this_file = dir_root+file_key
+            try:
+                this_file = dir_root+file_key
+            except TypeError:
+                this_file = dir_root + file_key.decode()
         else:
             this_file=file_key
         if result['type'] == 'h5_geoindex':
@@ -426,7 +430,8 @@ def get_data_for_geo_index(query_results, delta=None, fields=None, data=None, di
         if result['type'] == 'ATL06':
             if fields is None:
                 fields={None:(u'latitude',u'longitude',u'h_li',u'delta_time')}
-            D6_file, pair=this_file.split(':pair')             
+            D6_file, pair=this_file.split(':pair')
+            #print("D6_file=%s"% D6_file)
             D6=[ATL06_data(beam_pair=int(pair), field_dict=fields).from_file(filename=D6_file, index_range=np.array(temp)) for temp in zip(result['offset_start'], result['offset_end'])]           
             if isinstance(D6,list):
                 out_data += D6  
@@ -509,5 +514,5 @@ def append_data(group, field, newdata):
 def index_list_for_files(filename_list, file_type, delta, SRS_proj4, dir_root=''):
     index_list=list()
     for filename in filename_list:
-        index_list.append(geo_index(SRS_proj4=SRS_proj4).for_file(filename, file_type, delta, SRS_proj4, dir_root=dir_root, number=0))
+        index_list.append(geo_index(SRS_proj4=SRS_proj4, delta=delta).for_file(filename, file_type, dir_root=dir_root, number=0))
     return index_list
