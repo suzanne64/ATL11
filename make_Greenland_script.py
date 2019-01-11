@@ -27,7 +27,7 @@ for track_file in track_file_list:
         #print fileout
         if os.path.isfile(fileout):
             continue
-        glob_str="%s/TrackData_*/Track_%s.h5" % (ATL06_base, m.group(1))
+        glob_str="%s/TrackData_v4*/Track_%s.h5" % (ATL06_base, m.group(1))
         print "python ATL06_to_ATL11.py --ATL06_glob '%s' -o %s -v -p %d -t %d" %(glob_str, fileout, pair, track_num)
         
       
