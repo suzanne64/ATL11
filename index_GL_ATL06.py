@@ -16,6 +16,14 @@ from glob import glob
 from ATL06_data import ATL06_data
 from osgeo import osr
 import re
+import sys
+
+release=sys.argv[1]
+
+if len(release)==0:
+    print("need to specify a release")
+    exit()
+
 
 SRS_proj4='+proj=stere +lat_0=90 +lat_ts=70 +lon_0=-45 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs'
      
@@ -25,7 +33,7 @@ ll_srs=osr.SpatialReference()
 ll_srs.ImportFromEPSG(4326)
 ct=osr.CoordinateTransformation(ll_srs, out_srs) 
 
-ATL06_base='/Volumes/ice2/ben/scf/GL_06/ASAS/944'
+ATL06_base='/Volumes/ice2/ben/scf/GL_06/ASAS/'+release
 h5_files= glob(ATL06_base+'/*.h5')
 resolution=[10000, 10000]
 
