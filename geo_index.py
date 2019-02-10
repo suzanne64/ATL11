@@ -254,7 +254,7 @@ class geo_index(dict):
             else:
                 first_last=None
                 fake_offset=-1
-            self.from_xy(xy, filename, file_type, number=number, first_last=first_last, fake_offset_val=fake_offset)
+            self.from_xy(xy, filename=filename, file_type=file_type, number=number, first_last=first_last, fake_offset_val=fake_offset)
             h5f.close()
         if file_type in ['indexed_h5_from_matlab']:
             h5f=h5py.File(filename,'r')
@@ -313,10 +313,12 @@ class geo_index(dict):
         
         delta=self.attrs['delta']
         if isinstance(xyb[0], np.ndarray):
-            xyb=[xyb[0].copy().ravel(), xyb[1].copy().ravel()]            
+            xyb=[xyb[0].copy().ravel(), xyb[1].copy().ravel()]  
         if pad is not None:
             xyb=pad_bins(xyb, pad, delta)
-
+        if isinstance(xyb[0], float) or isinstance(xyb[0], int):
+            # if scalars were provided, keep the 'zip' from choking by making them iterable
+            xyb=[np.array(xyb[0].copy()).reshape([1]), np.array(xyb[1].copy()).reshape([1])]
         # make a temporary geo_index to hold the subset of the current geoindex
         # corresponding to xb and yb      
         temp_gi=geo_index(delta=self.attrs['delta'], SRS_proj4=self.attrs['SRS_proj4'])       
@@ -451,6 +453,8 @@ def get_data_for_geo_index(query_results, delta=None, fields=None, data=None, di
                 out_data.append(WF_temp)
         if result['type'] == 'indexed_h5':
             out_data += [read_indexed_h5_file(this_file, [result['x'], result['y']],  fields=fields, index_range=[result['offset_start'], result['offset_end']])]
+        if result['type'] == 'indexed_h5_from_matlab':
+            out_data += [read_indexed_h5_file(this_file, [result['x']/1000, result['y']/1000],  fields=fields, index_range=[result['offset_start'], result['offset_end']])]
         if result['type'] is None:
             out_data=[data.subset(np.arange(temp[0], temp[1])) for temp in zip(result['offset_start'], result['offset_end'])]           
     return out_data
@@ -479,6 +483,9 @@ def read_indexed_h5_file(filename, xy_bin,  fields=['x','y','time'], index_range
     out_data={field:list() for field in fields}
     h5f=h5py.File(filename,'r')
     blank_fields=list()
+    if isinstance(xy_bin, np.ndarray):
+        xy_bin=[xy_bin[:,0], xy_bin[:,1]]
+    
     if index_range[0][0]>=0:
         # All the geo bins are together.  Use the index_range variable to read
         for field in fields:
@@ -489,11 +496,15 @@ def read_indexed_h5_file(filename, xy_bin,  fields=['x','y','time'], index_range
                     blank_fields.append(field)
     else:
         # this is a file with distinct bins, each with its own set of datasets
-        for xy in zip(xy_bin):
+        for xy in zip(xy_bin[0], xy_bin[1]):
             bin_name='%dE_%dN' % xy
             for field in fields:
-                if field in h5f[bin_name]:
-                    out_data[field].append([h5f[bin_name][field]])
+                if field in h5f:
+                     if bin_name in h5f[field]:
+                         out_data[field].append([h5f[bin_name][field]])
+                elif bin_name in h5f:
+                    if field in h5f[bin_name]:
+                        out_data[field].append([h5f[bin_name][field]])
                 else:
                     blank_fields.append(field)
     h5f.close()
