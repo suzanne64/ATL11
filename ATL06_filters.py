@@ -12,7 +12,10 @@ def phDensityFilter(D6, minDensity={'weak':1, 'strong':4}, setValid=True, toNaN=
     for beam in [0, 1]:
         phDensity=D6.n_fit_photons[:,beam]/D6.w_surface_window_final[:,beam]
         mask[np.isfinite(phDensity), beam]=phDensity[np.isfinite(phDensity)] > minDensity[D6.beam_type[beam]]
-
+        
+    if D6.valid.size==0: 
+        return mask
+    
     if setValid:
         D6.valid=D6.valid & mask
     
