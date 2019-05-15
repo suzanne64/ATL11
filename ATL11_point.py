@@ -666,13 +666,13 @@ class ATL11_point(ATL11_data):
         # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
         self.segment_id_by_cycle=[]         
         self.selected_segments_by_cycle=[]         
-        cyc=D6.cycle[self.selected_segments[:,0],0]  
+        cyc=D6.cycle_number[self.selected_segments[:,0],0]  
         segid=D6.segment_id[self.selected_segments[:,0],0]    
     
-        non_cyc=D6.cycle.ravel()[non_ref_segments]  
+        non_cyc=D6.cycle_number.ravel()[non_ref_segments]  
         non_segid=D6.segment_id.ravel()[non_ref_segments]  
     
-        for cc in range(1,D6.cycle.max().astype(int)+1):  
+        for cc in range(1,D6.cycle_number.max().astype(int)+1):  
             if np.in1d(cc,self.ref_surf_cycles):
                 self.segment_id_by_cycle.append( np.array( segid[cyc==cc] ) )
             elif np.in1d(cc,self.non_ref_surf_cycles):
