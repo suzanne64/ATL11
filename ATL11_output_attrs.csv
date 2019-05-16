@@ -29,8 +29,8 @@ ref_surf,surf_fit_misfit_chi2r,meters,,N_pts
 ref_surf,surf_fit_misfit_RMS,meters,,N_pts
 ref_surf,surf_fit_quality_summary,counts,,N_pts
 cycle_stats,ATL06_summary_zero_count,counts,,"N_pts, N_cycles"
-cycle_stats,h_robust_spread_mean,meters,,"N_pts, N_cycles"
-cycle_stats,h_rms_misft_mean,meters,,"N_pts, N_cycles"
+cycle_stats,h_robust_sprd_mean,meters,,"N_pts, N_cycles"
+cycle_stats,h_rms_misfit_mean,meters,,"N_pts, N_cycles"
 cycle_stats,r_eff_mean,counts,,"N_pts, N_cycles"
 cycle_stats,tide_ocean_mean,meters,,"N_pts, N_cycles"
 cycle_stats,cloud_flg_atm_best,counts,,"N_pts, N_cycles"
