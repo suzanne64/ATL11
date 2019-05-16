@@ -7,7 +7,7 @@ Created on Thu Oct 26 11:08:33 2017f
 
 import numpy as np
 
-         
+
 class ATL11_defaults:
     def __init__(self):
         # provide option to read keyword=val pairs from the input file
@@ -26,7 +26,7 @@ class ATL11_defaults:
         self.max_fit_iterations = 20  # maximum iterations when computing the reference surface models
         self.equatorial_radius=6378137 # meters, on WGS84 spheroid
         self.polar_radius=6356752.3 # derived, https://www.eoas.ubc.ca/~mjelline/Planetary%20class/14gravity1_2.pdf
-        
+
         # calculate the order for the polynomial degrees:  Sorted by degree, then by y degree, no sum of x and y degrees larger than max(degree_x, degree_y)
         degree_list_x, degree_list_y = np.meshgrid(np.arange(self.poly_max_degree_AT+1), np.arange(self.poly_max_degree_XT+1))
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
@@ -39,6 +39,13 @@ class ATL11_defaults:
         degree_order=np.argsort(sum_degree_list + (degree_list_y / (degree_list_y.max()+1)))
         self.poly_exponent_list=np.transpose(np.vstack((degree_list_x[degree_order], degree_list_y[degree_order]))).tolist()
         self.N_coeffs=len(self.poly_exponent_list)
-     
-     
-     
+
+def default_ATL06_fields():
+    field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude','atl06_quality_summary','segment_id','sigma_geo_h'],
+                    'ground_track':['x_atc', 'y_atc','seg_azimuth','sigma_geo_at','sigma_geo_xt'],
+                    'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','h_mean', 'dh_fit_dy','h_rms_misfit','h_robust_sprd','n_fit_photons', 'signal_selection_source','snr_significance','w_surface_window_final'],
+                    'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr','cloud_flg_atm','r_eff','tide_ocean'],
+                    'orbit_info':['rgt','cycle_number'],
+                    'derived':['valid']}
+    return field_dict
+
