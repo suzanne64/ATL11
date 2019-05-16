@@ -42,13 +42,27 @@ class ATL11_group(object):
         self.full_fields=full_fields
         self.poly_fields=poly_fields
         self.list_of_fields=self.per_pt_fields+self.full_fields+self.poly_fields
-
-
+    def __repr__(self):
+        out=''
+        for field in self.list_of_fields:
+            out += field+':\n'
+            out += str(getattr(self, field))
+            out += '\n'
+        return out
 class valid_mask:
     # class to hold validity flags for different attributes
     def __init__(self, dims, fields):
         for field in fields:
             setattr(self, field, np.zeros(dims, dtype='bool'))
+    def __repr__(self):
+        out=''
+        for field in dir(self):
+            if not field.startswith('__'):
+                out += field+':\n'
+                temp=getattr(self, field)
+                out += str(temp)
+                out += '\n'
+        return out
 
 class ATL11_data(object):
     # class to hold ATL11 data in ATL11_groups
