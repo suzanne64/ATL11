@@ -6,6 +6,7 @@ Created on Thu Oct 26 11:08:33 2017f
 """
 
 import numpy as np
+from PointDatabase.point_data import point_data
 from poly_ref_surf import poly_ref_surf
 import matplotlib.pyplot as plt 
 from RDE import RDE
@@ -18,7 +19,7 @@ from ATL11_misc import ATL11_defaults
  
 class ATL11_point(ATL11_data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
-    def __init__(self, N_pairs=1, ref_pt_number=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], N_cycles=12,  mission_time_bds=None, params_11=None):
+    def __init__(self, N_pairs=1, ref_pt_number=None, pair_num=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], N_cycles=12,  rgt=None, mission_time_bds=None, params_11=None):
         # input variables:
         # N_pairs: Number of distinct pairs in the ATL06 data
         # ref_pt_number: the reference-point number for the ATL11 fit.  This is the geoseg number for the central segment of the fit
@@ -40,6 +41,7 @@ class ATL11_point(ATL11_data):
         self.N_cycles=N_cycles     
         self.N_coeffs=self.params_11.N_coeffs
         self.x_atc_ctr=x_atc_ctr
+        self.pair_num=pair_num
         self.ref_pt_number=ref_pt_number
         self.track_azimuth=track_azimuth
         self.z_poly_fit=None
@@ -48,12 +50,12 @@ class ATL11_point(ATL11_data):
         self.ref_surf_slope_x=np.NaN
         self.ref_surf_slope_y=np.NaN
         self.calc_slope_change=False
-        
+        self.rgt=rgt
         if mission_time_bds is None:
             mission_time_bds=np.array([0, N_cycles*91*24*3600])
         self.slope_change_t0=mission_time_bds[0]+0.5*(mission_time_bds[1]-mission_time_bds[0])
         self.mission_time_bds=mission_time_bds
-        self.valid_segs =valid_mask((N_pairs,2), ('data','x_slope','y_slope' ))  #  2 cols, boolan, all F to start
+        self.valid_segs =valid_mask((N_pairs,2), ('data','x_slope' ))  #  2 cols, boolan, all F to start
         self.valid_pairs=valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.status=dict()
@@ -156,10 +158,10 @@ class ATL11_point(ATL11_data):
             pairs_valid_for_y_fit= self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel() & self.valid_pairs.y_slope.ravel()
                             
         # 3g. Use y model to evaluate all pairs
-        self.valid_pairs.y_slope=np.abs(self.my_poly_fit.z(pair_data.x, pair_data.y)- pair_data.dh_dy) < y_slope_threshold 
+        self.valid_pairs.y_slope=np.abs(self.my_poly_fit.z(pair_data.x, pair_data.y)- pair_data.dh_dy).ravel() < y_slope_threshold 
         
         #4a. define pairs_valid_for_x_fit
-        pairs_valid_for_x_fit= self.valid_pairs.data.ravel(), self.valid_pairs.ysearch.ravel()
+        pairs_valid_for_x_fit= self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel()
         
         # 4b:choose the degree of the regression for along-track slope
         uX=np.unique(D6.x_atc[pairs_valid_for_x_fit,:].ravel())
@@ -220,8 +222,7 @@ class ATL11_point(ATL11_data):
         if np.unique(D6.segment_id[self.valid_pairs.all]).shape[0]==1:
             self.status['Only_one_valid_pair_in_x_direction']=True
             if self.ref_surf.surf_fit_quality_summary==0:
-                self.ref_surf.surf_fit_quality_summary=4  
-            
+                self.ref_surf.surf_fit_quality_summary=4              
         return
         
     def select_y_center(self, D6, pair_data):  #5.1.3
@@ -234,26 +235,39 @@ class ATL11_point(ATL11_data):
         # find the middle of the range of the selected beams
         y0=(np.min(D6.y_atc[self.valid_pairs.all,:].ravel())+np.max(D6.y_atc[self.valid_pairs.all,:].ravel()))/2
         # 1: define a range of y centers, select the center with the best score
-        y0_shifts=np.round(y0)+np.arange(-100,100, 2)
+        y0_shifts=np.round(y0)+np.arange(-100.5,101.5)
         score=np.zeros_like(y0_shifts)
-
-        # 2: search for optimal shift value
-        for count, y0_shift in enumerate(y0_shifts):
-            sel_segs=np.all(np.abs(D6.y_atc[self.valid_pairs.all,:]-y0_shift)<self.params_11.L_search_XT, axis=1)
-            sel_cycs=np.unique(cycle[sel_segs,0])
-            selected_seg_cycle_count=len(sel_cycs)
-            
-            other_cycles = np.unique(cycle.ravel()[~np.in1d(cycle.ravel(),sel_cycs)])
-            unsel_segs = np.in1d(cycle.ravel(),other_cycles) & (np.abs(D6.y_atc[self.valid_pairs.all,:].ravel()-y0_shift)<self.params_11.L_search_XT)
-            unsel_cycs = np.unique(cycle.ravel()[unsel_segs])
-            unselected_seg_cycle_count=len(unsel_cycs)
-            
-            # the score is equal to the number of cycles with at least one valid pair entirely in the window, 
-            # plus 1/100 of the number cycles that contain no valid pairs but have at least one valid segment in the window
-            score[count]=selected_seg_cycle_count + unselected_seg_cycle_count/100.
+        y_pair=[]        
+        for cycle in np.unique(pair_data.cycle[self.valid_pairs.all]):
+            y_pair.append(np.median(pair_data.y[pair_data.cycle==cycle]))
+        N_sel_cycles=np.histogram(y_pair, bins=y0_shifts)[0]
+        y_unselected=[]
+        for cycle in np.unique(D6.cycle_number.ravel()[~np.in1d(D6.cycle_number.ravel(),cycle)]):
+            y_unselected.append(np.median(D6.y_atc[D6.cycle_number==cycle]))
+        N_unsel_cycles=np.histogram(y_unselected, bins=y0_shifts)[0]
+        count_kernel=np.ones(np.ceil(self.params_11.L_search_XT*2-self.params_11.beam_spacing).astype(int))
+        
+        score=np.convolve(N_sel_cycles,count_kernel, mode='same')
+        score += np.convolve(N_unsel_cycles, count_kernel, mode='same')
+         
+        
+#        # 2: search for optimal shift value
+#        for count, y0_shift in enumerate(y0_shifts):
+#            sel_segs=np.all(np.abs(D6.y_atc[self.valid_pairs.all,:]-y0_shift)<self.params_11.L_search_XT, axis=1)
+#            sel_cycs=np.unique(cycle[sel_segs,0])
+#            selected_seg_cycle_count=len(sel_cycs)
+#            
+#            other_cycles = np.unique(cycle.ravel()[~np.in1d(cycle.ravel(),sel_cycs)])
+#            unsel_segs = np.in1d(cycle.ravel(),other_cycles) & (np.abs(D6.y_atc[self.valid_pairs.all,:].ravel()-y0_shift)<self.params_11.L_search_XT)
+#            unsel_cycs = np.unique(cycle.ravel()[unsel_segs])
+#            unselected_seg_cycle_count=len(unsel_cycs)
+#            
+#            # the score is equal to the number of cycles with at least one valid pair entirely in the window, 
+#            # plus 1/100 of the number cycles that contain no valid pairs but have at least one valid segment in the window
+#            score[count]=selected_seg_cycle_count + unselected_seg_cycle_count/100.
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
-        self.y_atc_ctr=np.median(y0_shifts[best])
+        self.y_atc_ctr=np.median(y0_shifts[best])+0.5*(y0_shifts[1]-y0_shifts[0])
         self.ref_surf.ref_pt_y_atc=self.y_atc_ctr
         
         if self.DOPLOT is not None and "score-vs-yshift" in self.DOPLOT:        
@@ -263,7 +277,7 @@ class ATL11_point(ATL11_data):
             plt.title('score vs y0_shifts(blu), y_best(red)')
         
         # 4: update valid pairs to include y_atc within L_search_XT of y_atc_ctr (y_best)
-        self.valid_pairs.ysearch = self.valid_pairs.ysearch (np.abs(pair_data.y.ravel() - self.y_atc_ctr)<self.params_11.L_search_XT)  
+        self.valid_pairs.ysearch  &= (np.abs(pair_data.y.ravel() - self.y_atc_ctr)<self.params_11.L_search_XT)  
         self.valid_pairs.all =  self.valid_pairs.ysearch.ravel() & self.valid_pairs.all.ravel()
         if self.DOPLOT is not None and "valid pair plot" in self.DOPLOT:
             plt.figure(50); plt.clf()
@@ -293,7 +307,7 @@ class ATL11_point(ATL11_data):
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool) 
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()  
 
-        cycle=D6.cycle[self.valid_pairs.all,:].ravel()  # want the cycle of each seg in valid pair
+        cycle=D6.cycle_number[self.valid_pairs.all,:].ravel()  # want the cycle of each seg in valid pair
         self.ref_surf_cycles = np.unique(cycle) 
 
         # 1. build cycle design matrix with selected segments (those in valid_pairs, initially)
@@ -306,11 +320,11 @@ class ATL11_point(ATL11_data):
         G_zp=sparse.csc_matrix((data,(row,col)),shape=[len(cycle),len(self.ref_surf_cycles)])    
          
         # 2. determine polynomial degree, using unique x's and unique y's of segments in valid pairs
-        x_atcU = np.unique(D6.x_atc[self.valid_pairs.all,:].ravel()) # np.unique orders the unique values
-        y_atcU = np.unique(D6.y_atc[self.valid_pairs.all,:].ravel()) # np.unique orders the unique values
-        # Table 4-4         
-        self.ref_surf.n_deg_x = np.minimum(self.params_11.poly_max_degree_AT,len(x_atcU)-1) 
-        self.ref_surf.n_deg_y = np.minimum(self.params_11.poly_max_degree_XT,len(y_atcU)-1) 
+        x_atcU = np.unique(np.round(D6.x_atc[self.valid_pairs.all,:].ravel()/20)) # np.unique orders the unique values
+        y_atcU = np.unique(np.round(D6.y_atc[self.valid_pairs.all,:].ravel()/20)) # np.unique orders the unique values
+        # Table 4-4   # NOTE: need to note the change: round x_atcU and y_atcU to the nearest 20
+        self.ref_surf.n_deg_x = np.maximum(0, np.minimum(self.params_11.poly_max_degree_AT,len(x_atcU)-1) )
+        self.ref_surf.n_deg_y = np.maximum(0, np.minimum(self.params_11.poly_max_degree_XT,len(y_atcU)-1) )
         if self.ref_surf.complex_surface_flag > 0:
             self.ref_surf.n_deg_x = np.minimum(1, self.ref_surf.n_deg_x)
             self.ref_surf.n_deg_y = np.minimum(1, self.ref_surf.n_deg_y)
@@ -341,7 +355,7 @@ class ATL11_point(ATL11_data):
         TOC=dict()
         TOC['poly']=np.arange(S_fit_poly.shape[1], dtype=int)
         last_poly_col=S_fit_poly.shape[1]-1
-        if self.slope_change_t0/self.params_11.t_scale > 1.5/2. and self.ref_surf.n_deg_x > 0 and self.ref_surf.n_deg_y > 0:
+        if False: #self.slope_change_t0/self.params_11.t_scale > 1.5/2. and self.ref_surf.n_deg_x > 0 and self.ref_surf.n_deg_y > 0:
             self.calc_slope_change=True
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
@@ -496,7 +510,7 @@ class ATL11_point(ATL11_data):
             W_by_error=h_li_sigma[cycle==cc]**(-2)/np.sum(h_li_sigma[cycle==cc]**(-2))
 
             # weighted means:
-            for dataset in ('latitude','longitude','x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','h_robust_spread','h_rms_misft'):
+            for dataset in ('latitude','longitude','x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','h_robust_sprd','h_rms_misfit'):
                 mean_dataset=dataset+'_mean';
                 self.cycle_stats.__dict__[mean_dataset][0,cc-1]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
             self.cycle_stats.h_uncorr_mean[0,cc-1]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs]) 
@@ -651,7 +665,7 @@ class ATL11_point(ATL11_data):
         for cc in self.non_ref_surf_cycles.astype(int):
             best_seg=np.argmin(z_kc_sigma[cycle==cc])
             best_seg_ind=np.flatnonzero(non_ref_segments)[cycle==cc][best_seg]
-            for dataset in ('latitude','longitude','x_atc','y_atc','bsnow_h','r_eff','tide_ocean','h_robust_spread','sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
+            for dataset in ('latitude','longitude','x_atc','y_atc','bsnow_h','r_eff','tide_ocean','h_robust_sprd','sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
                 mean_dataset=dataset+'_mean';
                 self.cycle_stats.__dict__[mean_dataset][0,cc-1]=getattr(D6, dataset).ravel()[best_seg_ind]
             if z_kc[cycle==cc][best_seg] < 15:
@@ -682,7 +696,57 @@ class ATL11_point(ATL11_data):
 
         self.selected_segments= self.selected_segments | non_ref_segments.reshape(self.valid_pairs.all.shape[0],2)
 
+    def corr_xover_heights(self, D):
+        if not isinstance(D, point_data):
+            return
+        WGS84a=6378137.0
+        WGS84b=6356752.31424
+        d2r=np.pi/180
+        lat0=self.corrected_h.ref_pt_lat
+        lon0=self.corrected_h.ref_pt_lon
+        Re=WGS84a**2/np.sqrt((WGS84a*np.cos(d2r*lat0))**2+(WGS84b*np.sin(d2r*lat0))**2)          
+        dE=Re*d2r*(np.mod(D.longitude-lon0+180.,360.)-180.)*np.cos(d2r*lat0)
+        dN=Re*d2r*(D.latitude-lat0)
+        # find the segments that are within L_search_XT of the reference point
+        in_search_radius=(dE**2+dN**2)<self.params_11.L_search_XT**2
+        if not np.any(in_search_radius):
+            return
+        dN=dN[in_search_radius]
+        dE=dE[in_search_radius]       
+        Dsub=D.subset(in_search_radius)
+        
+        cos_az=np.cos(self.ref_surf.rgt_azimuth*np.pi/180) 
+        sin_az=np.sin(self.ref_surf.rgt_azimuth*np.pi/180)         
+        dx= dN*cos_az + dE*sin_az           
+        dy=-dN*sin_az + dE*cos_az
+        S_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(0, 0), xy_scale=self.params_11.xy_scale).fit_matrix(dx.ravel(), dy.ravel())
+        surf_model=np.transpose(self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)])    
+        # pull out the surface-only parts
+        S_poly=S_poly[:, self.surf_mask]
+        
+        # section 3.5
+        # calculate corrected heights, z_xover, and their errors
+        z_xover = Dsub.h_li - np.dot(S_poly,surf_model[self.surf_mask]).ravel()         
+        z_xover_sigma = np.sqrt( np.diag( np.dot(np.dot(S_poly,self.C_m_surf),np.transpose(S_poly)) ) + Dsub.h_li_sigma.ravel()**2 ) # equation 11
+  
+        orb_pair=(Dsub.cycle_number-1)*1387+Dsub.rgt+Dsub.BP*0.1
+        u_orb_pair=np.unique(orb_pair)
+        u_orb_pair=u_orb_pair[~np.in1d(u_orb_pair, self.ref_surf_cycles*1387+self.rgt+self.pair_num*0.1)]
+        for orb_pair_i in u_orb_pair:
+            # select the smallest-error segment from each orbit  and pair
+            these=np.where(orb_pair==orb_pair_i)[0]
+            best=these[np.argmin(z_xover_sigma[these])]
+            self.crossing_track_data.rgt_crossing.append([Dsub.rgt[best]])
+            self.crossing_track_data.pt_crossing.append([Dsub.BP[best]])
+            self.crossing_track_data.h_shapecorr.append([z_xover[best]])
+            self.crossing_track_data.h_shapecorr_sigma.append([z_xover_sigma[best]])
+            self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
+            self.crossing_track_data.ref_pt_number.append([self.ref_pt_number])
+            self.crossing_track_data.latitude.append([lat0])
+            self.crossing_track_data.longitude.append([lon0])
 
+        return 
+        
 def gen_inv(self,G,sigma):
     # calculate the generalized inverse of matrix G
     # inputs:

@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py, re, os, csv
 from ATL11_misc import ATL11_defaults
+from osgeo import osr
 
 
 class ATL11_group(object):
@@ -18,7 +19,7 @@ class ATL11_group(object):
     # some have one value for each point and each polynomial coefficient (poly_fields)
     # all of these are initialized to arrays of the appropriate size, filled with NaNs
 
-    def __init__(self, N_pts, N_cycles, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None):
+    def __init__(self, N_pts, N_cycles, N_coeffs, per_pt_fields=None, full_fields=None, poly_fields=None, xover_fields=None):
         # input variables:
         #  N_pts: Number of reference points to allocate
         #  N_cycles: Number of cycles of data to allocate
@@ -37,11 +38,16 @@ class ATL11_group(object):
         if poly_fields is not None:
             for field in poly_fields:
                 setattr(self, field, np.nan + np.zeros([N_pts, N_coeffs]))
+        if xover_fields is not None:
+            for field in xover_fields:
+                setattr(self, field, [])                
+        
         # assemble the field names into lists:
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
         self.poly_fields=poly_fields
-        self.list_of_fields=self.per_pt_fields+self.full_fields+self.poly_fields
+        self.xover_fields=xover_fields
+        self.list_of_fields=self.per_pt_fields+self.full_fields+self.poly_fields+self.xover_fields
     def __repr__(self):
         out=''
         for field in self.list_of_fields:
@@ -80,7 +86,8 @@ class ATL11_data(object):
             per_pt_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts']
             full_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_cycles']
             poly_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_coeffs']
-            setattr(self,group,ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields,full_fields,poly_fields))
+            xover_fields=[item['field'] for item in field_dims if item['dimensions']=='Nxo']
+            setattr(self,group,ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
         self.slope_change_t0=None
         self.track_num=track_num
         self.pair_num=pair_num
@@ -128,6 +135,15 @@ class ATL11_data(object):
                     if hasattr(getattr(P11,group),field):
                         temp[ii,:]=getattr(getattr(P11,group), field)
                 setattr(getattr(self,group),field,temp)
+            for field in getattr(self, group).xover_fields:
+                temp_out=list()
+                for item in P11_list:
+                    this_field=getattr(getattr(item, group), field)
+                    if len(this_field)>0:
+                        temp_out.append(this_field)
+                if len(temp_out)>0:
+                    setattr(getattr(self, group), field, np.concatenate(temp_out).ravel())
+                
         self.slope_change_t0=P11_list[0].slope_change_t0
         return self
 
@@ -139,11 +155,36 @@ class ATL11_data(object):
         N_coeffs=FH['ref_surf']['poly_coeffs'].shape[1]
         self.__init__(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs)
         for group in ('corrected_h','ref_surf','cycle_stats'):
-            for field in FH[group].keys():
-                setattr(getattr(self, group), field, np.array(FH[group][field]))
+            try:
+                for field in FH[group].keys():
+                    setattr(getattr(self, group), field, np.array(FH[group][field]))
+            except KeyError:
+                print("ATL11 file %s: missing %s/%s" % (filename, group, field))
         FH=None
         return self
-
+    def get_xy(self, proj4_string, EPSG=None):
+        # method to get projected coordinates for the data.  Adds 'x' and 'y' fields to the structure
+        out_srs=osr.SpatialReference()
+        if proj4_string is None and EPSG is not None:
+            out_srs.ImportFromEPSG(EPSG)
+        else:
+            projError= out_srs.ImportFromProj4(proj4_string)
+            if projError > 0:
+                out_srs.ImportFromWkt(proj4_string)
+        ll_srs=osr.SpatialReference()
+        ll_srs.ImportFromEPSG(4326)
+        lat=self.corrected_h.ref_pt_lat
+        lon=self.corrected_h.ref_pt_lon
+        ct=osr.CoordinateTransformation(ll_srs, out_srs)
+        if lat.size==0:
+            self.x=np.zeros_like(lat)
+            self.y=np.zeros_like(lon)
+        else:
+            x, y, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(lon), np.ravel(lat), np.zeros_like(np.ravel(lat)))]))
+            self.x=np.reshape(x, lat.shape)
+            self.y=np.reshape(y, lon.shape)
+        return self
+              
     def write_to_file(self, fileout, params_11=None):
         # Generic code to write data from an ATL11 object to an h5 file
         # Input:

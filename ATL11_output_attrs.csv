@@ -51,3 +51,12 @@ cycle_stats,sigma_geo_h_mean,meters,,"N_pts, N_cycles"
 cycle_stats,sigma_geo_at_mean,meters,,"N_pts, N_cycles"
 cycle_stats,sigma_geo_xt_mean,meters,,"N_pts, N_cycles"
 cycle_stats,h_uncorr_mean,meters,,"N_pts, N_cycles"
+crossing_track_data,ref_pt_number,counts,,Nxo
+crossing_track_data,delta_time,seconds,,Nxo
+crossing_track_data,h_shapecorr,meters,,Nxo
+crossing_track_data,h_shapecorr_sigma,meters,,Nxo
+crossing_track_data,h_shapecorr_sigma_systematic,meters,,Nxo
+crossing_track_data,latitude,egrees North,,Nxo
+crossing_track_data,longitude,Degrees East,,Nxo
+crossing_track_data,rgt_crossing,counts,,Nxo
+crossing_track_data,pt_crossing,counts,,Nxo
