@@ -60,3 +60,5 @@ crossing_track_data,latitude,egrees North,,Nxo
 crossing_track_data,longitude,Degrees East,,Nxo
 crossing_track_data,rgt_crossing,counts,,Nxo
 crossing_track_data,pt_crossing,counts,,Nxo
+crossing_track_data,atl06_quality_summary,counts,,Nxo
+crossing_track_data,along_track_diff_rss,counts,,Nxo

@@ -8,9 +8,9 @@ Created on Thu Oct 26 11:08:33 2017f
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py, re, os, csv
-from ATL11_misc import ATL11_defaults
+from ATL11 import ATL11_defaults
 from osgeo import osr
-
+import inspect
 
 class ATL11_group(object):
     # Class to contain an ATL11 structure
@@ -78,7 +78,8 @@ class ATL11_data(object):
 
         # define empty records here based on ATL11 ATBD
         # read in parameters information in .csv
-        with open('ATL11_output_attrs.csv','r') as attrfile:
+        ATL11_root=os.path.dirname(inspect.getfile(ATL11_defaults))
+        with open(ATL11_root+'/ATL11_output_attrs.csv','r') as attrfile:
             reader=list(csv.DictReader(attrfile))  
         group_names = set([row['group'] for row in reader])
         for group in group_names:
@@ -87,7 +88,8 @@ class ATL11_data(object):
             full_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_cycles']
             poly_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_coeffs']
             xover_fields=[item['field'] for item in field_dims if item['dimensions']=='Nxo']
-            setattr(self,group,ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
+            setattr(self, group, ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
+        self.groups=group_names
         self.slope_change_t0=None
         self.track_num=track_num
         self.pair_num=pair_num
@@ -142,26 +144,29 @@ class ATL11_data(object):
                     if len(this_field)>0:
                         temp_out.append(this_field)
                 if len(temp_out)>0:
-                    setattr(getattr(self, group), field, np.concatenate(temp_out).ravel())
+                    try:
+                        setattr(getattr(self, group), field, np.concatenate(temp_out).ravel())
+                    except ValueError:
+                        print("Problem writing %s" %field)
                 
         self.slope_change_t0=P11_list[0].slope_change_t0
         return self
 
-    def from_file(self, filename=None):
-
-        FH=h5py.File(filename,'r')
-        N_pts=FH['corrected_h']['cycle_h_shapecorr'].shape[0]
-        N_cycles=FH['corrected_h']['cycle_h_shapecorr'].shape[1]
-        N_coeffs=FH['ref_surf']['poly_coeffs'].shape[1]
-        self.__init__(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs)
-        for group in ('corrected_h','ref_surf','cycle_stats'):
-            try:
-                for field in FH[group].keys():
-                    setattr(getattr(self, group), field, np.array(FH[group][field]))
-            except KeyError:
-                print("ATL11 file %s: missing %s/%s" % (filename, group, field))
-        FH=None
+    def from_file(self, pair, filename=None):
+        pt='pt%d' % pair
+        with h5py.File(filename,'r') as FH:
+            N_pts=FH[pt]['corrected_h']['cycle_h_shapecorr'].shape[0]
+            N_cycles=FH[pt]['corrected_h']['cycle_h_shapecorr'].shape[1]
+            N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
+            self.__init__(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs)
+            for group in ('corrected_h','ref_surf','cycle_stats','crossing_track_data'):
+                for field in FH[pt][group].keys():
+                    try:
+                        setattr(getattr(self, group), field, np.array(FH[pt][group][field]))
+                    except KeyError:
+                        print("ATL11 file %s: missing %s/%s" % (filename, group, field))
         return self
+
     def get_xy(self, proj4_string, EPSG=None):
         # method to get projected coordinates for the data.  Adds 'x' and 'y' fields to the structure
         out_srs=osr.SpatialReference()
@@ -191,13 +196,18 @@ class ATL11_data(object):
         #   fileout: filename of hdf5 filename to write
         # Optional input:
         #   parms_11: ATL11_defaults structure
+        group_name='/pt%d' % self.pair_num
         if os.path.isfile(fileout):
-            os.remove(fileout)
-        f = h5py.File(fileout,'w')
+            f = h5py.File(fileout,'r+')
+            if group_name in f:
+                del f[group_name]
+        else:
+            f = h5py.File(fileout,'w')
+        g=f.create_group(group_name)
 
         # set the output pair and track attributes
-        f.attrs['pairTrack']=self.track_num
-        f.attrs['ReferenceGroundTrack']=self.pair_num
+        g.attrs['pair_num']=self.pair_num
+        g.attrs['ReferenceGroundTrack']=self.track_num
 
         # put default parameters as top level attributes
         if params_11 is None:
@@ -205,19 +215,19 @@ class ATL11_data(object):
         # write each variable in params_11 as an attribute
         for param in  vars(params_11).keys():
             try:
-                f.attrs[param]=getattr(params_11, param)
+                g.attrs[param]=getattr(params_11, param)
             except:
                 print("write_to_file:could not automatically set parameter: %s" % param)
 
         # put groups, fields and associated attributes from .csv file
-        with open('ATL11_output_attrs.csv','r') as attrfile:
+        with open(os.path.dirname(inspect.getfile(ATL11_data))+'/ATL11_output_attrs.csv','r') as attrfile:
             reader=list(csv.DictReader(attrfile))
         group_names=set([row['group'] for row in reader])
         attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']
         field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader}
         for group in group_names:
             if hasattr(getattr(self,group),'list_of_fields'):
-                grp = f.create_group(group)
+                grp = g.create_group(group)
                 if 'ref_surf' in group:
                     grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
@@ -230,6 +240,11 @@ class ATL11_data(object):
                             dset.attrs[attr] = field_attrs[field][attr]
         f.close()
         return
+
+#    def get_xovers(self):
+        
+
+
 
     def plot(self):
         # method to plot the results.  At present, this plots corrected h AFN of x_atc

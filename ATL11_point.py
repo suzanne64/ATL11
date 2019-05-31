@@ -7,15 +7,16 @@ Created on Thu Oct 26 11:08:33 2017f
 
 import numpy as np
 from PointDatabase.point_data import point_data
-from poly_ref_surf import poly_ref_surf
+#from poly_ref_surf import poly_ref_surf
 import matplotlib.pyplot as plt 
-from RDE import RDE
+from ATL11.RDE import RDE
 import scipy.sparse as sparse
 from scipy import linalg 
 from scipy import stats
-from ATL11_data import ATL11_data
-from ATL11_data import valid_mask
-from ATL11_misc import ATL11_defaults
+from ATL11 import ATL11_data
+from ATL11 import valid_mask
+from ATL11 import ATL11_defaults
+from ATL11 import poly_ref_surf
  
 class ATL11_point(ATL11_data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
@@ -75,11 +76,16 @@ class ATL11_point(ATL11_data):
         # step 1a:  Select segs by data quality
         self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
         valid_cycle_count_ATL06_flag=np.unique(D6.cycle_number[np.all(D6.atl06_quality_summary==0, axis=1),:]).size
-        valid_cycle_count_SNR=np.unique(D6.cycle_number[np.all(D6.snr_significance<0.02, axis=1),:]).size
-        if valid_cycle_count_ATL06_flag <   self.N_cycles/3:
+        if valid_cycle_count_ATL06_flag < self.N_cycles/3:
             self.ref_surf.complex_surface_flag=True
             self.valid_segs.data[np.where((D6.snr_significance<0.02) & np.isfinite(D6.h_li))]=True
-            self.N_cycles_avail=valid_cycle_count_SNR
+            pair_data.dh_dy=np.diff(D6.h_li, axis=1)/np.diff(D6.y_atc)
+            pair_data.dh_dy_sigma=np.sqrt(np.sum(D6.h_li_sigma**2, axis=1))/np.diff(D6.y_atc, axis=1).ravel()
+            for col in [0, 1]:
+                D6.dh_fit_dy[:,col]=pair_data.dh_dy.ravel()
+                D6.dh_fit_dy[:,col]=pair_data.dh_dy_sigma.ravel()
+            self.valid_segs.data &= np.isfinite(D6.dh_fit_dy)
+            self.N_cycles_avail=np.unique(D6.cycle_number[np.all(self.valid_segs.data),:]).size
         else:
             self.N_cycles_avail=valid_cycle_count_ATL06_flag
         
@@ -117,7 +123,7 @@ class ATL11_point(ATL11_data):
         self.valid_pairs.ysearch=np.abs(pair_data.y.ravel()-self.y_polyfit_ctr)<self.params_11.L_search_XT  
         
         # 3a: combine data and ysearch
-        pairs_valid_for_y_fit= self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel()
+        pairs_valid_for_y_fit= self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel() & np.isfinite(pair_data.dh_dy.ravel())
         # 3b:choose the degree of the regression for across-track slope
         uX=np.unique(pair_data.x[pairs_valid_for_y_fit])
         if len(uX)>1 and uX.max()-uX.min() > 18.:
@@ -138,7 +144,10 @@ class ATL11_point(ATL11_data):
         for iteration in range(2):
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
             self.my_poly_fit=poly_ref_surf(degree_xy=(my_regression_x_degree, my_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr)) 
-            y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
+            try:
+                y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
+            except ValueError:
+                print("ERROR")
             # update what is valid based on regression flag
             self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=y_slope_valid_flag                #re-establish pairs_valid for y fit
             # re-establish pairs_valid_for_y_fit
@@ -239,11 +248,14 @@ class ATL11_point(ATL11_data):
         score=np.zeros_like(y0_shifts)
         y_pair=[]        
         for cycle in np.unique(pair_data.cycle[self.valid_pairs.all]):
-            y_pair.append(np.median(pair_data.y[pair_data.cycle==cycle]))
-        N_sel_cycles=np.histogram(y_pair, bins=y0_shifts)[0]
+            y_pair.append(np.nanmedian(pair_data.y[pair_data.cycle==cycle]))
+        try:
+            N_sel_cycles=np.histogram(y_pair, bins=y0_shifts)[0]
+        except ValueError:
+            print("Problem with histogram")
         y_unselected=[]
         for cycle in np.unique(D6.cycle_number.ravel()[~np.in1d(D6.cycle_number.ravel(),cycle)]):
-            y_unselected.append(np.median(D6.y_atc[D6.cycle_number==cycle]))
+            y_unselected.append(np.nanmedian(D6.y_atc[D6.cycle_number==cycle]))
         N_unsel_cycles=np.histogram(y_unselected, bins=y0_shifts)[0]
         count_kernel=np.ones(np.ceil(self.params_11.L_search_XT*2-self.params_11.beam_spacing).astype(int))
         
@@ -561,10 +573,7 @@ class ATL11_point(ATL11_data):
         [N,E]=np.meshgrid(np.arange(-50., 60, 10),np.arange(-50., 60, 10))
         
         # calculate the corresponding values in the ATC system
-        cos_az=np.cos(self.ref_surf.rgt_azimuth*np.pi/180) 
-        sin_az=np.sin(self.ref_surf.rgt_azimuth*np.pi/180)         
-        xg= N*cos_az + E*sin_az           
-        yg=-N*sin_az + E*cos_az
+        xg, yg  = self.local_atc_coords(E, N)
            
         zg=np.zeros_like(xg)
         for ii in np.arange(np.sum(self.poly_mask)):
@@ -699,15 +708,8 @@ class ATL11_point(ATL11_data):
     def corr_xover_heights(self, D):
         if not isinstance(D, point_data):
             return
-        WGS84a=6378137.0
-        WGS84b=6356752.31424
-        d2r=np.pi/180
-        lat0=self.corrected_h.ref_pt_lat
-        lon0=self.corrected_h.ref_pt_lon
-        Re=WGS84a**2/np.sqrt((WGS84a*np.cos(d2r*lat0))**2+(WGS84b*np.sin(d2r*lat0))**2)          
-        dE=Re*d2r*(np.mod(D.longitude-lon0+180.,360.)-180.)*np.cos(d2r*lat0)
-        dN=Re*d2r*(D.latitude-lat0)
-        # find the segments that are within L_search_XT of the reference point
+         # find the segments that are within L_search_XT of the reference point
+        dE, dN=self.local_NE_coords(D.latitude, D.longitude)
         in_search_radius=(dE**2+dN**2)<self.params_11.L_search_XT**2
         if not np.any(in_search_radius):
             return
@@ -715,10 +717,9 @@ class ATL11_point(ATL11_data):
         dE=dE[in_search_radius]       
         Dsub=D.subset(in_search_radius)
         
-        cos_az=np.cos(self.ref_surf.rgt_azimuth*np.pi/180) 
-        sin_az=np.sin(self.ref_surf.rgt_azimuth*np.pi/180)         
-        dx= dN*cos_az + dE*sin_az           
-        dy=-dN*sin_az + dE*cos_az
+        # convert these coordinates in to along-track coordinates
+        dx, dy=self.local_atc_coords(dE, dN)        
+        
         S_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(0, 0), xy_scale=self.params_11.xy_scale).fit_matrix(dx.ravel(), dy.ravel())
         surf_model=np.transpose(self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)])    
         # pull out the surface-only parts
@@ -736,16 +737,44 @@ class ATL11_point(ATL11_data):
             # select the smallest-error segment from each orbit  and pair
             these=np.where(orb_pair==orb_pair_i)[0]
             best=these[np.argmin(z_xover_sigma[these])]
+            ss_atc_diff=0
+            for di in [-1, 1]:
+                this=np.where((Dsub.LR[these]==Dsub.LR[best]) & [Dsub.segment_id[these]==Dsub.segment_id[best]+di])[0]
+                if len(this)==1:
+                    ss_atc_diff += (Dsub.h_li[best]+Dsub.dh_fit_dx[best]*(Dsub.x_atc[best]-Dsub.x_atc[this])-Dsub.h_li[this])**2
+            if ss_atc_diff==0:
+                ss_atc_diff=[np.NaN]
+            
             self.crossing_track_data.rgt_crossing.append([Dsub.rgt[best]])
             self.crossing_track_data.pt_crossing.append([Dsub.BP[best]])
             self.crossing_track_data.h_shapecorr.append([z_xover[best]])
             self.crossing_track_data.h_shapecorr_sigma.append([z_xover_sigma[best]])
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
+            self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
             self.crossing_track_data.ref_pt_number.append([self.ref_pt_number])
-            self.crossing_track_data.latitude.append([lat0])
-            self.crossing_track_data.longitude.append([lon0])
-
+            self.crossing_track_data.latitude.append([self.corrected_h.ref_pt_lat])
+            self.crossing_track_data.longitude.append([self.corrected_h.ref_pt_lon])
+            self.crossing_track_data.along_track_diff_rss.append([np.sqrt(ss_atc_diff[0])])
         return 
+        
+    def local_NE_coords(self, lat, lon):
+        WGS84a=6378137.0
+        WGS84b=6356752.31424
+        d2r=np.pi/180
+        lat0=self.corrected_h.ref_pt_lat
+        lon0=self.corrected_h.ref_pt_lon
+        Re=WGS84a**2/np.sqrt((WGS84a*np.cos(d2r*lat0))**2+(WGS84b*np.sin(d2r*lat0))**2)          
+        dE=Re*d2r*(np.mod(lon-lon0+180.,360.)-180.)*np.cos(d2r*lat0)
+        dN=Re*d2r*(lat-lat0)
+        return dE, dN
+
+    def local_atc_coords(self, dE, dN):
+        cos_az=np.cos(self.ref_surf.rgt_azimuth*np.pi/180) 
+        sin_az=np.sin(self.ref_surf.rgt_azimuth*np.pi/180)         
+        dx= dN*cos_az + dE*sin_az    
+        #N.B.  On May 30, I flipped the sign on the dy.  This seems to work better...
+        dy= dN*sin_az - dE*cos_az
+        return dx, dy
         
 def gen_inv(self,G,sigma):
     # calculate the generalized inverse of matrix G
