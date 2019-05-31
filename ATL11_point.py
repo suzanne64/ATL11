@@ -507,7 +507,8 @@ class ATL11_point(ATL11_data):
         
         # write out the corrected h values
         cycle_ind=np.zeros(m_surf_zp.shape, dtype=int)-1
-        cycle_ind[TOC['zp']]=np.arange(TOC['zp'].size, dtype=int)
+        #cycle_ind[TOC['zp']]=np.arange(TOC['zp'].size, dtype=int)
+        cycle_ind[TOC['zp']]=self.ref_surf_cycles.astype(int)-1
         zp_used=TOC['zp'][fit_columns[TOC['zp']]]   
         zp_nan_mask=np.ones_like(zp_used, dtype=float)
         zp_nan_mask[m_surf_zp_sigma[zp_used]>15]=np.NaN
