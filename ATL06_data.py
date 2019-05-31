@@ -8,7 +8,7 @@ Class to read and manipulate ATL06 data.  Currently set up for Ben-style fake da
 """
 import h5py
 import numpy as np
-from ATL11.ATL06_pair import ATL06_pair
+from PointDatabase.ATL06_pair import ATL06_pair
 from osgeo import osr
 import matplotlib.pyplot as plt 
 
