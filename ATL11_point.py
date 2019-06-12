@@ -481,7 +481,7 @@ class ATL11_point(ATL11_data):
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
         #  map selected_pairs (within valid_pairs.all) to all pairs
         selected_pair_out= self.valid_pairs.all.copy()
-        selected_pair_out[selected_pair_out==True] = selected_segs
+        selected_pair_out[selected_pair_out==True] = selected_pairs
         # report selected pairs and selected segs
         self.valid_pairs.iterative_fit=selected_pair_out
         self.valid_segs.iterative_fit=np.column_stack((self.valid_pairs.iterative_fit, self.valid_pairs.iterative_fit))

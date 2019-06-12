@@ -57,19 +57,20 @@ class ATL11_group(object):
             out += '\n'
         return out
 
-    def index(self, pts):
+    def index(self, ind):
         target=ATL11_data(1, self.N_cycles, self.N_coeffs, per_pt_fields=self.per_pt_fields.copy(), full_fields=self.full_fields.copy(), poly_fields=self.poly_fields.copy(), xover_fields=self.xover_fields.copy())
                 # assign fields of each type to their appropriate shape and size
         if self.per_pt_fields is not None:
             for field in self.per_pt_fields:
-                setattr(target, field, np.nan + np.zeros([self.N_pts, 1]))
+                setattr(target, field, getattr(self, field)[ind])
         if self.full_fields is not None:
             for field in self.full_fields:
-                setattr(target, field, np.nan + np.zeros([self.N_pts, self.N_cycles]))
+                setattr(target, field, getattr(self, field)[ind, :])
         if self.poly_fields is not None:
             for field in self.poly_fields:
-                setattr(target, field, np.nan + np.zeros([self.N_pts, self.N_coeffs]))
+                setattr(target, field,  getattr(self, field)[ind, :])
         if self.xover_fields is not None:
+            # need to pick out the matching crossover-point fields
             for field in self.xover_fields:
                 setattr(self, field, [])
         return target
