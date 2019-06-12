@@ -13,12 +13,9 @@ from ATL11.RDE import RDE
 import scipy.sparse as sparse
 from scipy import linalg
 from scipy import stats
-from ATL11 import ATL11_data
-from ATL11 import valid_mask
-from ATL11 import ATL11_defaults
-from ATL11 import poly_ref_surf
+import ATL11
 
-class ATL11_point(ATL11_data):
+class point(ATL11.data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
     def __init__(self, N_pairs=1, ref_pt_number=None, pair_num=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], N_cycles=12,  rgt=None, mission_time_bds=None, params_11=None):
         # input variables:
@@ -33,11 +30,11 @@ class ATL11_point(ATL11_data):
         # params_11: ATL11_defaults structure
 
         if params_11 is None:
-            self.params_11=ATL11_defaults()
+            self.params_11=ATL11.defaults()
         else:
             self.params_11=params_11
         # initialize the data structure using the ATL11_data __init__ method
-        ATL11_data.__init__(self,N_pts=1, N_cycles=N_cycles, N_coeffs=self.params_11.N_coeffs)
+        ATL11.data.__init__(self,N_pts=1, N_cycles=N_cycles, N_coeffs=self.params_11.N_coeffs)
         self.N_pairs=N_pairs
         self.N_cycles=N_cycles
         self.N_coeffs=self.params_11.N_coeffs
@@ -56,8 +53,8 @@ class ATL11_point(ATL11_data):
             mission_time_bds=np.array([0, N_cycles*91*24*3600])
         self.slope_change_t0=mission_time_bds[0]+0.5*(mission_time_bds[1]-mission_time_bds[0])
         self.mission_time_bds=mission_time_bds
-        self.valid_segs =valid_mask((N_pairs,2), ('data','x_slope' ))  #  2 cols, boolan, all F to start
-        self.valid_pairs=valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
+        self.valid_segs =ATL11.valid_mask((N_pairs,2), ('data','x_slope' ))  #  2 cols, boolan, all F to start
+        self.valid_pairs=ATL11.valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.status=dict()
         self.ref_surf.ref_pt_x_atc=x_atc_ctr
@@ -149,7 +146,7 @@ class ATL11_point(ATL11_data):
 
         for iteration in range(2):
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
-            self.my_poly_fit=poly_ref_surf(degree_xy=(my_regression_x_degree, my_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
+            self.my_poly_fit=ATL11.poly_ref_surf(degree_xy=(my_regression_x_degree, my_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
             try:
                 y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
             except ValueError:
@@ -194,7 +191,7 @@ class ATL11_point(ATL11_data):
         mx_regression_tol=np.maximum(0.01, 3*np.median(D6.dh_fit_dx_sigma[pairs_valid_for_x_fit,:].flatten()))
         for iteration in range(2):
             # 4d: regression of along-track slope against x_pair and y_pair
-            self.mx_poly_fit=poly_ref_surf(degree_xy=(mx_regression_x_degree, mx_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
+            self.mx_poly_fit=ATL11.poly_ref_surf(degree_xy=(mx_regression_x_degree, mx_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
             if np.sum(pairs_valid_for_x_fit)>0:
                 x_slope_model, x_slope_resid,  x_slope_chi2r, x_slope_valid_flag=self.mx_poly_fit.fit(D6.x_atc[pairs_valid_for_x_fit,:].ravel(), D6.y_atc[pairs_valid_for_x_fit,:].ravel(), D6.dh_fit_dx[pairs_valid_for_x_fit,:].ravel(), max_iterations=1, min_sigma=mx_regression_tol)
                 # update what is valid based on regression flag
@@ -366,7 +363,7 @@ class ATL11_point(ATL11_data):
         self.degree_list_y = degree_y[self.poly_mask]
 
         # 3b. define polynomial matrix
-        S_fit_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
+        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
 
         # 3c. define slope-change matrix
         # 3d. build the fitting matrix
@@ -626,7 +623,7 @@ class ATL11_point(ATL11_data):
         return
 
     def evaluate_reference_surf(self, x_atc, y_atc, delta_time):
-        S_fit_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
+        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
         if self.calc_slope_change:
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
@@ -747,7 +744,7 @@ class ATL11_point(ATL11_data):
         # convert these coordinates in to along-track coordinates
         dx, dy=self.local_atc_coords(dE, dN)
 
-        S_poly=poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(0, 0), xy_scale=self.params_11.xy_scale).fit_matrix(dx.ravel(), dy.ravel())
+        S_poly=ATL11.poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(0, 0), xy_scale=self.params_11.xy_scale).fit_matrix(dx.ravel(), dy.ravel())
         surf_model=np.transpose(self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)])
         # pull out the surface-only parts
         S_poly=S_poly[:, self.surf_mask]

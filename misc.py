@@ -11,7 +11,7 @@ import scipy.sparse as sparse
 from ATL11.RDE import RDE
 
 
-class ATL11_defaults:
+class defaults:
     def __init__(self):
         # provide option to read keyword=val pairs from the input file
         self.L_search_AT=100 # meters, along track (in x), filters along track

@@ -8,11 +8,11 @@ Created on Thu Oct 26 11:08:33 2017f
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py, re, os, csv
-from ATL11 import ATL11_defaults
+import ATL11
 from osgeo import osr
 import inspect
 
-class ATL11_group(object):
+class group(object):
     # Class to contain an ATL11 structure
     # in ATL11 groups, some datasets have one value per reference point (per_pt_fields)
     # some have one value for each reference point and each cycle (full_fields)
@@ -58,7 +58,7 @@ class ATL11_group(object):
         return out
 
     def index(self, ind):
-        target=ATL11_data(1, self.N_cycles, self.N_coeffs, per_pt_fields=self.per_pt_fields.copy(), full_fields=self.full_fields.copy(), poly_fields=self.poly_fields.copy(), xover_fields=self.xover_fields.copy())
+        target=ATL11.data(1, self.N_cycles, self.N_coeffs, per_pt_fields=self.per_pt_fields.copy(), full_fields=self.full_fields.copy(), poly_fields=self.poly_fields.copy(), xover_fields=self.xover_fields.copy())
                 # assign fields of each type to their appropriate shape and size
         if self.per_pt_fields is not None:
             for field in self.per_pt_fields:
@@ -89,15 +89,15 @@ class valid_mask:
                 out += '\n'
         return out
 
-class ATL11_data(object):
-    # class to hold ATL11 data in ATL11_groups
+class data(object):
+    # class to hold ATL11 data in ATL11.groups
     def __init__(self, N_pts=1, N_cycles=1, N_coeffs=9, from_file=None, track_num=None, pair_num=None):
         self.Data=[]
         self.DOPLOT=None
 
         # define empty records here based on ATL11 ATBD
         # read in parameters information in .csv
-        ATL11_root=os.path.dirname(inspect.getfile(ATL11_defaults))
+        ATL11_root=os.path.dirname(inspect.getfile(ATL11.defaults))
         with open(ATL11_root+'/ATL11_output_attrs.csv','r') as attrfile:
             reader=list(csv.DictReader(attrfile))
         group_names = set([row['group'] for row in reader])
@@ -107,7 +107,7 @@ class ATL11_data(object):
             full_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_cycles']
             poly_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_coeffs']
             xover_fields=[item['field'] for item in field_dims if item['dimensions']=='Nxo']
-            setattr(self, group, ATL11_group(N_pts, N_cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
+            setattr(self, group, ATL11.group(N_pts, N_cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
         self.groups=group_names
         self.slope_change_t0=None
         self.track_num=track_num
@@ -123,7 +123,7 @@ class ATL11_data(object):
             N_pts=len(ind)
         except TypeError:
             N_pts=1
-        target=ATL11_data(N_pts=N_pts, N_cycles=self.N_cycles, N_coeffs=self.N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
+        target=ATL11.data(N_pts=N_pts, N_cycles=self.N_cycles, N_coeffs=self.N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
         for group in self.groups:
             setattr(target, group, getattr(self, group).index(ind))
         return target
@@ -141,12 +141,12 @@ class ATL11_data(object):
     def from_list(self, P11_list):
         # Assemble an ATL11 data instance from a list of ATL11 points.
         # Input: list of ATL11 point instances
-        # loop over variables in ATL11_data (self)
+        # loop over variables in ATL11.data (self)
         self.__init__(N_pts=len(P11_list), track_num=self.track_num, pair_num=self.pair_num, N_cycles=P11_list[0].corrected_h.cycle_h_shapecorr.shape[1], N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
 
         for group in vars(self).keys():
             # check if each variable is an ATl11 group
-            if  not isinstance(getattr(self,group), ATL11_group):
+            if  not isinstance(getattr(self,group), ATL11.group):
                 continue
             for field in getattr(self, group).per_pt_fields:
                 temp=np.ndarray(shape=[len(P11_list),],dtype=float)
@@ -229,7 +229,7 @@ class ATL11_data(object):
         # Input:
         #   fileout: filename of hdf5 filename to write
         # Optional input:
-        #   parms_11: ATL11_defaults structure
+        #   parms_11: ATL11.defaults structure
         group_name='/pt%d' % self.pair_num
         if os.path.isfile(fileout):
             f = h5py.File(fileout,'r+')
@@ -245,7 +245,7 @@ class ATL11_data(object):
 
         # put default parameters as top level attributes
         if params_11 is None:
-            params_11=ATL11_defaults()
+            params_11=ATL11.defaults()
         # write each variable in params_11 as an attribute
         for param in  vars(params_11).keys():
             try:
@@ -254,7 +254,7 @@ class ATL11_data(object):
                 print("write_to_file:could not automatically set parameter: %s" % param)
 
         # put groups, fields and associated attributes from .csv file
-        with open(os.path.dirname(inspect.getfile(ATL11_data))+'/ATL11_output_attrs.csv','r') as attrfile:
+        with open(os.path.dirname(inspect.getfile(ATL11.data))+'/ATL11_output_attrs.csv','r') as attrfile:
             reader=list(csv.DictReader(attrfile))
         group_names=set([row['group'] for row in reader])
         attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']

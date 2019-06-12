@@ -9,9 +9,7 @@ import numpy as np
 from PointDatabase.ATL06_data import ATL06_data
 from PointDatabase.point_data import point_data
 from PointDatabase.geo_index import geo_index
-from ATL11 import ATL11_point
-from ATL11 import ATL11_data
-from ATL11 import ATL11_defaults
+import ATL11
 import glob
 import matplotlib.pyplot as plt
 
@@ -46,7 +44,7 @@ def get_xover_data(x0, y0, rgt, GI_file, xover_cache, delta_bins, index_bin_size
     return D_xover
 
 def fit_ATL11(ATL06_files, beam_pair=1, N_cycles=2, ref_pt_numbers=None, output_file=None, num_ref_pts=None, first_ref_pt=None, last_ref_pt=None, DOPLOT=None, DEBUG=None, mission_time_bds=None, verbose=False):
-    params_11=ATL11_defaults()
+    params_11=ATL11.defaults()
     seg_number_skip=int(params_11.seg_atc_spacing/20);
     if mission_time_bds is None:
         mission_time_bds=np.array([286.*24*3600, 398.*24*3600])
@@ -117,7 +115,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, N_cycles=2, ref_pt_numbers=None, output_
         pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle_number','h_li'])   # this might go, similar to D6_sub
         if ~np.any(np.isfinite(pair_data.y)):
             continue
-        P11=ATL11_point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0], ref_pt_number=ref_pt_number, pair_num=D6_sub.BP[0, 0],  x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_cycles=N_cycles,  mission_time_bds=mission_time_bds )
+        P11=ATL11.point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0], ref_pt_number=ref_pt_number, pair_num=D6_sub.BP[0, 0],  x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_cycles=N_cycles,  mission_time_bds=mission_time_bds )
 
         P11.DOPLOT=DOPLOT
         # step 2: select pairs, based on reasonable slopes
@@ -219,7 +217,7 @@ def main():
     for pair in pairs:
         P11_list=fit_ATL11(files, N_cycles=args.cycles,  beam_pair=pair, verbose=args.verbose, first_ref_pt=args.first_point, last_ref_pt=args.last_point) # defined in ATL06_to_ATL11
         if P11_list:
-            ATL11_data(track_num=P11_list[0].rgt, pair_num=pair).from_list(P11_list).write_to_file(args.out_file)
+            ATL11.data(track_num=P11_list[0].rgt, pair_num=pair).from_list(P11_list).write_to_file(args.out_file)
 
 if __name__=="__main__":
     main()
