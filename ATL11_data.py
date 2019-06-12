@@ -40,14 +40,15 @@ class ATL11_group(object):
                 setattr(self, field, np.nan + np.zeros([N_pts, N_coeffs]))
         if xover_fields is not None:
             for field in xover_fields:
-                setattr(self, field, [])                
-        
+                setattr(self, field, [])
+
         # assemble the field names into lists:
         self.per_pt_fields=per_pt_fields
         self.full_fields=full_fields
         self.poly_fields=poly_fields
         self.xover_fields=xover_fields
         self.list_of_fields=self.per_pt_fields+self.full_fields+self.poly_fields+self.xover_fields
+
     def __repr__(self):
         out=''
         for field in self.list_of_fields:
@@ -55,6 +56,23 @@ class ATL11_group(object):
             out += str(getattr(self, field))
             out += '\n'
         return out
+
+    def index(self, pts):
+        target=ATL11_data(1, self.N_cycles, self.N_coeffs, per_pt_fields=self.per_pt_fields.copy(), full_fields=self.full_fields.copy(), poly_fields=self.poly_fields.copy(), xover_fields=self.xover_fields.copy())
+                # assign fields of each type to their appropriate shape and size
+        if self.per_pt_fields is not None:
+            for field in self.per_pt_fields:
+                setattr(target, field, np.nan + np.zeros([self.N_pts, 1]))
+        if self.full_fields is not None:
+            for field in self.full_fields:
+                setattr(target, field, np.nan + np.zeros([self.N_pts, self.N_cycles]))
+        if self.poly_fields is not None:
+            for field in self.poly_fields:
+                setattr(target, field, np.nan + np.zeros([self.N_pts, self.N_coeffs]))
+        if self.xover_fields is not None:
+            for field in self.xover_fields:
+                setattr(self, field, [])
+        return target
 class valid_mask:
     # class to hold validity flags for different attributes
     def __init__(self, dims, fields):
@@ -80,7 +98,7 @@ class ATL11_data(object):
         # read in parameters information in .csv
         ATL11_root=os.path.dirname(inspect.getfile(ATL11_defaults))
         with open(ATL11_root+'/ATL11_output_attrs.csv','r') as attrfile:
-            reader=list(csv.DictReader(attrfile))  
+            reader=list(csv.DictReader(attrfile))
         group_names = set([row['group'] for row in reader])
         for group in group_names:
             field_dims=[{k:v for k,v in ii.items()} for ii in reader if ii['group']==group]
@@ -93,6 +111,21 @@ class ATL11_data(object):
         self.slope_change_t0=None
         self.track_num=track_num
         self.pair_num=pair_num
+        self.N_cycles=N_cycles
+        self.N_coeffs=N_coeffs
+
+    def index(self, ind):
+        """
+        return a copy of the data for points 'ind'
+        """
+        try:
+            N_pts=len(ind)
+        except TypeError:
+            N_pts=1
+        target=ATL11_data(N_pts=N_pts, N_cycles=self.N_cycles, N_coeffs=self.N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
+        for group in self.groups:
+            setattr(target, group, getattr(self, group).index(ind))
+        return target
 
     def all_fields(self):
         # return a list of all the fields in an ATL11 instance
@@ -148,7 +181,7 @@ class ATL11_data(object):
                         setattr(getattr(self, group), field, np.concatenate(temp_out).ravel())
                     except ValueError:
                         print("Problem writing %s" %field)
-                
+
         self.slope_change_t0=P11_list[0].slope_change_t0
         return self
 
@@ -189,7 +222,7 @@ class ATL11_data(object):
             self.x=np.reshape(x, lat.shape)
             self.y=np.reshape(y, lon.shape)
         return self
-              
+
     def write_to_file(self, fileout, params_11=None):
         # Generic code to write data from an ATL11 object to an h5 file
         # Input:
@@ -242,7 +275,7 @@ class ATL11_data(object):
         return
 
 #    def get_xovers(self):
-        
+
 
 
 
