@@ -42,6 +42,7 @@ class defaults:
         # order by sum, x and then y
         degree_order=np.argsort(sum_degree_list + (degree_list_y / (degree_list_y.max()+1)))
         self.poly_exponent_list=np.transpose(np.vstack((degree_list_x[degree_order], degree_list_y[degree_order]))).tolist()
+        self.poly_exponent={'x':degree_list_x, 'y':degree_list_y}
         self.N_coeffs=len(self.poly_exponent_list)
 
 def default_ATL06_fields():
