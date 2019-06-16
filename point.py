@@ -42,7 +42,6 @@ class point(ATL11.data):
         self.pair_num=pair_num
         self.ref_pt_number=ref_pt_number
         self.track_azimuth=track_azimuth
-        self.z_poly_fit=None
         self.mx_poly_fit=None
         self.my_poly_fit=None
         self.ref_surf_slope_x=np.NaN
@@ -66,7 +65,14 @@ class point(ATL11.data):
         """
         Build an ATL11 point from ATL11 data for a particular point
         """
-
+        D11.index(ind, target=self)
+        self.N_cycles=D11.N_cycles
+        self.N_coeffs=D11.N_coeffs
+        self.x_atc_ctr=self.ref_surf.ref_pt_x_atc
+        self.y_atc_ctr=self.ref_surf.ref_pt_y_atc
+        self.params_11.poly_exponent=D11.poly_exponent
+        return self
+        
 
     def select_ATL06_pairs(self, D6, pair_data):
         # Select ATL06 data based on data-quality flags in ATL06 data, and based on
@@ -353,8 +359,8 @@ class point(ATL11.data):
 
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y.  These are stored in self.default.poly_exponent_list
-        degree_x = np.array([item[0] for item in self.params_11.poly_exponent_list], dtype=int)
-        degree_y = np.array([item[1] for item in self.params_11.poly_exponent_list], dtype=int)
+        degree_x = self.params_11.poly_exponent['x']
+        degree_y = self.params_11.poly_exponent['y']
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
         self.poly_mask = (degree_x + degree_y) <= np.maximum(self.ref_surf.n_deg_x,self.ref_surf.n_deg_y)
         self.poly_mask &= (degree_x <= self.ref_surf.n_deg_x)
@@ -623,7 +629,10 @@ class point(ATL11.data):
         return
 
     def evaluate_reference_surf(self, x_atc, y_atc, delta_time):
-        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
+        poly_mask=np.isfinite(self.ref_surf.poly_coeffs).ravel()
+        x_degree=self.params_11.poly_exponent['x'][poly_mask]
+        y_degree=self.params_11.poly_exponent['y'][poly_mask]
+        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(x_degree, y_degree), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
         if self.calc_slope_change:
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
@@ -632,9 +641,9 @@ class point(ATL11.data):
             surf_model=np.append(self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)].ravel(),np.array((self.ref_surf.slope_change_rate_x,self.ref_surf.slope_change_rate_y))/self.params_11.t_scale)
         else:
             G_surf=S_fit_poly  #  G=[S]
-            surf_model=np.transpose(self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)])
-        # pull out the surface-only parts
-        G_surf=G_surf[:, self.surf_mask]
+            surf_model=np.transpose(self.ref_surf.poly_coeffs.ravel()[np.where(poly_mask)])
+        # pull out the surface-only parts [not necessary??]
+        #G_surf=G_surf[:, self.surf_mask]
 
         # use C_m_surf if it is defined
         if hasattr(self, 'C_m_surf'):
@@ -642,13 +651,20 @@ class point(ATL11.data):
         else:
             # if self.C_m_surf is not defined, use the data-product values
             if self.calc_slope_change:
-                surf_model_sigma=np.append(self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)].ravel(),np.array((self.ref_surf.slope_change_rate_x_sigma,self.ref_surf.slope_change_rate_y_sigma))/self.params_11.t_scale)
+                surf_model_sigma=np.append(self.ref_surf.poly_coeffs_sigma.ravel()[np.where(poly_mask)].ravel(),np.array((self.ref_surf.slope_change_rate_x_sigma,self.ref_surf.slope_change_rate_y_sigma))/self.params_11.t_scale)
             else:
-                surf_model_sigma=np.transpose(self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)])
-            C_m_surf=sparse.diags(surf_model_sigma)
+                surf_model_sigma=np.transpose(self.ref_surf.poly_coeffs_sigma.ravel()[np.where(poly_mask)[0]])
+            C_m_surf=sparse.diags(surf_model_sigma**2)
+        try: 
+            C_m_surf=C_m_surf.toarray()
+        except Exception:
+                pass
         # section 3.5
         # calculate corrected heights, z_kc, with non selected segs design matrix and surface shape polynomial from selected segments
-        z_ref_surf=np.dot(G_surf,surf_model[self.surf_mask]).ravel()
+        z_ref_surf=np.dot(G_surf,surf_model).ravel()
+        # save some time by not calculating the full matrix for Gs Cm GsT (why whould this be slow?)
+        #GsC=np.dot(G_surf,C_m_surf.toarray())
+        #z_ref_surf_sigma=np.sqrt(np.array([np.dot(GsC[ii, :], G_surf[ii,:]) for ii in range(G_surf.shape[1])]))
         z_ref_surf_sigma= np.sqrt( np.diag( np.dot(np.dot(G_surf,C_m_surf),np.transpose(G_surf)) ) ) # equation 11
         return z_ref_surf, z_ref_surf_sigma
 
