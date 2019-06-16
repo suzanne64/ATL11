@@ -11,6 +11,7 @@ import h5py, re, os, csv
 import ATL11
 from osgeo import osr
 import inspect
+from PointDatabase import point_data
 
 class group(object):
     # Class to contain an ATL11 structure
@@ -57,8 +58,20 @@ class group(object):
             out += '\n'
         return out
 
-    def index(self, ind):
-        target=ATL11.data(1, self.N_cycles, self.N_coeffs, per_pt_fields=self.per_pt_fields.copy(), full_fields=self.full_fields.copy(), poly_fields=self.poly_fields.copy(), xover_fields=self.xover_fields.copy())
+    def index(self, ind, N_cycles=None, N_coeffs=None, xover_ind=None):
+        """
+        index an ATL11 data object.
+        """
+        if N_coeffs is None:
+            N_coeffs=self.N_coeffs
+        if N_cycles is None:
+            N_cycles=self.N_cycles
+        try:
+            N_pts=len(ind)
+        except TypeError:
+            N_pts=1
+            
+        target=ATL11.group(N_pts, N_cycles, N_coeffs, per_pt_fields=self.per_pt_fields.copy(), full_fields=self.full_fields.copy(), poly_fields=self.poly_fields.copy(), xover_fields=self.xover_fields.copy())
                 # assign fields of each type to their appropriate shape and size
         if self.per_pt_fields is not None:
             for field in self.per_pt_fields:
@@ -72,7 +85,13 @@ class group(object):
         if self.xover_fields is not None:
             # need to pick out the matching crossover-point fields
             for field in self.xover_fields:
-                setattr(self, field, [])
+                if xover_ind is not None:
+                    try:
+                        setattr(target, field, getattr(self, field)[xover_ind])
+                    except IndexError:
+                        setattr(target, field, np.array([]))
+                else:
+                    setattr(target, field, [])
         return target
 class valid_mask:
     # class to hold validity flags for different attributes
@@ -115,7 +134,7 @@ class data(object):
         self.N_cycles=N_cycles
         self.N_coeffs=N_coeffs
 
-    def index(self, ind):
+    def index(self, ind, N_cycles=None, N_coeffs=None, target=None):
         """
         return a copy of the data for points 'ind'
         """
@@ -123,9 +142,16 @@ class data(object):
             N_pts=len(ind)
         except TypeError:
             N_pts=1
-        target=ATL11.data(N_pts=N_pts, N_cycles=self.N_cycles, N_coeffs=self.N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
+        if N_coeffs is None:
+            N_coeffs=self.N_coeffs
+        if N_cycles is None:
+            N_cycles=self.N_cycles
+        if target is None:
+            target=ATL11.data(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
+        xover_ind=np.in1d(self.crossing_track_data.ref_pt_number, self.corrected_h.ref_pt_number[ind])        
         for group in self.groups:
-            setattr(target, group, getattr(self, group).index(ind))
+            setattr(target, group, getattr(self, group).index(ind, N_cycles=N_cycles, N_coeffs=N_coeffs, xover_ind=xover_ind))
+        target.poly_exponent=self.poly_exponent.copy()
         return target
 
     def all_fields(self):
@@ -186,7 +212,7 @@ class data(object):
         self.slope_change_t0=P11_list[0].slope_change_t0
         return self
 
-    def from_file(self, pair, filename=None):
+    def from_file(self,  filename, pair=2):
         pt='pt%d' % pair
         with h5py.File(filename,'r') as FH:
             N_pts=FH[pt]['corrected_h']['cycle_h_shapecorr'].shape[0]
@@ -199,6 +225,7 @@ class data(object):
                         setattr(getattr(self, group), field, np.array(FH[pt][group][field]))
                     except KeyError:
                         print("ATL11 file %s: missing %s/%s" % (filename, group, field))
+            self.poly_exponent={'x':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_y'])}
         return self
 
     def get_xy(self, proj4_string, EPSG=None):
@@ -242,7 +269,7 @@ class data(object):
         # set the output pair and track attributes
         g.attrs['pair_num']=self.pair_num
         g.attrs['ReferenceGroundTrack']=self.track_num
-
+        g.attrs['N_cycles']=self.N_cycles
         # put default parameters as top level attributes
         if params_11 is None:
             params_11=ATL11.defaults()
@@ -266,6 +293,7 @@ class data(object):
                     grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['slope_change_t0'] =np.mean(self.slope_change_t0).astype('int')
+                    g.attrs['N_poly_coeffs']=int(self.N_coeffs)
                 list_vars=getattr(self,group).list_of_fields
                 if list_vars is not None:
                     for field in list_vars:
@@ -275,8 +303,40 @@ class data(object):
         f.close()
         return
 
-#    def get_xovers(self):
 
+    def get_xovers(self):
+        xo={'ref':{},'crossing':{},'both':{}}
+        for field in ['time','h','h_sigma','ref_pt_number','rgt','PT','atl06_quality_summary','latitude','longitude']:
+            xo['ref'][field]=[]
+            xo['crossing']['field']=[]
+    
+        for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt_number):
+            i0=np.where(self.corrected_h.ref_pt_number==ref_pt)[0][0]
+            for ic in range(self.corrected_h.mean_cycle_time.shape[1]):
+                if not np.isfinite(self.corrected_h.cycle_h_shapecorr[i0, ic]):
+                    continue
+                xo['ref']['latitude'] += [self.corrected_h.ref_pt_lat[i0]]
+                xo['ref']['longitude'] += [self.corrected_h.ref_pt_lon[i0]]
+                
+                xo['ref']['time'] += [self.corrected_h.mean_cycle_time[i0, ic]]
+                xo['ref']['h']    += [self.corrected_h.cycle_h_shapecorr[i0, ic]]
+                xo['ref']['h_sigma']    += [self.corrected_h.cycle_h_shapecorr_sigma[i0, ic]]
+                xo['ref']['ref_pt_number'] += [self.corrected_h.ref_pt_number[i0]]
+                xo['ref']['rgt'] += [self.rgt]
+                xo['ref']['PT'] += [self.pair]  
+                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_quality_summary_zero_count[i0, ic] >1]
+                
+                xo['crossing']['time'] += [self.crossing_track_data.delta_time[i1]]
+                xo['crossing']['h']  +=  [self.crossing_track_data.h_shapecorr[i1]]
+                xo['crossing']['h_sigma']  +=  [self.crossing_track_data.h_shapecorr_sigma[i1]]
+                xo['crossing']['ref_pt_number'] += [self.crossing_track_data.ref_pt_number[i1]]
+                xo['crossing']['rgt'] += [self.crossing_track_data.rgt_crossing[i1]]
+                xo['crossing']['PT'] += [self.crossing_track_data.pt_crossing[i1]]
+                xo['crossing']['atl06_quality_summary'] += [self.crossing_track_data.atl06_quality_summary[i1]]
+                xo['crossing']['RSSz']  += [self.crossing_track_data.along_track_diff_rss[i1]]
+        xo['crossing']['latitude']=xo['ref']['latitude']
+        xo['crossing']['longitude']=xo['ref']['longitude']
+        return point_data().from_dict(xo['ref']), point_data().from_dict(xo['crossing']) 
 
 
 
