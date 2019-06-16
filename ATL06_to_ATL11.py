@@ -11,6 +11,7 @@ from PointDatabase.point_data import point_data
 from PointDatabase.geo_index import geo_index
 import ATL11
 import glob
+import sys
 import matplotlib.pyplot as plt
 
 def get_xover_data(x0, y0, rgt, GI_file, xover_cache, delta_bins, index_bin_size, params_11):
@@ -43,7 +44,7 @@ def get_xover_data(x0, y0, rgt, GI_file, xover_cache, delta_bins, index_bin_size
         D_xover=point_data().from_list(D_xover)
     return D_xover
 
-def fit_ATL11(ATL06_files, beam_pair=1, N_cycles=2, ref_pt_numbers=None, output_file=None, num_ref_pts=None, first_ref_pt=None, last_ref_pt=None, DOPLOT=None, DEBUG=None, mission_time_bds=None, verbose=False):
+def fit_ATL11(ATL06_files, beam_pair=1, N_cycles=2, ref_pt_numbers=None, output_file=None, num_ref_pts=None, first_ref_pt=None, last_ref_pt=None, DOPLOT=None, DEBUG=None, mission_time_bds=None, lonlat_bounds=None, verbose=False):
     params_11=ATL11.defaults()
     seg_number_skip=int(params_11.seg_atc_spacing/20);
     if mission_time_bds is None:
@@ -60,6 +61,16 @@ def fit_ATL11(ATL06_files, beam_pair=1, N_cycles=2, ref_pt_numbers=None, output_
         return None
     D6=ATL06_data(beam_pair=beam_pair).from_list(D6_list)
 
+    if lonlat_bounds is not None:
+        keep = (D6.longitude >= lonlat_bounds[0]) 
+        keep &= (D6.latitude >= lonlat_bounds[1])
+        keep &= (D6.longitude <= lonlat_bounds[2])
+        keep &= (D6.latitude <= lonlat_bounds[3])
+        keep = np.any(keep, axis=1)
+        if not np.any(keep):
+            return None
+        D6.index(keep)
+
     # reorder data rows from D6 by cycle
     D6.index(np.argsort(D6.cycle_number[:,0],axis=0))
     if np.max(D6.latitude) < 0:
@@ -69,9 +80,8 @@ def fit_ATL11(ATL06_files, beam_pair=1, N_cycles=2, ref_pt_numbers=None, output_
         index_bin_size=1.e4
     else:
         D6.get_xy(None, EPSG=3413)
-    
-    
-    P11_list=list()
+        
+    # get list of reference points   
     if ref_pt_numbers is None:
         uId, iId=np.unique(D6.segment_id.ravel(), return_index=True)
         ctrSegs=np.mod(uId, seg_number_skip)==0
@@ -101,6 +111,7 @@ def fit_ATL11(ATL06_files, beam_pair=1, N_cycles=2, ref_pt_numbers=None, output_
     
     last_count=0
     # loop over reference points
+    P11_list=list()
     for count, ref_pt_number in enumerate(ref_pt_numbers):
         
         x_atc_ctr=ref_pt_x[count]
@@ -184,7 +195,11 @@ def regress_to(D, out_field_names, in_field_names, in_field_pt, DEBUG=None):
 
     return out_pt0[0],out_pt1[0]
 
-def main():
+def main(argv):
+    # account for a bug in argparse that misinterprets negative agruents
+    for i, arg in enumerate(argv):
+        if (arg[0] == '-') and arg[1].isdigit(): argv[i] = ' ' + arg
+   
     # command-line interface: run ATL06_to_ATL11 on a list of ATL06 files
     import argparse
     parser=argparse.ArgumentParser(description='generate an ATL11 file from a collection of ATL06 files.')
@@ -198,6 +213,7 @@ def main():
     parser.add_argument('--first_point','-f', type=int, default=None)
     parser.add_argument('--last_point','-l', type=int, default=None)
     parser.add_argument('--cycles', '-c', type=int, default=2)
+    parser.add_argument('--bounds', '-b', type=float, nargs=4, default=None, help="latlon bounds: west, south, east, north")
 
     args=parser.parse_args()
     
@@ -215,9 +231,13 @@ def main():
     else:
         pairs=[args.pair]
     for pair in pairs:
-        P11_list=fit_ATL11(files, N_cycles=args.cycles,  beam_pair=pair, verbose=args.verbose, first_ref_pt=args.first_point, last_ref_pt=args.last_point) # defined in ATL06_to_ATL11
+        #P11_list=fit_ATL11(files, N_cycles=args.cycles,  beam_pair=pair, verbose=args.verbose, first_ref_pt=args.first_point, last_ref_pt=args.last_point) # defined in ATL06_to_ATL11
+        P11_list=fit_ATL11(files, num_ref_pts=100, N_cycles=args.cycles, beam_pair=pair, verbose=args.verbose, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds) # defined in ATL06_to_ATL11
+        
         if P11_list:
-            ATL11.data(track_num=P11_list[0].rgt, pair_num=pair).from_list(P11_list).write_to_file(args.out_file)
+            N_cycles=np.nanmax([Pi.N_cycles for Pi in P11_list])
+            N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in P11_list])
+            ATL11.data(track_num=P11_list[0].rgt, pair_num=pair, N_cycles=N_cycles, N_coeffs=N_coeffs, N_pts=len(P11_list)).from_list(P11_list).write_to_file(args.out_file)
 
 if __name__=="__main__":
-    main()
+    main(sys.argv)
