@@ -304,7 +304,7 @@ class data(object):
         return
 
 
-    def get_xovers(self):
+    def get_xovers(self, rgt, cycle, pair):
         xo={'ref':{},'crossing':{},'both':{}}
         for field in ['time','h','h_sigma','ref_pt_number','rgt','PT','atl06_quality_summary','latitude','longitude']:
             xo['ref'][field]=[]
@@ -322,8 +322,8 @@ class data(object):
                 xo['ref']['h']    += [self.corrected_h.cycle_h_shapecorr[i0, ic]]
                 xo['ref']['h_sigma']    += [self.corrected_h.cycle_h_shapecorr_sigma[i0, ic]]
                 xo['ref']['ref_pt_number'] += [self.corrected_h.ref_pt_number[i0]]
-                xo['ref']['rgt'] += [self.rgt]
-                xo['ref']['PT'] += [self.pair]  
+                xo['ref']['rgt'] += [rgt]
+                xo['ref']['PT'] += [pair]  
                 xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_quality_summary_zero_count[i0, ic] >1]
                 
                 xo['crossing']['time'] += [self.crossing_track_data.delta_time[i1]]

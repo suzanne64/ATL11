@@ -232,7 +232,7 @@ def main(argv):
         pairs=[args.pair]
     for pair in pairs:
         #P11_list=fit_ATL11(files, N_cycles=args.cycles,  beam_pair=pair, verbose=args.verbose, first_ref_pt=args.first_point, last_ref_pt=args.last_point) # defined in ATL06_to_ATL11
-        P11_list=fit_ATL11(files, num_ref_pts=100, N_cycles=args.cycles, beam_pair=pair, verbose=args.verbose, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds) # defined in ATL06_to_ATL11
+        P11_list=fit_ATL11(files, N_cycles=args.cycles, beam_pair=pair, verbose=args.verbose, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds) # defined in ATL06_to_ATL11
         
         if P11_list:
             N_cycles=np.nanmax([Pi.N_cycles for Pi in P11_list])
