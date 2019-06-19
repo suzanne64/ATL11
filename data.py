@@ -308,8 +308,9 @@ class data(object):
         xo={'ref':{},'crossing':{},'both':{}}
         for field in ['time','h','h_sigma','ref_pt_number','rgt','PT','atl06_quality_summary','latitude','longitude']:
             xo['ref'][field]=[]
-            xo['crossing']['field']=[]
-    
+            xo['crossing'][field]=[]
+        xo['crossing']['RSSz']=[]
+        
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt_number):
             i0=np.where(self.corrected_h.ref_pt_number==ref_pt)[0][0]
             for ic in range(self.corrected_h.mean_cycle_time.shape[1]):
@@ -324,7 +325,7 @@ class data(object):
                 xo['ref']['ref_pt_number'] += [self.corrected_h.ref_pt_number[i0]]
                 xo['ref']['rgt'] += [rgt]
                 xo['ref']['PT'] += [pair]  
-                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_quality_summary_zero_count[i0, ic] >1]
+                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.ATL06_summary_zero_count[i0, ic] == 0]
                 
                 xo['crossing']['time'] += [self.crossing_track_data.delta_time[i1]]
                 xo['crossing']['h']  +=  [self.crossing_track_data.h_shapecorr[i1]]
@@ -336,7 +337,20 @@ class data(object):
                 xo['crossing']['RSSz']  += [self.crossing_track_data.along_track_diff_rss[i1]]
         xo['crossing']['latitude']=xo['ref']['latitude']
         xo['crossing']['longitude']=xo['ref']['longitude']
-        return point_data().from_dict(xo['ref']), point_data().from_dict(xo['crossing']) 
+        for field in xo['crossing']:
+            xo['crossing'][field]=np.array(xo['crossing'][field])
+        for field in xo['ref']:
+            xo['ref'][field]=np.array(xo['ref'][field])
+        ref=point_data().from_dict(xo['ref'])
+        crossing=point_data().from_dict(xo['crossing']) 
+        delta={}
+        delta['h']=crossing.h-ref.h
+        delta['time']=crossing.time-ref.time
+        delta['sigma_h']=np.sqrt(crossing.h_sigma**2+ref.h_sigma**2)
+        delta['latitude']=ref.latitude.copy()
+        delta['longitude']=ref.longitude.copy()
+        delta=point_data().from_dict(delta)
+        return ref, crossing, delta
 
 
 
