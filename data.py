@@ -304,7 +304,7 @@ class data(object):
         return
 
 
-    def get_xovers(self, rgt, cycle, pair):
+    def get_xovers(self, rgt, pair):
         xo={'ref':{},'crossing':{},'both':{}}
         for field in ['time','h','h_sigma','ref_pt_number','rgt','PT','atl06_quality_summary','latitude','longitude']:
             xo['ref'][field]=[]
