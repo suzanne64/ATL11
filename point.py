@@ -175,7 +175,7 @@ class point(ATL11.data):
             # re-establish pairs_valid_for_y_fit
             pairs_valid_for_y_fit= self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel() & self.valid_pairs.y_slope.ravel()
 
-        # 3g. Use y model to evaluate all pairs
+        # 3g. Use y slope model to evaluate all pairs
         self.valid_pairs.y_slope=np.abs(self.my_poly_fit.z(pair_data.x, pair_data.y)- pair_data.dh_dy).ravel() < y_slope_threshold
 
         #4a. define pairs_valid_for_x_fit
@@ -225,7 +225,7 @@ class point(ATL11.data):
             else:
                 self.status['no_valid_pairs_for_x_fit']=1
 
-        # 4g. Use x model to evaluate all segments
+        # 4g. Use x slope model to evaluate all segments
         self.valid_segs.x_slope=np.abs(self.mx_poly_fit.z(D6.x_atc, D6.y_atc)- D6.dh_fit_dx) < x_slope_threshold #, max_iterations=2, min_sigma=mx_regression_tol)
         self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1)
 
@@ -255,6 +255,9 @@ class point(ATL11.data):
         y0=(np.min(y_atc)+np.max(y_atc))/2
         # 1: define a range of y centers, select the center with the best score
         y0_shifts=np.round(y0)+np.arange(-100.5,101.5)
+        # 2: search for optimal shift value
+        # the score is equal to the number of cycles with at least one valid pair entirely in the window,
+        # plus 1/100 of the number cycles that contain no valid pairs but have at least one valid segment in the window
         score=np.zeros_like(y0_shifts)
         y_pair=[]
         for cycle in np.unique(pair_data.cycle[self.valid_pairs.all]):
@@ -266,27 +269,11 @@ class point(ATL11.data):
         y_unselected=[]
         for cycle in np.unique(D6.cycle_number.ravel()[~np.in1d(D6.cycle_number.ravel(),cycle)]):
             y_unselected.append(np.nanmedian(D6.y_atc[D6.cycle_number==cycle]))
-        N_unsel_cycles=np.histogram(y_unselected, bins=y0_shifts)[0]
-        count_kernel=np.ones(np.ceil(self.params_11.L_search_XT*2-self.params_11.beam_spacing).astype(int))
+        N_unsel_cycles = np.histogram(y_unselected, bins=y0_shifts)[0]
+        count_kernel = np.ones(np.ceil(self.params_11.L_search_XT*2-self.params_11.beam_spacing).astype(int))
+        score = np.convolve(N_sel_cycles,count_kernel, mode='same')
+        score += np.convolve(N_unsel_cycles, count_kernel, mode='same')/100
 
-        score=np.convolve(N_sel_cycles,count_kernel, mode='same')
-        score += np.convolve(N_unsel_cycles, count_kernel, mode='same')
-
-
-#        # 2: search for optimal shift value
-#        for count, y0_shift in enumerate(y0_shifts):
-#            sel_segs=np.all(np.abs(D6.y_atc[self.valid_pairs.all,:]-y0_shift)<self.params_11.L_search_XT, axis=1)
-#            sel_cycs=np.unique(cycle[sel_segs,0])
-#            selected_seg_cycle_count=len(sel_cycs)
-#
-#            other_cycles = np.unique(cycle.ravel()[~np.in1d(cycle.ravel(),sel_cycs)])
-#            unsel_segs = np.in1d(cycle.ravel(),other_cycles) & (np.abs(y_atc-y0_shift)<self.params_11.L_search_XT)
-#            unsel_cycs = np.unique(cycle.ravel()[unsel_segs])
-#            unselected_seg_cycle_count=len(unsel_cycs)
-#
-#            # the score is equal to the number of cycles with at least one valid pair entirely in the window,
-#            # plus 1/100 of the number cycles that contain no valid pairs but have at least one valid segment in the window
-#            score[count]=selected_seg_cycle_count + unselected_seg_cycle_count/100.
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
         self.y_atc_ctr=np.median(y0_shifts[best])+0.5*(y0_shifts[1]-y0_shifts[0])
@@ -629,6 +616,14 @@ class point(ATL11.data):
         return
 
     def evaluate_reference_surf(self, x_atc, y_atc, delta_time):
+        """
+        method to evaluate the reference surface
+
+        inputs:
+            x_atc, y_atc: location to evaluate, in along-track coordinates
+            delta_time: time of evaluation
+        """
+
         poly_mask=np.isfinite(self.ref_surf.poly_coeffs).ravel()
         x_degree=self.params_11.poly_exponent['x'][poly_mask]
         y_degree=self.params_11.poly_exponent['y'][poly_mask]
