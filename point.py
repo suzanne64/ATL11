@@ -52,8 +52,8 @@ class point(ATL11.data):
             mission_time_bds=np.array([0, N_cycles*91*24*3600])
         self.slope_change_t0=mission_time_bds[0]+0.5*(mission_time_bds[1]-mission_time_bds[0])
         self.mission_time_bds=mission_time_bds
-        self.valid_segs =ATL11.valid_mask((N_pairs,2), ('data','x_slope' ))  #  2 cols, boolan, all F to start
-        self.valid_pairs=ATL11.valid_mask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
+        self.valid_segs =ATL11.validMask((N_pairs,2), ('data','x_slope' ))  #  2 cols, boolan, all F to start
+        self.valid_pairs=ATL11.validMask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.status=dict()
         self.ref_surf.ref_pt_x_atc=x_atc_ctr
@@ -72,7 +72,7 @@ class point(ATL11.data):
         self.y_atc_ctr=self.ref_surf.ref_pt_y_atc
         self.params_11.poly_exponent=D11.poly_exponent
         return self
-        
+
 
     def select_ATL06_pairs(self, D6, pair_data):
         # Select ATL06 data based on data-quality flags in ATL06 data, and based on
@@ -655,7 +655,7 @@ class point(ATL11.data):
             else:
                 surf_model_sigma=np.transpose(self.ref_surf.poly_coeffs_sigma.ravel()[np.where(poly_mask)[0]])
             C_m_surf=sparse.diags(surf_model_sigma**2)
-        try: 
+        try:
             C_m_surf=C_m_surf.toarray()
         except Exception:
                 pass
