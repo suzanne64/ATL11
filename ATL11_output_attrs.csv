@@ -58,6 +58,7 @@ crossing_track_data,h_shapecorr_sigma,meters,,Nxo
 crossing_track_data,h_shapecorr_sigma_systematic,meters,,Nxo
 crossing_track_data,latitude,egrees North,,Nxo
 crossing_track_data,longitude,Degrees East,,Nxo
+crossing_track_data,cycle_crossing,counts,,Nxo
 crossing_track_data,rgt_crossing,counts,,Nxo
 crossing_track_data,pt_crossing,counts,,Nxo
 crossing_track_data,atl06_quality_summary,counts,,Nxo
