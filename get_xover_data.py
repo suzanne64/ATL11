@@ -7,11 +7,10 @@ Created on Sun Aug 11 20:52:34 2019
 """
 
 import numpy as np
-import ATL11
 from PointDatabase.point_data import point_data
 from PointDatabase.geo_index import geo_index
 
-def get_xover_data(x0, y0, rgt, GI_file, xover_cache, index_bin_size, params_11):
+def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11):
     """
     Read the data from other tracks.
 
@@ -19,7 +18,7 @@ def get_xover_data(x0, y0, rgt, GI_file, xover_cache, index_bin_size, params_11)
     Inputs:
         x0, y0: bin centers
         rgt: current rgt
-        GI_file: geograpic index file
+        GI_files: lsti of geograpic index file
         xover_cache: data cache (dict)
         index_bin_size: size of the bins in the index
         params_11: default parameter values for the ATL11 fit
@@ -27,7 +26,7 @@ def get_xover_data(x0, y0, rgt, GI_file, xover_cache, index_bin_size, params_11)
     """
 
     # identify the crossover centers
-    x0_ctrs=ATL11.buffered_bins(x0, y0, 2*params_11.L_search_XT, index_bin_size)
+    x0_ctrs = buffered_bins(x0, y0, 2*params_11.L_search_XT, index_bin_size)
     D_xover=[]
 
     for x0_ctr in x0_ctrs:
@@ -35,7 +34,15 @@ def get_xover_data(x0, y0, rgt, GI_file, xover_cache, index_bin_size, params_11)
         # check if we have already read in the data for this bin
         if this_key not in xover_cache:
             # if we haven't already read in the data, read it in.  These data will be in xover_cache[this_key]
-            xover_cache[this_key]={'D':point_data(field_dict=params_11.ATL06_field_dict).from_list(geo_index().from_file(GI_file).query_xy(this_key, fields=params_11.ATL06_field_dict))}
+            temp=[]
+            for GI_file in GI_files:
+                new_data = geo_index().from_file(GI_file).query_xy(this_key, fields=params_11.ATL06_xover_field_list);
+                if new_data is not None:
+                    temp += new_data
+            if len(temp) == 0:
+                xover_cache[this_key]=None
+                continue
+            xover_cache[this_key]={'D':point_data(list_of_fields=params_11.ATL06_xover_field_list).from_list(temp)}
             # remove the current rgt from data in the cache
             xover_cache[this_key]['D'].index(~np.in1d(xover_cache[this_key]['D'].rgt, [rgt]))
             if xover_cache[this_key]['D'].size==0:
@@ -58,3 +65,19 @@ def get_xover_data(x0, y0, rgt, GI_file, xover_cache, index_bin_size, params_11)
     if len(D_xover) > 0:
         D_xover=point_data().from_list(D_xover)
     return D_xover
+
+
+def buffered_bins(x0, y0, w_buffer, w_bin, complex=True):
+    """
+    Generate a set of bins that enclose a set of points, including a buffer
+    """
+    dx, dy=np.meshgrid([-w_buffer, 0, w_buffer], [-w_buffer, 0, w_buffer])
+    dx.shape=[9, 1];
+    dy.shape=[9, 1]
+    xr=np.unique(np.round(x0/w_buffer)*w_buffer+1j*np.round(y0/w_buffer)*w_buffer)
+    xr=np.unique(xr.ravel()+dx+1j*dy)
+    xr=np.unique(np.round(xr/w_bin)*w_bin)
+    if complex:
+        return xr
+    else:
+        return np.real(xr), np.imag(xr)
