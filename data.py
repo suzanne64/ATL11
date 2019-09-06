@@ -41,6 +41,7 @@ class data(object):
         self.pair_num=pair_num
         self.N_cycles=N_cycles
         self.N_coeffs=N_coeffs
+        self.attrs={}
 
     def index(self, ind, N_cycles=None, N_coeffs=None, target=None):
         """
@@ -124,6 +125,8 @@ class data(object):
     def from_file(self,  filename, pair=2):
         pt='pt%d' % pair
         with h5py.File(filename,'r') as FH:
+            if pt not in FH:
+                return self
             N_pts=FH[pt]['corrected_h']['cycle_h_shapecorr'].shape[0]
             N_cycles=FH[pt]['corrected_h']['cycle_h_shapecorr'].shape[1]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
@@ -135,6 +138,8 @@ class data(object):
                     except KeyError:
                         print("ATL11 file %s: missing %s/%s" % (filename, group, field))
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_y'])}
+            for attr in FH[pt].attrs.keys():
+                self.attrs[attr]=FH[pt].attrs[attr]
         return self
 
     def get_xy(self, proj4_string, EPSG=None):
@@ -213,9 +218,11 @@ class data(object):
         return
 
 
-    def get_xovers(self, rgt, pair):
+    def get_xovers(self):
+        rgt=self.attrs['ReferenceGroundTrack']
+        pair=self.attrs['pair_num']
         xo={'ref':{},'crossing':{},'both':{}}
-        for field in ['time','h','h_sigma','ref_pt_number','rgt','PT','atl06_quality_summary','latitude','longitude']:
+        for field in ['time','h','h_sigma','ref_pt_number','rgt','PT','atl06_quality_summary','latitude','longitude','cycle']:
             xo['ref'][field]=[]
             xo['crossing'][field]=[]
         xo['crossing']['RSSz']=[]
@@ -235,7 +242,7 @@ class data(object):
                 xo['ref']['rgt'] += [rgt]
                 xo['ref']['PT'] += [pair]
                 xo['ref']['atl06_quality_summary'] += [self.cycle_stats.ATL06_summary_zero_count[i0, ic] == 0]
-
+                xo['ref']['cycle'] += [ic+1]
                 xo['crossing']['time'] += [self.crossing_track_data.delta_time[i1]]
                 xo['crossing']['h']  +=  [self.crossing_track_data.h_shapecorr[i1]]
                 xo['crossing']['h_sigma']  +=  [self.crossing_track_data.h_shapecorr_sigma[i1]]
@@ -244,6 +251,7 @@ class data(object):
                 xo['crossing']['PT'] += [self.crossing_track_data.pt_crossing[i1]]
                 xo['crossing']['atl06_quality_summary'] += [self.crossing_track_data.atl06_quality_summary[i1]]
                 xo['crossing']['RSSz']  += [self.crossing_track_data.along_track_diff_rss[i1]]
+                xo['crossing']['cycle'] += [self.crossing_track_data.cycle_crossing]
         xo['crossing']['latitude']=xo['ref']['latitude']
         xo['crossing']['longitude']=xo['ref']['longitude']
         for field in xo['crossing']:
@@ -289,7 +297,7 @@ class data(object):
         plt.xlim((np.nanmin(xx),  np.nanmax(xx)))
         return h
 
-    def from_ATL06(self, ATL06_files, beam_pair=1, N_cycles=2,  output_file=None, GI_file=None, ref_pt_numbers=None, num_ref_pts=None, first_ref_pt=None, last_ref_pt=None,  mission_time_bds=None, lonlat_bounds=None, verbose=False, DOPLOT=None, DEBUG=None):
+    def from_ATL06(self, D6, GI_files=None, beam_pair=1, N_cycles=2,  ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,  mission_time_bds=None, verbose=False, DOPLOT=None, DEBUG=None):
         """
         Fit a collection of ATL06 files with ATL11 surface models
 
@@ -298,82 +306,27 @@ class data(object):
             Required keyword inputs:
                 beam_pair: beam pair for the current fit (default=1)
                 N_cycles: Number of cycles in the current fit (default=2)
-                output_file: File into which to save the ouput
-                GI_file: geo_index file from which to read ATL06 data
+                GI_files: list of geo_index file from which to read ATL06 data for crossovers
+                hemisphere: +1 (north) or -1 (south), used to choose a projection
             Optional keyword arguments (not necessarily independent)
-                ref_pt_numbers: Specific reference point numbers to fit
-                first_ref_pt: first reference point to attempt to fit
-                num_ref_pts: number of reference points to include in the fit
-                last_ref_pt: last reference point to include in the fit
                 mission_time_bds: starting and ending times for the mission
-                lonlat_bds: region within which to fit points
                 verbose: write fitting info to stdout if true
                 DOPLOT: list of plots to make
                 DEBUG: output debugging info
         """
 
         params_11=ATL11.defaults()
-        seg_number_skip=int(params_11.seg_atc_spacing/20);
         if mission_time_bds is None:
             mission_time_bds=np.array([286.*24*3600, 398.*24*3600])
 
-        # read in the ATL06 data from all the repeats
-        D6_list=[]
-        for filename in ATL06_files:
-            try:
-                D6_list.append(ATL06_data(field_dict=params_11.ATL06_field_dict, beam_pair=beam_pair).from_file(filename))
-            except KeyError:
-                pass
-        if len(D6_list)==0:
-            return None
-        D6=ATL06_data(beam_pair=beam_pair).from_list(D6_list)
+        # hard code the bin size until there's a good reason to change it
+        index_bin_size=1.e4
 
-        if lonlat_bounds is not None:
-            keep = (D6.longitude >= lonlat_bounds[0])
-            keep &= (D6.latitude >= lonlat_bounds[1])
-            keep &= (D6.longitude <= lonlat_bounds[2])
-            keep &= (D6.latitude <= lonlat_bounds[3])
-            keep = np.any(keep, axis=1)
-            if not np.any(keep):
-                return None
-        D6.index(keep)
-
-        # reorder data rows from D6 by cycle
-        D6.index(np.argsort(D6.cycle_number[:,0],axis=0))
-
-        # choose the hemisphere and project the data to polar stereographic
-        if np.max(D6.latitude) < 0:
-            D6.get_xy(None, EPSG=3031)
-            params_11.EPSG=3031
-            index_bin_size=1.e4
-        else:
-            D6.get_xy(None, EPSG=3413)
+        # setup the EPSG
+        if hemisphere==1:
             params_11.EPSG=3413
-            index_bin_size=1e4
-
-        # get list of reference points
-        if ref_pt_numbers is None:
-            uId, iId=np.unique(D6.segment_id.ravel(), return_index=True)
-            ctrSegs=np.mod(uId, seg_number_skip)==0
-            ref_pt_numbers=uId[ctrSegs]
-            ref_pt_x=D6.x_atc.ravel()[iId[ctrSegs]]
         else:
-            ref_pt_x=ref_pt_numbers*20
-
-      # apply input arguments to the input reference points
-        if first_ref_pt is not None:
-            these=ref_pt_numbers>=first_ref_pt
-            ref_pt_numbers=ref_pt_numbers[these]
-            ref_pt_x=ref_pt_x[these]
-
-        if last_ref_pt is not None:
-            these=ref_pt_numbers<=last_ref_pt
-            ref_pt_numbers=ref_pt_numbers[these]
-            ref_pt_x=ref_pt_x[these]
-
-        if num_ref_pts is not None:
-            ref_pt_numbers=ref_pt_numbers[0:int(num_ref_pts)]
-            ref_pt_x=ref_pt_x[0:int(num_ref_pts)]
+            params_11.EPSG=3031
 
         # initialize the xover data cache
         D_xover_cache={}
@@ -415,7 +368,7 @@ class data(object):
                 continue
 
             # regress the geographic coordinates from the data to the fit center
-            P11.corrected_h.ref_pt_lat, P11.corrected_h.ref_pt_lon = ATL11.regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
+            P11.corrected_h.ref_pt_lat, P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
 
             # find the reference surface
             P11.find_reference_surface(D6_sub)
@@ -429,10 +382,10 @@ class data(object):
             P11.corr_heights_other_cycles(D6_sub)
 
             # find the center of the bin in polar stereographic coordinates
-            x0, y0=ATL11.regress_to(D6_sub, ['x','y'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
+            x0, y0=regress_to(D6_sub, ['x','y'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
 
             # get the data for the crossover point
-            D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_file, D_xover_cache, index_bin_size, params_11)
+            D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
             # if we have read any data for the current bin, run the crossover calculation
             PLOTME=False#isinstance(D_xover, point_data);
             if PLOTME:
@@ -452,6 +405,53 @@ class data(object):
         if len(P11_list) > 0:
             N_cycles=np.nanmax([Pi.N_cycles for Pi in P11_list])
             N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in P11_list])
-            return ATL11.data(track_num=P11_list[0].rgt, pair_num=pair, N_cycles=N_cycles, N_coeffs=N_coeffs, N_pts=len(P11_list)).from_list(P11_list)
+            return ATL11.data(track_num=P11_list[0].rgt, pair_num=beam_pair, N_cycles=N_cycles, N_coeffs=N_coeffs, N_pts=len(P11_list)).from_list(P11_list)
         else:
-            return ATL11.data(track_num=P11_list[0].rgt, pair_num=pair, N_cycles=N_cycles, N_coeffs=N_coeffs, N_pts=len(P11_list))
+            return ATL11.data(track_num=P11_list[0].rgt, pair_num=beam_pair, N_cycles=N_cycles, N_coeffs=N_coeffs, N_pts=len(P11_list))
+
+def unwrap_lon(lon, lon0=0):
+    """
+    wrap longitudes to +-180
+    """
+    lon -= lon0
+    lon[lon>180] -= 360
+    lon[lon<-180] += 360
+    return lon
+
+def regress_to(D, out_field_names, in_field_names, in_field_pt, DEBUG=None):
+
+    """
+    Regress a series of data values to a reference point
+
+    inputs:
+        D: data structure
+        out_field_names: list of field names for which we are trying to recover values
+        in_field_names: list of field names as independent variables in the regression
+        in_field_pt: location of the regression center (in variables in_field_names)
+    """
+
+    D_in = np.array((getattr(D, in_field_names[0]).ravel(), getattr(D, in_field_names[1]).ravel())).T
+    D_out = np.array([getattr(D,ff).ravel() for ff in out_field_names]).T
+    if ['longitude'] in out_field_names:
+        # if longitude is in the regression parameters, need to unwrqp it
+        lon_col=out_field_names.index['longitude']
+        lon0=np.nanmedian(D_out[lon_col])
+        D_out[:, lon_col]=unwrap_lon(D_out[:, lon_col], lon0=lon0)
+    good_rows=np.all(~np.isnan( np.concatenate( (D_in,D_out), axis=1)), axis=1)
+
+    if np.sum(good_rows) < 2:
+        return np.zeros(len(out_field_names))+np.NaN
+    
+    # build the regression matrix
+    G=np.ones((np.sum(good_rows),len(in_field_names)+1) )
+    for k in range(len(in_field_names)):
+        G[:,k+1] = D_in[good_rows,k] - in_field_pt[k]
+
+    # calculate the regression coefficients (the intercepts will be the first row)
+    out_pt = np.linalg.lstsq(G,D_out[good_rows,:])[0][0,:]
+    if ['longitude'] in out_field_names:
+        out_pt[lon_col] = unwrap_lon([out_pt[lon_col]+lon0], lon0=0)[0]
+    if DEBUG is not None:
+        print('lat_ctr,lon_ctr',out_pt)
+
+    return out_pt
