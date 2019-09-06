@@ -7,6 +7,9 @@ Created on Sun Aug 11 21:00:20 2019
 """
 
 import numpy as np
+import scipy.sparse as sparse
+import numpy.linalg as linalg
+from ATL11.RDE import RDE
 
 class poly_ref_surf(object):
     def __init__(self, degree_xy=None, exp_xy=None, xy0=[0,0], skip_constant=False, xy_scale=1.0):
@@ -87,11 +90,10 @@ class poly_ref_surf(object):
             sigma=RDE(rs[rows])
             if not np.isfinite(sigma):
                 sigma=0
-            print('sigma from RDE ',sigma)
+            #print('sigma from RDE ',sigma)
             threshold=3.*np.max([sigma, min_sigma])
             mask=np.abs(rs)<threshold
-            print("\tsigma=%3.2f, f=%d/%d" % (sigma, np.sum(mask), len(mask)))
-            # In the future, compute the LS coefficients using PySPQR (get from github.com/yig/PySPQR)
+            #print("\tsigma=%3.2f, f=%d/%d" % (sigma, np.sum(mask), len(mask)))
         self.poly_vals=m
 
         return m, residual, chi2r, rows
