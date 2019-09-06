@@ -9,7 +9,6 @@ import numpy as np
 from PointDatabase.point_data import point_data
 #from poly_ref_surf import poly_ref_surf
 import matplotlib.pyplot as plt
-from ATL11.RDE import RDE
 import scipy.sparse as sparse
 from scipy import linalg
 from scipy import stats
@@ -164,7 +163,7 @@ class point(ATL11.data):
 
             # 3e: calculate across-track slope threshold
             if y_slope_resid.size>1:
-                y_slope_threshold=np.maximum(my_regression_tol,3.*RDE(y_slope_resid))
+                y_slope_threshold=np.maximum(my_regression_tol,3.*ATL11.RDE(y_slope_resid))
             else:
                 y_slope_threshold=my_regression_tol
             if ~pairs_valid_for_y_fit.any():
@@ -210,7 +209,7 @@ class point(ATL11.data):
 
                 # 4e: calculate along-track slope threshold
                 if x_slope_resid.size > 1.:
-                    x_slope_threshold = np.maximum(mx_regression_tol,3*RDE(x_slope_resid))
+                    x_slope_threshold = np.maximum(mx_regression_tol,3*ATL11.RDE(x_slope_resid))
                 else:
                     x_slope_threshold=mx_regression_tol
 
@@ -336,7 +335,7 @@ class point(ATL11.data):
 
         # 2. determine polynomial degree, using unique x's and unique y's of segments in valid pairs
         x_atcU = np.unique(np.round(x_atc/20)) # np.unique orders the unique values
-        y_atcU = np.unique(np.round(y_atc/20)) # np.unique orders the unique values
+        y_atcU = np.unique(np.round((y_atc-self.ref_surf.ref_pt_y_atc)/20)) # np.unique orders the unique values
         # Table 4-4   # NOTE: need to note the change: round x_atcU and y_atcU to the nearest 20
         self.ref_surf.n_deg_x = np.maximum(0, np.minimum(self.params_11.poly_max_degree_AT,len(x_atcU)-1) )
         self.ref_surf.n_deg_y = np.maximum(0, np.minimum(self.params_11.poly_max_degree_XT,len(y_atcU)-1) )
@@ -433,7 +432,7 @@ class point(ATL11.data):
             r_fit=r_seg[selected_segs]
 
             # 3i. Calculate the fitting tolerance,
-            r_tol = 3*RDE(r_fit/h_li_sigma[selected_segs])
+            r_tol = 3*ATL11.RDE(r_fit/h_li_sigma[selected_segs])
             # reduce chi-squared value
             surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),C_di.toarray()),r_fit)
 
@@ -461,7 +460,7 @@ class point(ATL11.data):
             self.ref_surf.surf_fit_misfit_chi2r=surf_fit_misfit_chi2/(n_rows-n_cols)
         else:
             self.ref_surf.surf_fit_misfit_chi2r=np.NaN
-        self.ref_surf.surf_fit_misfit_RMS = RDE(r_fit)
+        self.ref_surf.surf_fit_misfit_RMS = ATL11.RDE(r_fit)
         self.selected_segments[np.nonzero(self.selected_segments)] = selected_segs
         # identify the ref_surf cycles that survived the fit
         self.ref_surf_cycles=self.ref_surf_cycles[fit_columns[TOC['zp']]]
@@ -493,7 +492,7 @@ class point(ATL11.data):
         # calculate the data covariance matrix including the scatter component
         h_li_sigma = D6.h_li_sigma[self.selected_segments]
         cycle      = D6.cycle_number[self.selected_segments]
-        C_dp=sparse.diags(np.maximum(h_li_sigma**2,(RDE(r_fit))**2))
+        C_dp=sparse.diags(np.maximum(h_li_sigma**2,(ATL11.RDE(r_fit))**2))
         # calculate the model covariance matrix
         C_m = np.dot(np.dot(G_g,C_dp.toarray()),np.transpose(G_g))
         # calculate the combined-model errors
@@ -764,7 +763,7 @@ class point(ATL11.data):
         # calculate corrected heights, z_xover, and their errors
         z_xover = Dsub.h_li - np.dot(S_poly,surf_model[self.surf_mask]).ravel()
         z_xover_sigma = np.sqrt( np.diag( np.dot(np.dot(S_poly,self.C_m_surf),np.transpose(S_poly)) ) + Dsub.h_li_sigma.ravel()**2 ) # equation 11
-
+        #z_xover_sigma_systematic = ???
         orb_pair=(Dsub.cycle_number-1)*1387+Dsub.rgt+Dsub.BP*0.1
         u_orb_pair=np.unique(orb_pair)
         u_orb_pair=u_orb_pair[~np.in1d(u_orb_pair, self.ref_surf_cycles*1387+self.rgt+self.pair_num*0.1)]
@@ -782,6 +781,7 @@ class point(ATL11.data):
 
             self.crossing_track_data.rgt_crossing.append([Dsub.rgt[best]])
             self.crossing_track_data.pt_crossing.append([Dsub.BP[best]])
+            self.crossing_track_data.cycle_crossing.append([Dsub.cycle_number[best]])
             self.crossing_track_data.h_shapecorr.append([z_xover[best]])
             self.crossing_track_data.h_shapecorr_sigma.append([z_xover_sigma[best]])
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
