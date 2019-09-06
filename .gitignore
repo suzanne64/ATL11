@@ -2,4 +2,8 @@
 old
 ATL11_h5
 __pycache__
+*.h5
+*~
+ATL11_map.py
+*.txt
 

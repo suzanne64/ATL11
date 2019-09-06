@@ -6,6 +6,8 @@ from .group import group
 from .validMask import validMask
 from .point import point
 from .get_xover_data import get_xover_data
+from .read_ATL06_data import *
+from .RDE import RDE
 #from .poly_ref_surf import poly_ref_surf
 
 
