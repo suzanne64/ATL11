@@ -32,6 +32,7 @@ def main(argv):
     parser.add_argument('--out_file','-o', default=None, required=True)
     parser.add_argument('--first_point','-f', type=int, default=None)
     parser.add_argument('--last_point','-l', type=int, default=None)
+    parser.add_argument('--num_points','-N', type=int, default=None)
     parser.add_argument('--cycles', '-c', type=int, default=2)
     parser.add_argument('--min_cycle','-m', type=int, default=0)
     parser.add_argument('--Hemisphere','-H', type=int, default=-1)
@@ -60,7 +61,7 @@ def main(argv):
     
     for pair in pairs:
         D6 = ATL11.read_ATL06_data(files, beam_pair=pair, min_cycle=args.min_cycle)
-        D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds)
+        D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds, num_ref_pts=args.num_points)
         if D6 is None or len(ref_pt_numbers)==0: 
             continue
         D11=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
