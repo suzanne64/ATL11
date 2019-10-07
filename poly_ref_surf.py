@@ -72,7 +72,7 @@ class poly_ref_surf(object):
                 cols[0]=True
             m=np.zeros([Gsub.shape[1],1])
             # compute the LS coefficients
-            msub, rr, rank, sing=linalg.lstsq(sigma_inv.dot(Gsub[:,cols]), sigma_inv.dot(zd.ravel()[rows]))
+            msub, rr, rank, sing=linalg.lstsq(sigma_inv.dot(Gsub[:,cols]), sigma_inv.dot(zd.ravel()[rows]), rcond=None)
             msub.shape=(len(msub), 1)
             m[np.where(cols)]=msub  # only takes first three coefficients?
             residual=zd.ravel()-G.dot(m).ravel()
