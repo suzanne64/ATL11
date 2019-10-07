@@ -8,7 +8,7 @@ Created on Sun Aug 11 20:52:34 2019
 
 import numpy as np
 from PointDatabase.point_data import point_data
-from PointDatabase.geo_index import geo_index
+from PointDatabase import geo_index
 
 def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11):
     """
@@ -51,7 +51,7 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
             # index the cache at 100-m resolution
             xover_cache[this_key]['index']=geo_index(delta=[100, 100], data=xover_cache[this_key]['D'])
         # now read the data from the crossover cache
-        if xover_cache[this_key]['D'] is not None:
+        if (xover_cache[this_key] is not None) and (xover_cache[this_key]['D'] is not None):
             try:
                 Q=xover_cache[this_key]['index'].query_xy([x0, y0], pad=1, get_data=False)
             except KeyError:
