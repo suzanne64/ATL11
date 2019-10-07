@@ -122,21 +122,44 @@ class data(object):
         self.slope_change_t0=P11_list[0].slope_change_t0
         return self
 
-    def from_file(self,  filename, pair=2):
+    def from_file(self,  filename, pair=2, index_range=[0, -1], field_dict=None):
+        '''
+        read ATL11 data for a pair track from a file
+        '''
+        index_range=slice(index_range[0], index_range[1]);
         pt='pt%d' % pair
         with h5py.File(filename,'r') as FH:
             if pt not in FH:
                 return self
-            N_pts=FH[pt]['corrected_h']['cycle_h_shapecorr'].shape[0]
+            # if the field dict is not specified, read it
+            if field_dict is None:
+                field_dict={}
+                for group in FH[pt].keys():
+                    field_dict[group]=[]
+                    for field in FH[pt].keys():
+                        field_dict[group].append(field)
+            N_pts=FH[pt]['corrected_h']['cycle_h_shapecorr'][index_range,:].shape[0]
             N_cycles=FH[pt]['corrected_h']['cycle_h_shapecorr'].shape[1]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs)
-            for group in ('corrected_h','ref_surf','cycle_stats','crossing_track_data'):
-                for field in FH[pt][group].keys():
-                    try:
-                        setattr(getattr(self, group), field, np.array(FH[pt][group][field]))
-                    except KeyError:
-                        print("ATL11 file %s: missing %s/%s" % (filename, group, field))
+            for group in (field_dict):
+                if group != 'crossing_track_data':
+                    for field in field_dict[group]:
+                        try:
+                            setattr(getattr(self, group), field, np.array(FH[pt][group][field]))
+                        except KeyError:
+                            print("ATL11 file %s: missing %s/%s" % (filename, group, field))
+                else:
+                    # get the indices for the crossing_track_data group:
+                    xing_ref_pt = np.array(FH[pt]['crossing_track_data']['ref_pt_number'])
+                    xing_ind = np.flatnonzero( (xing_ref_pt >= self.corrected_h.ref_pt_number[0]) & \
+                                      (xing_ref_pt <= self.corrected_h.ref_pt_number[-1]) )
+                    for field in field_dict['crossing_track_data']:
+                        try:
+                            setattr(getattr(self, group), field, \
+                                    np.array(FH[pt]['crossing_track_data'][field][xing_ind]))
+                        except KeyError:
+                            print("ATL11 file %s: missing %s/%s" % (filename, 'crossing_track_data', field))          
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
@@ -251,7 +274,7 @@ class data(object):
                 xo['crossing']['PT'] += [self.crossing_track_data.pt_crossing[i1]]
                 xo['crossing']['atl06_quality_summary'] += [self.crossing_track_data.atl06_quality_summary[i1]]
                 xo['crossing']['RSSz']  += [self.crossing_track_data.along_track_diff_rss[i1]]
-                xo['crossing']['cycle'] += [self.crossing_track_data.cycle_crossing]
+                xo['crossing']['cycle'] += [self.crossing_track_data.cycle_crossing[i1]]
         xo['crossing']['latitude']=xo['ref']['latitude']
         xo['crossing']['longitude']=xo['ref']['longitude']
         for field in xo['crossing']:
@@ -448,7 +471,7 @@ def regress_to(D, out_field_names, in_field_names, in_field_pt, DEBUG=None):
         G[:,k+1] = D_in[good_rows,k] - in_field_pt[k]
 
     # calculate the regression coefficients (the intercepts will be the first row)
-    out_pt = np.linalg.lstsq(G,D_out[good_rows,:])[0][0,:]
+    out_pt = np.linalg.lstsq(G,D_out[good_rows,:], rcond=None)[0][0,:]
     if ['longitude'] in out_field_names:
         out_pt[lon_col] = unwrap_lon([out_pt[lon_col]+lon0], lon0=0)[0]
     if DEBUG is not None:
