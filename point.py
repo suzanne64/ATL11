@@ -787,8 +787,8 @@ class point(ATL11.data):
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
             self.crossing_track_data.ref_pt_number.append([self.ref_pt_number])
-            self.crossing_track_data.latitude.append([self.corrected_h.ref_pt_lat])
-            self.crossing_track_data.longitude.append([self.corrected_h.ref_pt_lon])
+            self.crossing_track_data.latitude.append([self.corrected_h.latitude])
+            self.crossing_track_data.longitude.append([self.corrected_h.longitude])
             self.crossing_track_data.along_track_diff_rss.append([np.sqrt(ss_atc_diff[0])])
         return
 
@@ -796,8 +796,8 @@ class point(ATL11.data):
         WGS84a=6378137.0
         WGS84b=6356752.31424
         d2r=np.pi/180
-        lat0=self.corrected_h.ref_pt_lat
-        lon0=self.corrected_h.ref_pt_lon
+        lat0=self.corrected_h.latitude
+        lon0=self.corrected_h.longitude
         Re=WGS84a**2/np.sqrt((WGS84a*np.cos(d2r*lat0))**2+(WGS84b*np.sin(d2r*lat0))**2)
         dE=Re*d2r*(np.mod(lon-lon0+180.,360.)-180.)*np.cos(d2r*lat0)
         dN=Re*d2r*(lat-lat0)

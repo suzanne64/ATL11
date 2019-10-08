@@ -176,8 +176,8 @@ class data(object):
                 out_srs.ImportFromWkt(proj4_string)
         ll_srs=osr.SpatialReference()
         ll_srs.ImportFromEPSG(4326)
-        lat=self.corrected_h.ref_pt_lat
-        lon=self.corrected_h.ref_pt_lon
+        lat=self.corrected_h.latitude
+        lon=self.corrected_h.longitude
         ct=osr.CoordinateTransformation(ll_srs, out_srs)
         if lat.size==0:
             self.x=np.zeros_like(lat)
@@ -215,7 +215,8 @@ class data(object):
             try:
                 g.attrs[param]=getattr(params_11, param)
             except:
-                print("write_to_file:could not automatically set parameter: %s" % param)
+                #print("write_to_file:could not automatically set parameter: %s" % param)
+                continue
 
         # put groups, fields and associated attributes from .csv file
         with open(os.path.dirname(inspect.getfile(ATL11.data))+'/ATL11_output_attrs.csv','r') as attrfile:
@@ -255,8 +256,8 @@ class data(object):
             for ic in range(self.corrected_h.mean_cycle_time.shape[1]):
                 if not np.isfinite(self.corrected_h.cycle_h_shapecorr[i0, ic]):
                     continue
-                xo['ref']['latitude'] += [self.corrected_h.ref_pt_lat[i0]]
-                xo['ref']['longitude'] += [self.corrected_h.ref_pt_lon[i0]]
+                xo['ref']['latitude'] += [self.corrected_h.latitude[i0]]
+                xo['ref']['longitude'] += [self.corrected_h.longitude[i0]]
 
                 xo['ref']['time'] += [self.corrected_h.mean_cycle_time[i0, ic]]
                 xo['ref']['h']    += [self.corrected_h.cycle_h_shapecorr[i0, ic]]
@@ -391,7 +392,7 @@ class data(object):
                 continue
 
             # regress the geographic coordinates from the data to the fit center
-            P11.corrected_h.ref_pt_lat, P11.corrected_h.ref_pt_lon = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
+            P11.corrected_h.latitude, P11.corrected_h.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
 
             # find the reference surface
             P11.find_reference_surface(D6_sub)

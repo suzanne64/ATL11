@@ -34,7 +34,7 @@ xy_srs.ImportFromProj4( SRS_proj4)
 ll_srs=osr.SpatialReference()
 ll_srs.ImportFromEPSG(4326)
 ct=osr.CoordinateTransformation(ll_srs, xy_srs)
-x, y, z = list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(D11.corrected_h.ref_pt_lon), np.ravel(D11.corrected_h.ref_pt_lat), np.zeros_like(np.ravel(D11.corrected_h.ref_pt_lat)))]))
+x, y, z = list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(D11.corrected_h.longitude), np.ravel(D11.corrected_h.latitude), np.zeros_like(np.ravel(D11.corrected_h.latitude)))]))
  
 xb,yb=unique_points(x,y, [1000., 1000.])
 
