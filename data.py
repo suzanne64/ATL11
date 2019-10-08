@@ -186,6 +186,9 @@ class data(object):
             x, y, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(lon), np.ravel(lat), np.zeros_like(np.ravel(lat)))]))
             self.x=np.reshape(x, lat.shape)
             self.y=np.reshape(y, lon.shape)
+            bad=~np.isfinite(x)
+            self.x[bad]=np.NaN
+            self.y[bad]=np.NaN
         return self
 
     def write_to_file(self, fileout, params_11=None):
