@@ -77,7 +77,7 @@ class data(object):
         # Assemble an ATL11 data instance from a list of ATL11 points.
         # Input: list of ATL11 point instances
         # loop over variables in ATL11.data (self)
-        self.__init__(N_pts=len(P11_list), track_num=self.track_num, pair_num=self.pair_num, N_cycles=P11_list[0].corrected_h.cycle_h_shapecorr.shape[1], N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
+        self.__init__(N_pts=len(P11_list), track_num=self.track_num, pair_num=self.pair_num, N_cycles=P11_list[0].corrected_h.h_corr.shape[1], N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
 
         for group in vars(self).keys():
             # check if each variable is an ATl11 group
@@ -138,8 +138,8 @@ class data(object):
                     field_dict[group]=[]
                     for field in FH[pt].keys():
                         field_dict[group].append(field)
-            N_pts=FH[pt]['corrected_h']['cycle_h_shapecorr'][index_range,:].shape[0]
-            N_cycles=FH[pt]['corrected_h']['cycle_h_shapecorr'].shape[1]
+            N_pts=FH[pt]['corrected_h']['h_corr'][index_range,:].shape[0]
+            N_cycles=FH[pt]['corrected_h']['h_corr'].shape[1]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs)
             for group in (field_dict):
@@ -253,15 +253,15 @@ class data(object):
 
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt_number):
             i0=np.where(self.corrected_h.ref_pt_number==ref_pt)[0][0]
-            for ic in range(self.corrected_h.mean_cycle_time.shape[1]):
-                if not np.isfinite(self.corrected_h.cycle_h_shapecorr[i0, ic]):
+            for ic in range(self.corrected_h.delta_time.shape[1]):
+                if not np.isfinite(self.corrected_h.h_corr[i0, ic]):
                     continue
                 xo['ref']['latitude'] += [self.corrected_h.latitude[i0]]
                 xo['ref']['longitude'] += [self.corrected_h.longitude[i0]]
 
-                xo['ref']['time'] += [self.corrected_h.mean_cycle_time[i0, ic]]
-                xo['ref']['h']    += [self.corrected_h.cycle_h_shapecorr[i0, ic]]
-                xo['ref']['h_sigma']    += [self.corrected_h.cycle_h_shapecorr_sigma[i0, ic]]
+                xo['ref']['time'] += [self.corrected_h.delta_time[i0, ic]]
+                xo['ref']['h']    += [self.corrected_h.h_corr[i0, ic]]
+                xo['ref']['h_sigma']    += [self.corrected_h.h_corr_sigma[i0, ic]]
                 xo['ref']['ref_pt_number'] += [self.corrected_h.ref_pt_number[i0]]
                 xo['ref']['rgt'] += [rgt]
                 xo['ref']['PT'] += [pair]
@@ -297,14 +297,14 @@ class data(object):
 
     def plot(self):
         # method to plot the results.  At present, this plots corrected h AFN of x_atc
-        n_cycles=self.corrected_h.cycle_h_shapecorr.shape[1]
+        n_cycles=self.corrected_h.h_corr.shape[1]
         HR=np.nan+np.zeros((n_cycles, 2))
         h=list()
         #plt.figure(1);plt.clf()
         for cycle in range(n_cycles):
             xx=self.ref_surf.x_atc
-            zz=self.corrected_h.cycle_h_shapecorr[:,cycle]
-            ss=self.corrected_h.cycle_h_shapecorr_sigma[:,cycle]
+            zz=self.corrected_h.h_corr[:,cycle]
+            ss=self.corrected_h.h_corr_sigma[:,cycle]
             good=np.abs(ss)<15
             ss[~good]=np.NaN
             zz[~good]=np.NaN
@@ -313,8 +313,8 @@ class data(object):
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
                 #plt.plot(xx[good], zz[good], 'k',picker=None)
-        temp=self.corrected_h.cycle_h_shapecorr.copy()
-        temp[self.corrected_h.cycle_h_shapecorr_sigma>20]=np.nan
+        temp=self.corrected_h.h_corr.copy()
+        temp[self.corrected_h.h_corr_sigma>20]=np.nan
         temp=np.nanmean(temp, axis=1)
         plt.plot(xx, temp, 'k.', picker=5)
         plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))

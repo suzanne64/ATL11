@@ -45,12 +45,12 @@ class ATL11_plot:
         plt.cla()
         # plot the heights and 
         yy=D11.cycle_stats.y_atc[this,:].ravel()
-        hh=D11.corrected_h.cycle_h_shapecorr[this,:].ravel()
-        ss=D11.corrected_h.cycle_h_shapecorr_sigma[this,:].ravel()
+        hh=D11.corrected_h.h_corr[this,:].ravel()
+        ss=D11.corrected_h.h_corr_sigma[this,:].ravel()
         
-        hc=D11.corrected_h.cycle_h_shapecorr[this,:]
-        hc_sigma=D11.corrected_h.cycle_h_shapecorr_sigma[this,:]
-        t=D11.corrected_h.mean_cycle_time[this,:]
+        hc=D11.corrected_h.h_corr[this,:]
+        hc_sigma=D11.corrected_h.h_corr_sigma[this,:]
+        t=D11.corrected_h.delta_time[this,:]
         good=np.logical_and(np.logical_and(hc_sigma<10 , np.isfinite(hc_sigma)), np.isfinite(t))
         G=np.ones((good.sum(), 2))
         G[:,1]=(t[good]-t0)/ONEYEAR
