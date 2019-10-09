@@ -10,9 +10,16 @@ import ATL11
 import glob
 import sys
 import matplotlib.pyplot as plt
+from PointDatabase import geo_index
 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
+
+def get_proj4(hemisphere):
+    if hemisphere==-1:
+        return'+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' 
+    if hemisphere==1:
+        return '+proj=stere +lat_0=90 +lat_ts=70 +lon_0=-45 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs '
 
 def main(argv):
     # account for a bug in argparse that misinterprets negative agruents
@@ -68,6 +75,11 @@ def main(argv):
                       N_cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
                       GI_files=GI_files, hemisphere=args.Hemisphere) # defined in ATL06_to_ATL11
         D11.write_to_file(args.out_file)
-
+    
+    GI=geo_index(SRS_proj4=get_proj4(args.Hemisphere)).for_file(args.out_file, 'ATL11', dir_root=os.path.dirname(args.out_file))
+    GI.attrs['bin_root']=None
+    GI.to_file(args.out_file)
+    
+    
 if __name__=="__main__":
     main(sys.argv)
