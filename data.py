@@ -42,6 +42,7 @@ class data(object):
         self.N_cycles=N_cycles
         self.N_coeffs=N_coeffs
         self.attrs={}
+        self.filename=None
 
     def index(self, ind, N_cycles=None, N_coeffs=None, target=None):
         """
@@ -126,7 +127,8 @@ class data(object):
         '''
         read ATL11 data for a pair track from a file
         '''
-        index_range=slice(index_range[0], index_range[1]);
+        self.filename=filename
+        #index_range=slice(index_range[0], index_range[1]);
         pt='pt%d' % pair
         with h5py.File(filename,'r') as FH:
             if pt not in FH:
@@ -136,7 +138,7 @@ class data(object):
                 field_dict={}
                 for group in FH[pt].keys():
                     field_dict[group]=[]
-                    for field in FH[pt].keys():
+                    for field in FH[pt][group].keys():
                         field_dict[group].append(field)
             N_pts=FH[pt]['corrected_h']['h_corr'][index_range,:].shape[0]
             N_cycles=FH[pt]['corrected_h']['h_corr'].shape[1]
@@ -146,11 +148,17 @@ class data(object):
                 if group != 'crossing_track_data':
                     for field in field_dict[group]:
                         try:
-                            setattr(getattr(self, group), field, np.array(FH[pt][group][field]))
+                            this_field=FH[pt][group][field]
+                            if len(this_field.shape) > 1:
+                                setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
+                            else:
+                                setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
                         except KeyError:
                             print("ATL11 file %s: missing %s/%s" % (filename, group, field))
                 else:
                     # get the indices for the crossing_track_data group:
+                    if self.corrected_h.ref_pt_number.size <1:
+                        continue
                     xing_ref_pt = np.array(FH[pt]['crossing_track_data']['ref_pt'])
                     xing_ind = np.flatnonzero( (xing_ref_pt >= self.corrected_h.ref_pt[0]) & \
                                       (xing_ref_pt <= self.corrected_h.ref_pt[-1]) )
@@ -159,7 +167,11 @@ class data(object):
                             setattr(getattr(self, group), field, \
                                     np.array(FH[pt]['crossing_track_data'][field][xing_ind]))
                         except KeyError:
-                            print("ATL11 file %s: missing %s/%s" % (filename, 'crossing_track_data', field))          
+                            print("ATL11 file %s: missing %s/%s" % (filename, 'crossing_track_data', field))
+                        except ValueError:
+                            print("ATL11 file %s: misshapen %s/%s" % (filename, 'crossing_track_data', field))
+                            #setattr(getattr(self, group), field, \
+                            #        np.array(FH[pt]['crossing_track_data'][field][xing_ind]))
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
@@ -380,16 +392,16 @@ class data(object):
             P11.DOPLOT=DOPLOT
             # step 2: select pairs, based on reasonable slopes
             P11.select_ATL06_pairs(D6_sub, pair_data)
-            if P11.ref_surf.quality_summary > 0:
-                P11_list.append(P11)
+            if P11.ref_surf.surf_fit_quality_summary > 0:
+                #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
 
             # select the y coordinate for the fit (in ATC coords)
             P11.select_y_center(D6_sub, pair_data)
-            if P11.ref_surf.quality_summary > 0:
-                P11_list.append(P11)
+            if P11.ref_surf.surf_fit_quality_summary > 0:
+                #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
@@ -400,11 +412,11 @@ class data(object):
             # find the reference surface
             P11.find_reference_surface(D6_sub)
             if 'inversion failed' in P11.status:
-                P11_list.append(P11)
+                #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
-
+                        
             # correct the heights from other cycles to the reference point using the reference surface
             P11.corr_heights_other_cycles(D6_sub)
 
@@ -424,6 +436,8 @@ class data(object):
                 plt.plot(x0, y0,'g*')
 
             P11.corr_xover_heights(D_xover)
+            if not np.isfinite(P11.corrected_h.ref_pt_lat):
+                continue
             P11_list.append(P11)
             if count-last_count>500:
                 print("completed %d segments, ref_pt= %d" %(count, ref_pt))
