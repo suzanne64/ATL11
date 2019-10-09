@@ -57,7 +57,7 @@ class data(object):
             N_cycles=self.N_cycles
         if target is None:
             target=ATL11.data(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
-        xover_ind=np.in1d(self.crossing_track_data.ref_pt_number, self.corrected_h.ref_pt_number[ind])
+        xover_ind=np.in1d(self.crossing_track_data.ref_pt, self.corrected_h.ref_pt[ind])
         for group in self.groups:
             setattr(target, group, getattr(self, group).index(ind, N_cycles=N_cycles, N_coeffs=N_coeffs, xover_ind=xover_ind))
         target.poly_exponent=self.poly_exponent.copy()
@@ -87,8 +87,8 @@ class data(object):
                 temp=np.ndarray(shape=[len(P11_list),],dtype=float)
                 for ii, P11 in enumerate(P11_list):
                     if hasattr(getattr(P11,group),field):
-                        if 'ref_pt_number' in field:
-                            temp[ii]=P11.ref_pt_number
+                        if 'ref_pt' in field:
+                            temp[ii]=P11.ref_pt
                         else:
                             temp[ii]=getattr(getattr(P11,group), field)
                 setattr(getattr(self,group),field,temp)
@@ -151,9 +151,9 @@ class data(object):
                             print("ATL11 file %s: missing %s/%s" % (filename, group, field))
                 else:
                     # get the indices for the crossing_track_data group:
-                    xing_ref_pt = np.array(FH[pt]['crossing_track_data']['ref_pt_number'])
-                    xing_ind = np.flatnonzero( (xing_ref_pt >= self.corrected_h.ref_pt_number[0]) & \
-                                      (xing_ref_pt <= self.corrected_h.ref_pt_number[-1]) )
+                    xing_ref_pt = np.array(FH[pt]['crossing_track_data']['ref_pt'])
+                    xing_ind = np.flatnonzero( (xing_ref_pt >= self.corrected_h.ref_pt[0]) & \
+                                      (xing_ref_pt <= self.corrected_h.ref_pt[-1]) )
                     for field in field_dict['crossing_track_data']:
                         try:
                             setattr(getattr(self, group), field, \
@@ -246,13 +246,13 @@ class data(object):
         rgt=self.attrs['ReferenceGroundTrack']
         pair=self.attrs['pair_num']
         xo={'ref':{},'crossing':{},'both':{}}
-        for field in ['time','h','h_sigma','ref_pt_number','rgt','PT','atl06_quality_summary','latitude','longitude','cycle']:
+        for field in ['time','h','h_sigma','ref_pt','rgt','PT','atl06_quality_summary','latitude','longitude','cycle']:
             xo['ref'][field]=[]
             xo['crossing'][field]=[]
         xo['crossing']['RSSz']=[]
 
-        for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt_number):
-            i0=np.where(self.corrected_h.ref_pt_number==ref_pt)[0][0]
+        for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt):
+            i0=np.where(self.corrected_h.ref_pt==ref_pt)[0][0]
             for ic in range(self.corrected_h.delta_time.shape[1]):
                 if not np.isfinite(self.corrected_h.h_corr[i0, ic]):
                     continue
@@ -262,15 +262,15 @@ class data(object):
                 xo['ref']['time'] += [self.corrected_h.delta_time[i0, ic]]
                 xo['ref']['h']    += [self.corrected_h.h_corr[i0, ic]]
                 xo['ref']['h_sigma']    += [self.corrected_h.h_corr_sigma[i0, ic]]
-                xo['ref']['ref_pt_number'] += [self.corrected_h.ref_pt_number[i0]]
+                xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]]
                 xo['ref']['rgt'] += [rgt]
                 xo['ref']['PT'] += [pair]
                 xo['ref']['atl06_quality_summary'] += [self.cycle_stats.ATL06_summary_zero_count[i0, ic] == 0]
                 xo['ref']['cycle'] += [ic+1]
                 xo['crossing']['time'] += [self.crossing_track_data.delta_time[i1]]
-                xo['crossing']['h']  +=  [self.crossing_track_data.h_shapecorr[i1]]
-                xo['crossing']['h_sigma']  +=  [self.crossing_track_data.h_shapecorr_sigma[i1]]
-                xo['crossing']['ref_pt_number'] += [self.crossing_track_data.ref_pt_number[i1]]
+                xo['crossing']['h']  +=  [self.crossing_track_data.h_corr[i1]]
+                xo['crossing']['h_sigma']  +=  [self.crossing_track_data.h_corr_sigma[i1]]
+                xo['crossing']['ref_pt'] += [self.crossing_track_data.ref_pt[i1]]
                 xo['crossing']['rgt'] += [self.crossing_track_data.rgt_crossing[i1]]
                 xo['crossing']['PT'] += [self.crossing_track_data.pt_crossing[i1]]
                 xo['crossing']['atl06_quality_summary'] += [self.crossing_track_data.atl06_quality_summary[i1]]
@@ -358,21 +358,21 @@ class data(object):
         last_count=0
         # loop over reference points
         P11_list=list()
-        for count, ref_pt_number in enumerate(ref_pt_numbers):
+        for count, ref_pt in enumerate(ref_pt_numbers):
 
             x_atc_ctr=ref_pt_x[count]
             # section 5.1.1
-            D6_sub=D6.subset(np.any(np.abs(D6.segment_id-ref_pt_number) <= params_11.N_search, axis=1), by_row=True)
+            D6_sub=D6.subset(np.any(np.abs(D6.segment_id-ref_pt) <= params_11.N_search, axis=1), by_row=True)
             if D6_sub.h_li.shape[0]<=1:
                 if verbose:
-                    print("not enough data at ref pt=%d" % ref_pt_number)
+                    print("not enough data at ref pt=%d" % ref_pt)
                 continue
 
             #2a. define representative x and y values for the pairs
             pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle_number','h_li'])   # this might go, similar to D6_sub
             if ~np.any(np.isfinite(pair_data.y)):
                 continue
-            P11=ATL11.point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0], ref_pt_number=ref_pt_number, pair_num=D6_sub.BP[0, 0],  x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_cycles=N_cycles,  mission_time_bds=mission_time_bds )
+            P11=ATL11.point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0], ref_pt=ref_pt, pair_num=D6_sub.BP[0, 0],  x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_cycles=N_cycles,  mission_time_bds=mission_time_bds )
 
             P11.DOPLOT=DOPLOT
             # step 2: select pairs, based on reasonable slopes
@@ -380,7 +380,7 @@ class data(object):
             if P11.ref_surf.quality_summary > 0:
                 P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt_number))
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
 
             # select the y coordinate for the fit (in ATC coords)
@@ -388,7 +388,7 @@ class data(object):
             if P11.ref_surf.quality_summary > 0:
                 P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt_number))
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
 
             # regress the geographic coordinates from the data to the fit center
@@ -399,7 +399,7 @@ class data(object):
             if 'inversion failed' in P11.status:
                 P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt_number))
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
 
             # correct the heights from other cycles to the reference point using the reference surface
@@ -423,7 +423,7 @@ class data(object):
             P11.corr_xover_heights(D_xover)
             P11_list.append(P11)
             if count-last_count>500:
-                print("completed %d segments, ref_pt_number= %d" %(count, ref_pt_number))
+                print("completed %d segments, ref_pt= %d" %(count, ref_pt))
                 last_count=count
 
         if len(P11_list) > 0:

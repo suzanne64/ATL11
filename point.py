@@ -16,11 +16,11 @@ import ATL11
 
 class point(ATL11.data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
-    def __init__(self, N_pairs=1, ref_pt_number=None, pair_num=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], N_cycles=12,  rgt=None, mission_time_bds=None, params_11=None):
+    def __init__(self, N_pairs=1, ref_pt=None, pair_num=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], N_cycles=12,  rgt=None, mission_time_bds=None, params_11=None):
         # input variables:
         # N_pairs: Number of distinct pairs in the ATL06 data
-        # ref_pt_number: the reference-point number for the ATL11 fit.  This is the geoseg number for the central segment of the fit
-        # x_atc_ctr: the along-track corresponding to ref_pt_number
+        # ref_pt: the reference-point number for the ATL11 fit.  This is the geoseg number for the central segment of the fit
+        # x_atc_ctr: the along-track corresponding to ref_pt
         # track_azimuth: the azimuth of the RGT for the ATL11 point
         # optional parameters:
         # max_poly_degree: the maximum degree of the along- and across-track polynomials
@@ -39,7 +39,7 @@ class point(ATL11.data):
         self.N_coeffs=self.params_11.N_coeffs
         self.x_atc_ctr=x_atc_ctr
         self.pair_num=pair_num
-        self.ref_pt_number=ref_pt_number
+        self.ref_pt=ref_pt
         self.track_azimuth=track_azimuth
         self.mx_poly_fit=None
         self.my_poly_fit=None
@@ -559,7 +559,7 @@ class point(ATL11.data):
             self.ref_surf.slope_change_rate_x_sigma= np.nan
             self.ref_surf.slope_change_rate_y_sigma= np.nan
 
-        # write out the errors in h_shapecorr
+        # write out the errors in h_corr
         self.corrected_h.h_corr_sigma[0,cycle_ind[zp_used]]=m_surf_zp_sigma[zp_used]*zp_nan_mask
 
         # calculate fit slopes and curvature:
@@ -782,11 +782,11 @@ class point(ATL11.data):
             self.crossing_track_data.rgt_crossing.append([Dsub.rgt[best]])
             self.crossing_track_data.pt_crossing.append([Dsub.BP[best]])
             self.crossing_track_data.cycle_crossing.append([Dsub.cycle_number[best]])
-            self.crossing_track_data.h_shapecorr.append([z_xover[best]])
-            self.crossing_track_data.h_shapecorr_sigma.append([z_xover_sigma[best]])
+            self.crossing_track_data.h_corr.append([z_xover[best]])
+            self.crossing_track_data.h_corr_sigma.append([z_xover_sigma[best]])
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
-            self.crossing_track_data.ref_pt_number.append([self.ref_pt_number])
+            self.crossing_track_data.ref_pt.append([self.ref_pt])
             self.crossing_track_data.latitude.append([self.corrected_h.latitude])
             self.crossing_track_data.longitude.append([self.corrected_h.longitude])
             self.crossing_track_data.along_track_diff_rss.append([np.sqrt(ss_atc_diff[0])])
