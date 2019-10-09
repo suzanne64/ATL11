@@ -38,7 +38,7 @@ class ATL11_plot:
         print("this is %d" % this)
         print("x0=%d" % x0[this])
         #inc are the selected cycles
-        inc=np.flatnonzero(D11.cycle_stats.cycle_included_in_fit[this,:])
+        inc=np.flatnonzero(D11.cycle_stats.n_segs[this,:])
         #print "inc:" 
         #print inc
         plt.sca(self.ax2)
@@ -62,7 +62,7 @@ class ATL11_plot:
         sigma_m=np.sqrt(np.diagonal(Ginv.dot(cov_data).dot(Ginv.transpose()))) 
      
         plt.errorbar(yy, hh, ss, fmt='o')
-        plt.plot(yy, D11.cycle_stats.h_uncorr_mean[this,:].ravel(), 'kx')
+        plt.plot(yy, D11.cycle_stats.h_mean[this,:].ravel(), 'kx')
         plt.plot(yy[inc], hh[inc],'r*', markersize =12)
         plt.sca(self.ax3)
         plt.cla()

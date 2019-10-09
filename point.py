@@ -309,7 +309,7 @@ class point(ATL11.data):
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
         # Table 4-2
         self.cycle_stats.cycle_seg_count=np.zeros((1,self.N_cycles,))
-        self.cycle_stats.cycle_included_in_fit=np.zeros((1,self.N_cycles,))
+        self.cycle_stats.n_segs=np.zeros((1,self.N_cycles,))
 
         # establish new boolean arrays for selecting
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool)
@@ -519,7 +519,7 @@ class point(ATL11.data):
             for dataset in ('latitude','longitude','x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','h_robust_sprd'): #,'h_rms_misfit'):
                 mean_dataset=dataset #+'_mean';
                 self.cycle_stats.__dict__[mean_dataset][0,cc-1]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
-            self.cycle_stats.h_uncorr_mean[0,cc-1]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
+            self.cycle_stats.h_mean[0,cc-1]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
 
             # root mean weighted square:
             for dataset in ( 'sigma_geo_h','sigma_geo_at','sigma_geo_xt'):
@@ -527,7 +527,7 @@ class point(ATL11.data):
                 self.cycle_stats.__dict__[mean_dataset][0,cc-1] = np.sqrt(np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs]**2))
             # other parameters:
             self.corrected_h.delta_time[0,cc-1]       = np.mean(D6.delta_time.ravel()[cycle_segs])
-            self.cycle_stats.cycle_included_in_fit[0,cc-1] = 1
+            self.cycle_stats.n_segs[0,cc-1] = 1
             self.cycle_stats.cycle_seg_count[0, cc-1]      = cycle_segs.size
             self.cycle_stats.cloud_flg_asr[0,cc-1]    = np.min(D6.cloud_flg_asr.ravel()[cycle_segs])
             self.cycle_stats.cloud_flg_atm[0,cc-1]    = np.min(D6.cloud_flg_atm.ravel()[cycle_segs])
@@ -719,7 +719,7 @@ class point(ATL11.data):
                     np.sqrt(term1.ravel()[best_seg] + term2.ravel()[best_seg]  + term3.ravel()[best_seg])
             self.corrected_h.delta_time[0,cc-1]        =D6.delta_time.ravel()[best_seg_ind]
             self.cycle_stats.cycle_seg_count[0,cc-1]         =1
-            self.cycle_stats.h_uncorr_mean[0, cc-1]         =D6.h_li.ravel()[best_seg_ind]
+            self.cycle_stats.h_mean[0, cc-1]         =D6.h_li.ravel()[best_seg_ind]
         # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
         self.segment_id_by_cycle=[]
         self.selected_segments_by_cycle=[]
@@ -779,9 +779,9 @@ class point(ATL11.data):
             if ss_atc_diff==0:
                 ss_atc_diff=[np.NaN]
 
-            self.crossing_track_data.rgt_crossing.append([Dsub.rgt[best]])
-            self.crossing_track_data.pt_crossing.append([Dsub.BP[best]])
-            self.crossing_track_data.cycle_crossing.append([Dsub.cycle_number[best]])
+            self.crossing_track_data.rgt.append([Dsub.rgt[best]])
+            self.crossing_track_data.spot_crossing.append([Dsub.BP[best]])
+            self.crossing_track_data.cycle_number.append([Dsub.cycle_number[best]])
             self.crossing_track_data.h_corr.append([z_xover[best]])
             self.crossing_track_data.h_corr_sigma.append([z_xover_sigma[best]])
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
@@ -789,7 +789,7 @@ class point(ATL11.data):
             self.crossing_track_data.ref_pt.append([self.ref_pt])
             self.crossing_track_data.latitude.append([self.corrected_h.latitude])
             self.crossing_track_data.longitude.append([self.corrected_h.longitude])
-            self.crossing_track_data.along_track_diff_rss.append([np.sqrt(ss_atc_diff[0])])
+            self.crossing_track_data.along_track_rss.append([np.sqrt(ss_atc_diff[0])])
         return
 
     def local_NE_coords(self, lat, lon):
