@@ -60,19 +60,24 @@ class poly_ref_surf(object):
             sigma_d=np.ones_like(xd.ravel())
         chi2r=len(zd)*2
         mask=np.ones_like(zd.ravel(), dtype=bool)
+        sigma_inv=1./sigma_d.ravel()
+        sigma_inv.shape=[len(sigma_inv), 1]
+        
         for k_it in np.arange(max_iterations):
             rows=mask
             if rows.sum()==0:
                 chi2r=np.NaN
                 break
-            sigma_inv=sparse.diags(1/sigma_d.ravel()[rows])
+            #sigma_inv=sparse.diags(1/sigma_d.ravel()[rows])
             Gsub=G[rows,:]
             cols=(np.amax(Gsub,axis=0)-np.amin(Gsub,axis=0))>0
             if self.skip_constant is False:
                 cols[0]=True
             m=np.zeros([Gsub.shape[1],1])
             # compute the LS coefficients
-            msub, rr, rank, sing=linalg.lstsq(sigma_inv.dot(Gsub[:,cols]), sigma_inv.dot(zd.ravel()[rows]), rcond=None)
+            # note: under broadcasting rules, sigma_inv*G = diags(sigma_inv).dot(G)
+            # and  sigma_inv.ravel()*zd.ravel() = diags(sigma_inv)*zd.ravel()
+            msub, rr, rank, sing=linalg.lstsq(sigma_inv[rows]*(Gsub[:,cols]), sigma_inv[rows].ravel()*(zd.ravel()[rows]), rcond=None)
             msub.shape=(len(msub), 1)
             m[np.where(cols)]=msub  # only takes first three coefficients?
             residual=zd.ravel()-G.dot(m).ravel()
