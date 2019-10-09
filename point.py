@@ -152,10 +152,9 @@ class point(ATL11.data):
         for iteration in range(2):
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
             self.my_poly_fit=ATL11.poly_ref_surf(degree_xy=(my_regression_x_degree, my_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
-            try:
-                y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
-            except ValueError:
-                print("ERROR")
+            y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=\
+            self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
+
             # update what is valid based on regression flag
             self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=y_slope_valid_flag                #re-establish pairs_valid for y fit
             # re-establish pairs_valid_for_y_fit
