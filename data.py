@@ -302,7 +302,7 @@ class data(object):
         h=list()
         #plt.figure(1);plt.clf()
         for cycle in range(n_cycles):
-            xx=self.ref_surf.ref_pt_x_atc
+            xx=self.ref_surf.x_atc
             zz=self.corrected_h.cycle_h_shapecorr[:,cycle]
             ss=self.corrected_h.cycle_h_shapecorr_sigma[:,cycle]
             good=np.abs(ss)<15
@@ -377,18 +377,18 @@ class data(object):
             P11.DOPLOT=DOPLOT
             # step 2: select pairs, based on reasonable slopes
             P11.select_ATL06_pairs(D6_sub, pair_data)
-            if P11.ref_surf.surf_fit_quality_summary > 0:
+            if P11.ref_surf.quality_summary > 0:
                 P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number))
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt_number))
                 continue
 
             # select the y coordinate for the fit (in ATC coords)
             P11.select_y_center(D6_sub, pair_data)
-            if P11.ref_surf.surf_fit_quality_summary > 0:
+            if P11.ref_surf.quality_summary > 0:
                 P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number))
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt_number))
                 continue
 
             # regress the geographic coordinates from the data to the fit center
@@ -399,7 +399,7 @@ class data(object):
             if 'inversion failed' in P11.status:
                 P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.surf_fit_quality_summary, ref_pt_number))
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt_number))
                 continue
 
             # correct the heights from other cycles to the reference point using the reference surface

@@ -32,7 +32,7 @@ class ATL11_plot:
         xx=event.xdata
         #ii=event.ind
         D11=self.D11
-        x0=D11.ref_surf.ref_pt_x_atc
+        x0=D11.ref_surf.x_atc
         this=np.argmin(np.abs(x0-xx))
         #this=np.flatnonzero(x0==xx[ii])
         print("this is %d" % this)
@@ -44,7 +44,7 @@ class ATL11_plot:
         plt.sca(self.ax2)
         plt.cla()
         # plot the heights and 
-        yy=D11.cycle_stats.y_atc_mean[this,:].ravel()
+        yy=D11.cycle_stats.y_atc[this,:].ravel()
         hh=D11.corrected_h.cycle_h_shapecorr[this,:].ravel()
         ss=D11.corrected_h.cycle_h_shapecorr_sigma[this,:].ravel()
         

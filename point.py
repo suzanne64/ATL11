@@ -55,9 +55,9 @@ class point(ATL11.data):
         self.valid_pairs=ATL11.validMask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
         self.status=dict()
-        self.ref_surf.ref_pt_x_atc=x_atc_ctr
+        self.ref_surf.x_atc=x_atc_ctr
         self.ref_surf.rgt_azimuth=track_azimuth
-        self.ref_surf.surf_fit_quality_summary=0
+        self.ref_surf.quality_summary=0
         self.ref_surf.complex_surface_flag=0
 
     def from_data(self, D11, ind):
@@ -67,8 +67,8 @@ class point(ATL11.data):
         D11.index(ind, target=self)
         self.N_cycles=D11.N_cycles
         self.N_coeffs=D11.N_coeffs
-        self.x_atc_ctr=self.ref_surf.ref_pt_x_atc
-        self.y_atc_ctr=self.ref_surf.ref_pt_y_atc
+        self.x_atc_ctr=self.ref_surf.x_atc
+        self.y_atc_ctr=self.ref_surf.y_atc
         self.params_11.poly_exponent=D11.poly_exponent
         return self
 
@@ -106,8 +106,8 @@ class point(ATL11.data):
 
         if self.ref_surf.N_cycle_avail<1:
             self.status['No_cycles_available']=True
-            if self.ref_surf.surf_fit_quality_summary==0:
-                self.ref_surf.surf_fit_quality_summary=1
+            if self.ref_surf.quality_summary==0:
+                self.ref_surf.quality_summary=1
             return
 
         # 1b: Select segs by height error
@@ -120,8 +120,8 @@ class point(ATL11.data):
         self.valid_pairs.data= np.all( self.valid_segs.data, axis=1)
         if not np.any(self.valid_pairs.data):
             self.status['No_valid_pairs_after_height_error_check']=True
-            if self.ref_surf.surf_fit_quality_summary==0:
-                self.ref_surf.surf_fit_quality_summary=2
+            if self.ref_surf.quality_summary==0:
+                self.ref_surf.quality_summary=2
             return
         # 2a. see ATL06_pair.py
         # 2b. Calculate the y center of the slope regression
@@ -233,13 +233,13 @@ class point(ATL11.data):
 
         if np.sum(self.valid_pairs.all)==0:
             self.status['No_valid_pairs_after_slope_editing']=True
-            if self.ref_surf.surf_fit_quality_summary==0:
-                self.ref_surf.surf_fit_quality_summary=3
+            if self.ref_surf.quality_summary==0:
+                self.ref_surf.quality_summary=3
 
         if np.unique(D6.segment_id[self.valid_pairs.all]).shape[0]==1:
             self.status['Only_one_valid_pair_in_x_direction']=True
-            if self.ref_surf.surf_fit_quality_summary==0:
-                self.ref_surf.surf_fit_quality_summary=4
+            if self.ref_surf.quality_summary==0:
+                self.ref_surf.quality_summary=4
         return
 
     def select_y_center(self, D6, pair_data):  #5.1.3
@@ -276,7 +276,7 @@ class point(ATL11.data):
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
         self.y_atc_ctr=np.median(y0_shifts[best])+0.5*(y0_shifts[1]-y0_shifts[0])
-        self.ref_surf.ref_pt_y_atc=self.y_atc_ctr
+        self.ref_surf.y_atc=self.y_atc_ctr
 
         if self.DOPLOT is not None and "score-vs-yshift" in self.DOPLOT:
             plt.figure(2);plt.clf()
@@ -335,22 +335,22 @@ class point(ATL11.data):
 
         # 2. determine polynomial degree, using unique x's and unique y's of segments in valid pairs
         x_atcU = np.unique(np.round(x_atc/20)) # np.unique orders the unique values
-        y_atcU = np.unique(np.round((y_atc-self.ref_surf.ref_pt_y_atc)/20)) # np.unique orders the unique values
+        y_atcU = np.unique(np.round((y_atc-self.ref_surf.y_atc)/20)) # np.unique orders the unique values
         # Table 4-4   # NOTE: need to note the change: round x_atcU and y_atcU to the nearest 20
-        self.ref_surf.n_deg_x = np.maximum(0, np.minimum(self.params_11.poly_max_degree_AT,len(x_atcU)-1) )
-        self.ref_surf.n_deg_y = np.maximum(0, np.minimum(self.params_11.poly_max_degree_XT,len(y_atcU)-1) )
+        self.ref_surf.deg_x = np.maximum(0, np.minimum(self.params_11.poly_max_degree_AT,len(x_atcU)-1) )
+        self.ref_surf.deg_y = np.maximum(0, np.minimum(self.params_11.poly_max_degree_XT,len(y_atcU)-1) )
         if self.ref_surf.complex_surface_flag > 0:
-            self.ref_surf.n_deg_x = np.minimum(1, self.ref_surf.n_deg_x)
-            self.ref_surf.n_deg_y = np.minimum(1, self.ref_surf.n_deg_y)
+            self.ref_surf.deg_x = np.minimum(1, self.ref_surf.deg_x)
+            self.ref_surf.deg_y = np.minimum(1, self.ref_surf.deg_y)
 
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y.  These are stored in self.default.poly_exponent_list
         degree_x = self.params_11.poly_exponent['x']
         degree_y = self.params_11.poly_exponent['y']
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
-        self.poly_mask = (degree_x + degree_y) <= np.maximum(self.ref_surf.n_deg_x,self.ref_surf.n_deg_y)
-        self.poly_mask &= (degree_x <= self.ref_surf.n_deg_x)
-        self.poly_mask &= (degree_y <= self.ref_surf.n_deg_y)
+        self.poly_mask = (degree_x + degree_y) <= np.maximum(self.ref_surf.deg_x,self.ref_surf.deg_y)
+        self.poly_mask &= (degree_x <= self.ref_surf.deg_x)
+        self.poly_mask &= (degree_y <= self.ref_surf.deg_y)
         self.degree_list_x = degree_x[self.poly_mask]
         self.degree_list_y = degree_y[self.poly_mask]
 
@@ -363,7 +363,7 @@ class point(ATL11.data):
         TOC=dict()
         TOC['poly']=np.arange(S_fit_poly.shape[1], dtype=int)
         last_poly_col=S_fit_poly.shape[1]-1
-        if False: #self.slope_change_t0/self.params_11.t_scale > 1.5/2. and self.ref_surf.n_deg_x > 0 and self.ref_surf.n_deg_y > 0:
+        if False: #self.slope_change_t0/self.params_11.t_scale > 1.5/2. and self.ref_surf.deg_x > 0 and self.ref_surf.deg_y > 0:
             self.calc_slope_change=True
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
@@ -392,7 +392,7 @@ class point(ATL11.data):
             else:
                 #Otherwise, check only the surface columns
                 columns_to_check=range(TOC['zp'][0]-1, -1, -1)
-                #self.ref_surf.surf_fit_quality_summary=1
+                #self.ref_surf.quality_summary=1
             for c in columns_to_check:   # check last col first, do in reverse order
                 if np.max(np.abs(G[:,c]-G[0,c])) < 0.0001:
                         fit_columns[c]=False
@@ -407,8 +407,8 @@ class point(ATL11.data):
             G=G[:, fit_columns]
             if G.shape[0] < G.shape[1]:
                 self.status['inversion failed']=True
-                if self.ref_surf.surf_fit_quality_summary==0:
-                    self.ref_surf.surf_fit_quality_summary=5
+                if self.ref_surf.quality_summary==0:
+                    self.ref_surf.quality_summary=5
                 return
 
             # 3f, 3g. generate the data-covariance matrix, its inverse, and
@@ -417,8 +417,8 @@ class point(ATL11.data):
                 C_d, C_di, G_g = gen_inv(self,G,h_li_sigma[selected_segs])
             except:
                 self.status['inversion failed']=True
-                if self.ref_surf.surf_fit_quality_summary==0:
-                    self.ref_surf.surf_fit_quality_summary=5
+                if self.ref_surf.quality_summary==0:
+                    self.ref_surf.quality_summary=5
                 return
 
             # inititalize the combined surface and cycle-height model, m_surf_zp
@@ -434,12 +434,12 @@ class point(ATL11.data):
             # 3i. Calculate the fitting tolerance,
             r_tol = 3*ATL11.RDE(r_fit/h_li_sigma[selected_segs])
             # reduce chi-squared value
-            surf_fit_misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),C_di.toarray()),r_fit)
+            misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),C_di.toarray()),r_fit)
 
             # calculate P value
             n_cols=np.sum(fit_columns)
             n_rows=np.sum(selected_segs)
-            P = 1 - stats.chi2.cdf(surf_fit_misfit_chi2, n_rows-n_cols)
+            P = 1 - stats.chi2.cdf(misfit_chi2, n_rows-n_cols)
 
             if self.ref_surf.complex_surface_flag==1:
                 break
@@ -457,10 +457,10 @@ class point(ATL11.data):
             if P>0.025:
                 break
         if (n_rows-n_cols)>0:
-            self.ref_surf.surf_fit_misfit_chi2r=surf_fit_misfit_chi2/(n_rows-n_cols)
+            self.ref_surf.misfit_chi2r=misfit_chi2/(n_rows-n_cols)
         else:
-            self.ref_surf.surf_fit_misfit_chi2r=np.NaN
-        self.ref_surf.surf_fit_misfit_RMS = ATL11.RDE(r_fit)
+            self.ref_surf.misfit_chi2r=np.NaN
+        self.ref_surf.misfit_RMS = ATL11.RDE(r_fit)
         self.selected_segments[np.nonzero(self.selected_segments)] = selected_segs
         # identify the ref_surf cycles that survived the fit
         self.ref_surf_cycles=self.ref_surf_cycles[fit_columns[TOC['zp']]]
@@ -549,8 +549,8 @@ class point(ATL11.data):
         self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)]=m_surf_zp_sigma[TOC['poly']]
         if np.any(self.ref_surf.poly_coeffs_sigma > 2):
             self.status['Polynomial_coefficients_with_high_error']=True
-            if self.ref_surf.surf_fit_quality_summary==0:
-                self.ref_surf.surf_fit_quality_summary=6
+            if self.ref_surf.quality_summary==0:
+                self.ref_surf.quality_summary=6
 
         if self.calc_slope_change:
             self.ref_surf.slope_change_rate_x_sigma=m_surf_zp_sigma[ TOC['slope_change'][0]]
@@ -579,13 +579,13 @@ class point(ATL11.data):
         G_NE=np.transpose(np.vstack(( (N.ravel()),(E.ravel()), np.ones_like(E.ravel()))))
         msub,rr,rank,sing=linalg.lstsq(G_NE, zg.ravel())
 
-        self.ref_surf.fit_N_slope=msub[0]
-        self.ref_surf.fit_E_slope=msub[1]
-        self.ref_surf.fit_curvature=np.sqrt(rr)
-        if np.any((self.ref_surf.fit_N_slope>0.2,self.ref_surf.fit_E_slope>0.2)):
+        self.ref_surf.n_slope=msub[0]
+        self.ref_surf.e_slope=msub[1]
+        self.ref_surf.curvature=np.sqrt(rr)
+        if np.any((self.ref_surf.n_slope>0.2,self.ref_surf.e_slope>0.2)):
             self.status['Surface_fit_slope_high']=1
-            if self.ref_surf.surf_fit_quality_summary==0:
-                self.ref_surf.surf_fit_quality_summary=7
+            if self.ref_surf.quality_summary==0:
+                self.ref_surf.quality_summary=7
 
         # perform the same fit in [xg,yg] to calculate the y slope for the unselected segments
         G_xy=np.transpose(np.vstack(( (xg.ravel()),(yg.ravel()), np.ones_like(xg.ravel()))))
