@@ -140,7 +140,7 @@ class data(object):
                     field_dict[group]=[]
                     for field in FH[pt][group].keys():
                         field_dict[group].append(field)
-            N_pts=FH[pt]['corrected_h']['h_corr'][index_range,:].shape[0]
+            N_pts=FH[pt]['corrected_h']['h_corr'][index_range[0]:index_range[-1],:].shape[0]
             N_cycles=FH[pt]['corrected_h']['h_corr'].shape[1]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs)
@@ -157,7 +157,7 @@ class data(object):
                             print("ATL11 file %s: missing %s/%s" % (filename, group, field))
                 else:
                     # get the indices for the crossing_track_data group:
-                    if self.corrected_h.ref_pt_number.size <1:
+                    if self.corrected_h.ref_pt.size <1:
                         continue
                     xing_ref_pt = np.array(FH[pt]['crossing_track_data']['ref_pt'])
                     xing_ind = np.flatnonzero( (xing_ref_pt >= self.corrected_h.ref_pt[0]) & \
@@ -391,8 +391,12 @@ class data(object):
 
             P11.DOPLOT=DOPLOT
             # step 2: select pairs, based on reasonable slopes
-            P11.select_ATL06_pairs(D6_sub, pair_data)
-            if P11.ref_surf.surf_fit_quality_summary > 0:
+            try:
+                P11.select_ATL06_pairs(D6_sub, pair_data)
+            except np.linalg.LinAlgError:
+                if verbose:
+                    print("LinAlg error in select_ATL06_pairs ref pt=%d" % ref_pt)
+            if P11.ref_surf.quality_summary > 0:
                 #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
@@ -400,7 +404,7 @@ class data(object):
 
             # select the y coordinate for the fit (in ATC coords)
             P11.select_y_center(D6_sub, pair_data)
-            if P11.ref_surf.surf_fit_quality_summary > 0:
+            if P11.ref_surf.quality_summary > 0:
                 #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
@@ -436,7 +440,7 @@ class data(object):
                 plt.plot(x0, y0,'g*')
 
             P11.corr_xover_heights(D_xover)
-            if not np.isfinite(P11.corrected_h.ref_pt_lat):
+            if not np.isfinite(P11.corrected_h.latitude):
                 continue
             P11_list.append(P11)
             if count-last_count>500:
@@ -448,7 +452,7 @@ class data(object):
             N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in P11_list])
             return ATL11.data(track_num=P11_list[0].rgt, pair_num=beam_pair, N_cycles=N_cycles, N_coeffs=N_coeffs, N_pts=len(P11_list)).from_list(P11_list)
         else:
-            return ATL11.data(track_num=P11_list[0].rgt, pair_num=beam_pair, N_cycles=N_cycles, N_coeffs=N_coeffs, N_pts=len(P11_list))
+            return None
 
 def unwrap_lon(lon, lon0=0):
     """
