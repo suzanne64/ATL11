@@ -156,9 +156,9 @@ class point(ATL11.data):
             self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
 
             # update what is valid based on regression flag
-            self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=y_slope_valid_flag                #re-establish pairs_valid for y fit
+            self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=y_slope_valid_flag       #re-establish pairs_valid for y fit
             # re-establish pairs_valid_for_y_fit
-            pairs_valid_for_y_fit= self.valid_pairs.data.ravel() & self.valid_pairs.y_slope.ravel()  # what about ysearch?
+            pairs_valid_for_y_fit= self.valid_pairs.data.ravel() & self.valid_pairs.y_slope.ravel() 
 
             # 3e: calculate across-track slope threshold
             if y_slope_resid.size>1:
