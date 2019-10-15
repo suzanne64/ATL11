@@ -74,10 +74,18 @@ def main(argv):
         D11=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
                       N_cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
                       GI_files=GI_files, hemisphere=args.Hemisphere) # defined in ATL06_to_ATL11
-        D11.write_to_file(args.out_file)
+        if D11 is not None:
+            D11.write_to_file(args.out_file)
     
-    GI=geo_index(SRS_proj4=get_proj4(args.Hemisphere)).for_file(args.out_file, 'ATL11', dir_root=os.path.dirname(args.out_file))
+    # create a geo index for the current file.  This gets saved in the '/index' group
+    GI=geo_index(SRS_proj4=get_proj4(args.Hemisphere), delta=[1.e4, 1.e4]).for_file(args.out_file, 'ATL11', dir_root=os.path.dirname(args.out_file))
     GI.attrs['bin_root']=None
+    # the 'file' attributes of the geo_index are of the form :pair1, :pair2, :pair3, which means that the 
+    # data for each bin are to be read from the current file
+    for file in ['file_1','file_2','file_3']:
+        if file in GI.attrs:
+            temp = ':'+GI.attrs[file].split(':')[1]
+            GI.attrs[file] = temp
     GI.to_file(args.out_file)
     
     
