@@ -39,7 +39,8 @@ def read_ATL06_data(ATL06_files, beam_pair=2, min_cycle=0):
         return None
     
     D6=ATL06_data(beam_pair=beam_pair).from_list(D6_list)
-
+    if D6.size == 0:
+        return None
     # reorder data rows from D6 by cycle
     D6.index(np.argsort(D6.cycle_number[:,0],axis=0))
 
