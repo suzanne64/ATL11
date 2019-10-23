@@ -88,6 +88,7 @@ def main(argv):
             GI.attrs[file] = temp
     GI.to_file(args.out_file)
     
+    print("ATL06_to_ATL11: done with "+args.out_file)
     
 if __name__=="__main__":
     main(sys.argv)

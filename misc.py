@@ -54,6 +54,6 @@ def default_ATL06_fields():
                     'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','h_mean', 'dh_fit_dy','h_rms_misfit','h_robust_sprd','n_fit_photons', 'signal_selection_source','snr_significance','w_surface_window_final'],
                     'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr','cloud_flg_atm','r_eff','tide_ocean'],
                     'orbit_info':['rgt','cycle_number'],
-                    'derived':['valid','BP', 'LR']}
+                    'derived':['valid','BP', 'LR', 'spot', 'n_pixels', 'min_along_track_dh']}
     return field_dict
 
