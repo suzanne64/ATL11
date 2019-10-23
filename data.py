@@ -44,6 +44,10 @@ class data(object):
         self.attrs={}
         self.filename=None
 
+    def assign(self, var_dict):
+        for key in var_dict:
+            setattr(self, key, var_dict[key])
+        
     def index(self, ind, N_cycles=None, N_coeffs=None, target=None):
         """
         return a copy of the data for points 'ind'
@@ -384,7 +388,7 @@ class data(object):
                 continue
 
             #2a. define representative x and y values for the pairs
-            pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle_number','h_li'])   # this might go, similar to D6_sub
+            pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle_number','h_li', 'h_li_sigma'])   # this might go, similar to D6_sub
             if ~np.any(np.isfinite(pair_data.y)):
                 continue
             P11=ATL11.point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0], ref_pt=ref_pt, pair_num=D6_sub.BP[0, 0],  x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_cycles=N_cycles,  mission_time_bds=mission_time_bds )
@@ -396,25 +400,32 @@ class data(object):
             except np.linalg.LinAlgError:
                 if verbose:
                     print("LinAlg error in select_ATL06_pairs ref pt=%d" % ref_pt)
+            #if P11.ref_surf.complex_surface_flag:
+            #    P11.select_ATL06_pairs(D6_sub, pair_data, complex_surface_flag=True)
+                    
             if P11.ref_surf.quality_summary > 0:
                 #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
-
+            
+            if np.sum(P11.valid_pairs.all) < 2:  # check whether this should happen 
+                continue
+                       
             # select the y coordinate for the fit (in ATC coords)
             P11.select_y_center(D6_sub, pair_data)
+            
             if P11.ref_surf.quality_summary > 0:
                 #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
-
+            
             # regress the geographic coordinates from the data to the fit center
             P11.corrected_h.latitude, P11.corrected_h.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
 
             # find the reference surface
-            P11.find_reference_surface(D6_sub)
+            P11.find_reference_surface(D6_sub, pair_data)
             if 'inversion failed' in P11.status:
                 #P11_list.append(P11)
                 if verbose:
