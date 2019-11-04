@@ -66,6 +66,9 @@ class data(object):
         for group in self.groups:
             setattr(target, group, getattr(self, group).index(ind, N_cycles=N_cycles, N_coeffs=N_coeffs, xover_ind=xover_ind))
         target.poly_exponent=self.poly_exponent.copy()
+        if hasattr(self,'x'):
+            setattr(target,'x', self.x[ind])
+            setattr(target,'y', self.y[ind])
         return target
 
     def all_fields(self):
@@ -409,11 +412,14 @@ class data(object):
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
             
-            if np.sum(P11.valid_pairs.all) < 2:  # check whether this should happen 
+            if np.sum(P11.valid_pairs.all) < 2:
                 continue
                        
             # select the y coordinate for the fit (in ATC coords)
             P11.select_y_center(D6_sub, pair_data)
+            
+            if np.sum(P11.valid_pairs.all) < 2:  
+                continue
             
             if P11.ref_surf.quality_summary > 0:
                 #P11_list.append(P11)
@@ -426,6 +432,7 @@ class data(object):
 
             # find the reference surface
             P11.find_reference_surface(D6_sub, pair_data)
+
             if 'inversion failed' in P11.status:
                 #P11_list.append(P11)
                 if verbose:
@@ -439,7 +446,9 @@ class data(object):
             x0, y0=regress_to(D6_sub, ['x','y'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
 
             # get the data for the crossover point
-            D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
+            if GI_files is not None:
+                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
+                P11.corr_xover_heights(D_xover)
             # if we have read any data for the current bin, run the crossover calculation
             PLOTME=False#isinstance(D_xover, point_data);
             if PLOTME:
@@ -450,7 +459,6 @@ class data(object):
                 plt.plot(D_xover.x, D_xover.y,'m.')
                 plt.plot(x0, y0,'g*')
 
-            P11.corr_xover_heights(D_xover)
             if not np.isfinite(P11.corrected_h.latitude):
                 continue
             P11_list.append(P11)
