@@ -54,7 +54,7 @@ crossing_track_data,delta_time,seconds,,Nxo
 crossing_track_data,h_corr,meters,,Nxo
 crossing_track_data,h_corr_sigma,meters,,Nxo
 crossing_track_data,h_corr_sigma_systematic,meters,,Nxo
-crossing_track_data,latitude,egrees North,,Nxo
+crossing_track_data,latitude,Degrees North,,Nxo
 crossing_track_data,longitude,Degrees East,,Nxo
 crossing_track_data,cycle_number,counts,,Nxo
 crossing_track_data,rgt,counts,,Nxo
