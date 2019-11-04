@@ -29,3 +29,9 @@ par_run
 plot_ATL11.m
 run_one_ATL11.py
 make_ATL11_queue.py
+plotting_scripts/
+stash/
+tests/
+
+
+
