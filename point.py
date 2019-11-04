@@ -190,6 +190,7 @@ class point(ATL11.data):
 
         #4c: Calculate along-track slope regression tolerance
         mx_regression_tol=np.maximum(0.01, 3*np.median(D6.dh_fit_dx_sigma[pairs_valid_for_x_fit,:].flatten()))
+        x_slope_threshold=0
         for iteration in range(2):
             # 4d: regression of along-track slope against x_pair and y_pair
             self.mx_poly_fit=ATL11.poly_ref_surf(degree_xy=(mx_regression_x_degree, mx_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
@@ -401,7 +402,7 @@ class point(ATL11.data):
                 # use only the linear poly columns
                 fit_columns[TOC['poly'][self.degree_list_x+self.degree_list_y>1]]=False
             G=G[:, fit_columns]
-            if G.shape[0] < G.shape[1]:
+            if G.shape[0] < G.shape[1] or G.shape[1]==0:
                 self.status['inversion failed']=True
                 if self.ref_surf.quality_summary==0:
                     self.ref_surf.quality_summary=5
@@ -446,10 +447,17 @@ class point(ATL11.data):
                 selected_segs = np.abs(r_seg/h_li_sigma) < r_tol # boolean
                 if np.all( selected_segs_prev==selected_segs ):
                     break
-
+                
             # make selected_segs pair-wise consistent
             selected_pairs=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
             selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
+            
+            if not np.any(selected_segs):
+                self.status['inversion failed']=True
+                if self.ref_surf.quality_summary==0:
+                    self.ref_surf.quality_summary=5
+                return
+
             if P>0.025:
                 break
         if (n_rows-n_cols)>0:
