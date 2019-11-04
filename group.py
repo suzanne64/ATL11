@@ -65,7 +65,7 @@ class group(object):
         except TypeError:
             N_pts=1
 
-        target=ATL11.group(N_pts, N_cycles, N_coeffs, per_pt_fields=self.per_pt_fields.copy(), full_fields=self.full_fields.copy(), poly_fields=self.poly_fields.copy(), xover_fields=self.xover_fields.copy())
+        target=group(N_pts, N_cycles, N_coeffs, per_pt_fields=self.per_pt_fields.copy(), full_fields=self.full_fields.copy(), poly_fields=self.poly_fields.copy(), xover_fields=self.xover_fields.copy())
                 # assign fields of each type to their appropriate shape and size
         if self.per_pt_fields is not None:
             for field in self.per_pt_fields:
@@ -86,4 +86,7 @@ class group(object):
                         setattr(target, field, np.array([]))
                 else:
                     setattr(target, field, [])
+        if hasattr(self,'x'):
+            self.x=self.x[ind]
+            self.y=self.y[ind]
         return target
