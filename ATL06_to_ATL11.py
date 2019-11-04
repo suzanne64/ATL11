@@ -55,6 +55,7 @@ def main(argv):
         files=glob.glob(glob_str)
     else:
         files=[args.File]
+    print("found ATL06 files:" + str(files))
 
     if args.pair is None:
         pairs=[1, 2, 3]
@@ -65,7 +66,7 @@ def main(argv):
         GI_files=glob.glob(args.GI_file_glob)
     else:
         GI_files=None   
-    
+    print("found GI files:"+str(GI_files))
     for pair in pairs:
         D6 = ATL11.read_ATL06_data(files, beam_pair=pair, min_cycle=args.min_cycle)
         D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds, num_ref_pts=args.num_points)
