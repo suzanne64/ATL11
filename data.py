@@ -15,10 +15,9 @@ from PointDatabase import point_data
 from PointDatabase.ATL06_data import ATL06_data
 
 
-
 class data(object):
     # class to hold ATL11 data in ATL11.groups
-    def __init__(self, N_pts=1, N_cycles=1, N_coeffs=9, from_file=None, track_num=None, pair_num=None):
+    def __init__(self, N_pts=1, cycles=[1, 12], N_coeffs=9, from_file=None, track_num=None, pair_num=None):
         self.Data=[]
         self.DOPLOT=None
 
@@ -34,12 +33,12 @@ class data(object):
             full_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_cycles']
             poly_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_coeffs']
             xover_fields=[item['field'] for item in field_dims if item['dimensions']=='Nxo']
-            setattr(self, group, ATL11.group(N_pts, N_cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
+            setattr(self, group, ATL11.group(N_pts, cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
         self.groups=group_names
         self.slope_change_t0=None
         self.track_num=track_num
         self.pair_num=pair_num
-        self.N_cycles=N_cycles
+        self.cycles=cycles
         self.N_coeffs=N_coeffs
         self.attrs={}
         self.filename=None
@@ -48,7 +47,7 @@ class data(object):
         for key in var_dict:
             setattr(self, key, var_dict[key])
         
-    def index(self, ind, N_cycles=None, N_coeffs=None, target=None):
+    def index(self, ind, cycles=None, N_coeffs=None, target=None):
         """
         return a copy of the data for points 'ind'
         """
@@ -58,13 +57,13 @@ class data(object):
             N_pts=1
         if N_coeffs is None:
             N_coeffs=self.N_coeffs
-        if N_cycles is None:
-            N_cycles=self.N_cycles
+        if cycles is None:
+            cycles=self.cycles
         if target is None:
-            target=ATL11.data(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
+            target=ATL11.data(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
         xover_ind=np.in1d(self.crossing_track_data.ref_pt, self.corrected_h.ref_pt[ind])
         for group in self.groups:
-            setattr(target, group, getattr(self, group).index(ind, N_cycles=N_cycles, N_coeffs=N_coeffs, xover_ind=xover_ind))
+            setattr(target, group, getattr(self, group).index(ind, cycles=cycles, N_coeffs=N_coeffs, xover_ind=xover_ind))
         target.poly_exponent=self.poly_exponent.copy()
         if hasattr(self,'x'):
             setattr(target,'x', self.x[ind])
@@ -85,7 +84,7 @@ class data(object):
         # Assemble an ATL11 data instance from a list of ATL11 points.
         # Input: list of ATL11 point instances
         # loop over variables in ATL11.data (self)
-        self.__init__(N_pts=len(P11_list), track_num=self.track_num, pair_num=self.pair_num, N_cycles=P11_list[0].corrected_h.h_corr.shape[1], N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
+        self.__init__(N_pts=len(P11_list), track_num=self.track_num, pair_num=self.pair_num, cycles=P11_list[0].cycles, N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
 
         for group in vars(self).keys():
             # check if each variable is an ATl11 group
@@ -102,7 +101,7 @@ class data(object):
                 setattr(getattr(self,group),field,temp)
 
             for field in getattr(self,group).full_fields:
-                temp=np.ndarray(shape=[len(P11_list),P11_list[0].N_cycles],dtype=float)
+                temp=np.ndarray(shape=[len(P11_list),P11_list[0].cycles[1]-P11_list[0].cycles[0]+1],dtype=float)
                 for ii, P11 in enumerate(P11_list):
                     if hasattr(getattr(P11,group),field):
                         temp[ii,:]=getattr(getattr(P11,group), field)
@@ -148,9 +147,9 @@ class data(object):
                     for field in FH[pt][group].keys():
                         field_dict[group].append(field)
             N_pts=FH[pt]['corrected_h']['h_corr'][index_range[0]:index_range[-1],:].shape[0]
-            N_cycles=FH[pt]['corrected_h']['h_corr'].shape[1]
+            cycles=[FH[pt].attrs['first_cycle'], FH[pt].attrs['last_cycle']]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
-            self.__init__(N_pts=N_pts, N_cycles=N_cycles, N_coeffs=N_coeffs)
+            self.__init__(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs)
             for group in (field_dict):
                 if group != 'crossing_track_data':
                     for field in field_dict[group]:
@@ -228,7 +227,8 @@ class data(object):
         # set the output pair and track attributes
         g.attrs['pair_num']=self.pair_num
         g.attrs['ReferenceGroundTrack']=self.track_num
-        g.attrs['N_cycles']=self.N_cycles
+        g.attrs['first_cycle']=self.cycles[0]
+        g.attrs['last_cycle']=self.cycles[1]
         # put default parameters as top level attributes
         if params_11 is None:
             params_11=ATL11.defaults()
@@ -288,7 +288,7 @@ class data(object):
                 xo['ref']['rgt'] += [rgt]
                 xo['ref']['PT'] += [pair]
                 xo['ref']['atl06_quality_summary'] += [self.cycle_stats.ATL06_summary_zero_count[i0, ic] == 0]
-                xo['ref']['cycle'] += [ic+1]
+                xo['ref']['cycle'] += [ic+self.cycles[0]]
                 xo['crossing']['time'] += [self.crossing_track_data.delta_time[i1]]
                 xo['crossing']['h']  +=  [self.crossing_track_data.h_corr[i1]]
                 xo['crossing']['h_sigma']  +=  [self.crossing_track_data.h_corr_sigma[i1]]
@@ -315,15 +315,13 @@ class data(object):
         delta=point_data().from_dict(delta)
         return ref, crossing, delta
 
-
-
     def plot(self):
         # method to plot the results.  At present, this plots corrected h AFN of x_atc
         n_cycles=self.corrected_h.h_corr.shape[1]
         HR=np.nan+np.zeros((n_cycles, 2))
         h=list()
         #plt.figure(1);plt.clf()
-        for cycle in range(n_cycles):
+        for cycle in range(self.cycles[1]+1- self.cycles[0], dtype=int):
             xx=self.ref_surf.x_atc
             zz=self.corrected_h.h_corr[:,cycle]
             ss=self.corrected_h.h_corr_sigma[:,cycle]
@@ -343,7 +341,7 @@ class data(object):
         plt.xlim((np.nanmin(xx),  np.nanmax(xx)))
         return h
 
-    def from_ATL06(self, D6, GI_files=None, beam_pair=1, N_cycles=2,  ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,  mission_time_bds=None, verbose=False, DOPLOT=None, DEBUG=None):
+    def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],  ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,  mission_time_bds=None, verbose=False, DOPLOT=None, DEBUG=None):
         """
         Fit a collection of ATL06 files with ATL11 surface models
 
@@ -351,7 +349,7 @@ class data(object):
             ATL06_files:  List of ATL06 files (from the same rgt)
             Required keyword inputs:
                 beam_pair: beam pair for the current fit (default=1)
-                N_cycles: Number of cycles in the current fit (default=2)
+                cycles: cycles to be included in the current fit (default=2)
                 GI_files: list of geo_index file from which to read ATL06 data for crossovers
                 hemisphere: +1 (north) or -1 (south), used to choose a projection
             Optional keyword arguments (not necessarily independent)
@@ -394,7 +392,11 @@ class data(object):
             pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle_number','h_li', 'h_li_sigma'])   # this might go, similar to D6_sub
             if ~np.any(np.isfinite(pair_data.y)):
                 continue
-            P11=ATL11.point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0], ref_pt=ref_pt, pair_num=D6_sub.BP[0, 0],  x_atc_ctr=x_atc_ctr, track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),N_cycles=N_cycles,  mission_time_bds=mission_time_bds )
+            P11=ATL11.point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0],\
+                            ref_pt=ref_pt, pair_num=D6_sub.BP[0, 0],  \
+                            x_atc_ctr=x_atc_ctr, \
+                            track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),\
+                            cycles=cycles,  mission_time_bds=mission_time_bds)
 
             P11.DOPLOT=DOPLOT
             # step 2: select pairs, based on reasonable slopes
@@ -467,9 +469,9 @@ class data(object):
                 last_count=count
 
         if len(P11_list) > 0:
-            N_cycles=np.nanmax([Pi.N_cycles for Pi in P11_list])
+            cycles=[np.nanmin([Pi.cycles for Pi in P11_list]), np.nanmax([Pi.cycles for Pi in P11_list])]
             N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in P11_list])
-            return ATL11.data(track_num=P11_list[0].rgt, pair_num=beam_pair, N_cycles=N_cycles, N_coeffs=N_coeffs, N_pts=len(P11_list)).from_list(P11_list)
+            return ATL11.data(track_num=P11_list[0].rgt, pair_num=beam_pair, cycles=cycles, N_coeffs=N_coeffs, N_pts=len(P11_list)).from_list(P11_list)
         else:
             return None
 
