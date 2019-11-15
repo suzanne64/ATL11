@@ -11,14 +11,14 @@ import ATL11
 import numpy as np
 import re
 
-def read_ATL06_data(ATL06_files, beam_pair=2, min_cycle=0):
+def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12]):
     '''
     Read ATL06 data from a list of files for a specific beam pair
     
     required arguments:
         ATL06_files: a list of ATL06 files
         beam_pair: pair number to read from the files   
-        min_cycle: read only cycles greater than or equal to this number
+        cycles: first and last cycles to include
     '''
     params_11=ATL11.defaults()
     # read in the ATL06 data from all the repeats
@@ -27,7 +27,7 @@ def read_ATL06_data(ATL06_files, beam_pair=2, min_cycle=0):
     for filename in ATL06_files:
         try:
             m=ATL06_re.search(filename)
-            if int(m.group(1)) < min_cycle:
+            if (int(m.group(1)) < cycles[0]) or (int(m.group(1)) > cycles[1]) :
                 continue
         except Exception:
             pass
