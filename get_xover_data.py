@@ -64,7 +64,20 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
                     D_xover.append(xover_cache[this_key]['D'].subset(np.arange(i0, i1+1, dtype=int)))
     if len(D_xover) > 0:
         D_xover=point_data().from_list(D_xover)
+        
+    # cleanup the cache if it is too large
+    if len(xover_cache.keys()) > 50:
+        cleanup_xover_cache(xover_cache, x0, y0, 2e4)
+        
     return D_xover
+
+def cleanup_xover_cache(cache, x0, y0, W):
+    """
+    delete entries in xover cache that are too far from the current point
+    """
+    for xy_bin in list(cache.keys()):
+        if np.abs(x0+1j*y0 - (xy_bin[0]+1j*xy_bin[1])) > W:
+            del(cache[xy_bin])
 
 
 def buffered_bins(x0, y0, w_buffer, w_bin, complex=True):
