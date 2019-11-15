@@ -44,10 +44,12 @@ class poly_ref_surf(object):
             G[:,col]=((x.ravel()-self.x0)/self.xy_scale)**ee[0] * ((y.ravel()-self.y0)/self.xy_scale)**ee[1]
         return G
     
-    def z(self, x0, y0):
+    def z(self, x0, y0, mask=None):
         # evaluate the poltnomial at [x0, y0]
+        if mask is None:
+            mask=np.ones_like(self.poly_vals)
         G=self.fit_matrix(x0, y0)
-        z=np.dot(G, self.poly_vals)
+        z=np.dot(G, self.poly_vals*mask)
         z.shape=x0.shape
         return z
     
