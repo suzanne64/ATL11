@@ -29,32 +29,34 @@ def main(argv):
     # command-line interface: run ATL06_to_ATL11 on a list of ATL06 files
     import argparse
     parser=argparse.ArgumentParser(description='generate an ATL11 file from a collection of ATL06 files.')
-    parser.add_argument('rgt', type=int)
-    parser.add_argument('subproduct', type=int)
-    parser.add_argument('--directory','-d', default=os.getcwd())
-    parser.add_argument('--verbose','-v', action='store_true')
-    parser.add_argument('--pair','-p', type=int, default=None)
-    parser.add_argument('--File', '-F', type=str, default=None)
-    parser.add_argument('--GI_file_glob','-G', type=str, default=None)
-    parser.add_argument('--out_file','-o', default=None, required=True)
-    parser.add_argument('--first_point','-f', type=int, default=None)
-    parser.add_argument('--last_point','-l', type=int, default=None)
-    parser.add_argument('--num_points','-N', type=int, default=None)
-    parser.add_argument('--cycles', '-c', type=int, default=2)
-    parser.add_argument('--min_cycle','-m', type=int, default=0)
+    parser.add_argument('rgt', type=int, help="reference ground track number")
+    parser.add_argument('subproduct', type=int, help="ICESat-2 subproduct number (latltude band)")
+    parser.add_argument('--directory','-d', default=os.getcwd(), help="directory in which to search for ATL06 files")
+    parser.add_argument('--pair','-p', type=int, default=None, help="pair number to process (default is all three)")
+    parser.add_argument('--Release','-R', type=int, default=2, help="Release number")
+    parser.add_argument('--Version','-V', type=int, default=1)
+    parser.add_argument('--cycles', '-c', type=int, nargs=2, default=[3, 4], help="first and last cycles")
+    parser.add_argument('--GI_file_glob','-G', type=str, default=None, help="Glob (wildcard) string used to math geoindex files for crossing tracks")
+    parser.add_argument('--out_dir','-o', default=None, required=True, help="Output directory")
+    parser.add_argument('--first_point','-f', type=int, default=None, help="First reference point")
+    parser.add_argument('--last_point','-l', type=int, default=None, help="Last reference point")
+    parser.add_argument('--num_points','-N', type=int, default=None, help="Number of reference points to process")
     parser.add_argument('--Hemisphere','-H', type=int, default=-1)
     parser.add_argument('--bounds', '-b', type=float, nargs=4, default=None, help="latlon bounds: west, south, east, north")
-
+    parser.add_argument('--verbose','-v', action='store_true')
     args=parser.parse_args()
+
+    # output file format is ATL11_RgtSubprod_c1c2_rel_vVer.h5
+    out_file="%s/ATL11_%04d%02d_%02d%02d_%02d_v%03d.h5" %( \
+            args.out_dir,args.rgt, args.subproduct, args.cycles[0], \
+            args.cycles[1], args.Release, args.Version)
 
     if args.verbose:
         print("working on :")
-        print(args.file)
-    if args.File is None:
-        glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
-        files=glob.glob(glob_str)
-    else:
-        files=[args.File]
+        print(out_file)
+    glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
+    files=glob.glob(glob_str)
+
     print("found ATL06 files:" + str(files))
 
     if args.pair is None:
@@ -67,19 +69,20 @@ def main(argv):
     else:
         GI_files=None   
     print("found GI files:"+str(GI_files))
+    
     for pair in pairs:
-        D6 = ATL11.read_ATL06_data(files, beam_pair=pair, min_cycle=args.min_cycle)
+        D6 = ATL11.read_ATL06_data(files, beam_pair=pair, cycles=args.cycles)
         D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds, num_ref_pts=args.num_points)
         if D6 is None or len(ref_pt_numbers)==0: 
             continue
         D11=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
-                      N_cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
+                      cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
                       GI_files=GI_files, hemisphere=args.Hemisphere) # defined in ATL06_to_ATL11
         if D11 is not None:
-            D11.write_to_file(args.out_file)
+            D11.write_to_file(out_file)
     
     # create a geo index for the current file.  This gets saved in the '/index' group
-    GI=geo_index(SRS_proj4=get_proj4(args.Hemisphere), delta=[1.e4, 1.e4]).for_file(args.out_file, 'ATL11', dir_root=os.path.dirname(args.out_file))
+    GI=geo_index(SRS_proj4=get_proj4(args.Hemisphere), delta=[1.e4, 1.e4]).for_file(out_file, 'ATL11', dir_root=args.out_dir)
     GI.attrs['bin_root']=None
     # the 'file' attributes of the geo_index are of the form :pair1, :pair2, :pair3, which means that the 
     # data for each bin are to be read from the current file
@@ -87,9 +90,9 @@ def main(argv):
         if file in GI.attrs:
             temp = ':'+GI.attrs[file].split(':')[1]
             GI.attrs[file] = temp
-    GI.to_file(args.out_file)
+    GI.to_file(out_file)
     
-    print("ATL06_to_ATL11: done with "+args.out_file)
+    print("ATL06_to_ATL11: done with "+out_file)
     
 if __name__=="__main__":
     main(sys.argv)
