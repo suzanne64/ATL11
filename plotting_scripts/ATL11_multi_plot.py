@@ -17,13 +17,21 @@ import sys
 import os
 
 
-def ATL11_multi_plot(ATL11_file, ATL06_wc="/Volumes/ice2/ben/scf/GL_06/002/03_plus/cycle_*/", pair=2, cycles=[2, 3], hemisphere=1, xy0=None, W=5.e4):
+def ATL11_multi_plot(ATL11_file, ATL06_wc=None, pair=2, cycles=[3, 4], hemisphere=1, xy0=None, W=5.e4):
 
-
+    cyc_ind=np.array(cycles).astype(int)-1
+    
+    if ATL06_wc is None:
+        if hemisphere==1:
+            ATL06_wc="/Volumes/ice2/ben/scf/GL_06/002/03_plus/cycle_*/"
+        else:
+            ATL06_wc="/Volumes/ice2/ben/scf/AA_06/002/03_plus/cycle_*/"
+    
     ATL11_re=re.compile('ATL11_(\d\d\d\d)(\d\d)')
     rgt, subprod = ATL11_re.search(ATL11_file).groups()
-    
+    print(ATL06_wc+'/ATL06_*_'+rgt+'??'+subprod+'_*.h5')
     D6_files=glob.glob(ATL06_wc+'/ATL06_*_'+rgt+'??'+subprod+'_*.h5')
+    print(D6_files)
     D6=[ ATL06_data(beam_pair=pair, field_dict=ATL11.misc.default_ATL06_fields()).from_file(file) for file in D6_files ]
 
     D11 = ATL11.data().from_file(ATL11_file, pair=pair)
@@ -38,8 +46,7 @@ def ATL11_multi_plot(ATL11_file, ATL06_wc="/Volumes/ice2/ben/scf/GL_06/002/03_pl
                 D6[ii]=D6i.index(els)
 
     plt.clf()
-    dh = D11.corrected_h.h_corr[:,cycles[1]]-D11.corrected_h.h_corr[:,cycles[0]]
-    dhm = D11.cycle_stats.h_mean[:,cycles[1]]-D11.cycle_stats.h_mean[:,cycles[0]]
+    dh = D11.corrected_h.h_corr[:,cyc_ind[1]]-D11.corrected_h.h_corr[:,cyc_ind[0]]
     
     h0=plt.subplot(231)
     colors=['r','b']
@@ -87,8 +94,8 @@ def ATL11_multi_plot(ATL11_file, ATL06_wc="/Volumes/ice2/ben/scf/GL_06/002/03_pl
     plt.ylabel('misfit, quality summary')
     
     plt.subplot(236, sharex=h0)
-    plt.plot(D11.corrected_h.ref_pt[good], D11.cycle_stats.seg_count[good, cycles[0]],'r.')
-    plt.plot(D11.corrected_h.ref_pt[good], D11.cycle_stats.seg_count[good, cycles[1]],'b.')
+    plt.plot(D11.corrected_h.ref_pt[good], D11.cycle_stats.seg_count[good, cyc_ind[0]],'r.')
+    plt.plot(D11.corrected_h.ref_pt[good], D11.cycle_stats.seg_count[good, cyc_ind[1]],'b.')
     plt.ylabel('n_segs')
     return D11, D6
 
