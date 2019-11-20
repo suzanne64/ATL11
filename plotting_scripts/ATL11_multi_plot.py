@@ -18,19 +18,21 @@ import os
 
 
 def ATL11_multi_plot(ATL11_file, ATL06_wc=None, pair=2, cycles=[3, 4], hemisphere=1, xy0=None, W=5.e4):
-
     cyc_ind=np.array(cycles).astype(int)-1
     
     if ATL06_wc is None:
         if hemisphere==1:
             ATL06_wc="/Volumes/ice2/ben/scf/GL_06/002/03_plus/cycle_*/"
         else:
-            ATL06_wc="/Volumes/ice2/ben/scf/AA_06/002/03_plus/cycle_*/"
+            ATL06_wc="/Volumes/ice2/ben/scf/AA_06/002/cycle_*/"
     
     ATL11_re=re.compile('ATL11_(\d\d\d\d)(\d\d)')
     rgt, subprod = ATL11_re.search(ATL11_file).groups()
-    print(ATL06_wc+'/ATL06_*_'+rgt+'??'+subprod+'_*.h5')
-    D6_files=glob.glob(ATL06_wc+'/ATL06_*_'+rgt+'??'+subprod+'_*.h5')
+    
+    D6_files=[];
+    for cycle in range(cycles[0], cycles[1]+1):
+        cyc_string='%02d' % cycle
+        D6_files += glob.glob(ATL06_wc+'/ATL06_*_'+rgt+cyc_string+subprod+'_*.h5')
     print(D6_files)
     D6=[ ATL06_data(beam_pair=pair, field_dict=ATL11.misc.default_ATL06_fields()).from_file(file) for file in D6_files ]
 
@@ -46,6 +48,7 @@ def ATL11_multi_plot(ATL11_file, ATL06_wc=None, pair=2, cycles=[3, 4], hemispher
                 D6[ii]=D6i.index(els)
 
     plt.clf()
+    cyc_ind=[D11.cycles.index(cycles[0]), D11.cycles.index(cycles[1])]
     dh = D11.corrected_h.h_corr[:,cyc_ind[1]]-D11.corrected_h.h_corr[:,cyc_ind[0]]
     
     h0=plt.subplot(231)
