@@ -17,7 +17,7 @@ from PointDatabase.ATL06_data import ATL06_data
 
 class data(object):
     # class to hold ATL11 data in ATL11.groups
-    def __init__(self, N_pts=1, cycles=[1, 12], N_coeffs=9, from_file=None, track_num=None, pair_num=None):
+    def __init__(self, N_pts=1, cycles=[1, 12], N_coeffs=9, from_file=None, track_num=None, beam_pair=None):
         self.Data=[]
         self.DOPLOT=None
 
@@ -37,7 +37,7 @@ class data(object):
         self.groups=group_names
         self.slope_change_t0=None
         self.track_num=track_num
-        self.pair_num=pair_num
+        self.beam_pair=beam_pair
         self.cycles=cycles
         self.N_coeffs=N_coeffs
         self.attrs={}
@@ -60,7 +60,7 @@ class data(object):
         if cycles is None:
             cycles=self.cycles
         if target is None:
-            target=ATL11.data(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs, track_num=self.track_num, pair_num=self.pair_num)
+            target=ATL11.data(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs, track_num=self.track_num, beam_pair=self.beam_pair)
         xover_ind=np.in1d(self.crossing_track_data.ref_pt, self.corrected_h.ref_pt[ind])
         for group in self.groups:
             setattr(target, group, getattr(self, group).index(ind, cycles=cycles, N_coeffs=N_coeffs, xover_ind=xover_ind))
@@ -84,7 +84,7 @@ class data(object):
         # Assemble an ATL11 data instance from a list of ATL11 points.
         # Input: list of ATL11 point instances
         # loop over variables in ATL11.data (self)
-        self.__init__(N_pts=len(P11_list), track_num=self.track_num, pair_num=self.pair_num, cycles=P11_list[0].cycles, N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
+        self.__init__(N_pts=len(P11_list), track_num=self.track_num, beam_pair=self.beam_pair, cycles=P11_list[0].cycles, N_coeffs=P11_list[0].ref_surf.poly_coeffs.shape[1])
 
         for group in vars(self).keys():
             # check if each variable is an ATl11 group
@@ -215,7 +215,7 @@ class data(object):
         #   fileout: filename of hdf5 filename to write
         # Optional input:
         #   parms_11: ATL11.defaults structure
-        group_name='/pt%d' % self.pair_num
+        group_name='/pt%d' % self.beam_pair
         if os.path.isfile(fileout):
             f = h5py.File(fileout,'r+')
             if group_name in f:
@@ -225,7 +225,7 @@ class data(object):
         g=f.create_group(group_name)
 
         # set the output pair and track attributes
-        g.attrs['pair_num']=self.pair_num
+        g.attrs['beam_pair']=self.beam_pair
         g.attrs['ReferenceGroundTrack']=self.track_num
         g.attrs['first_cycle']=self.cycles[0]
         g.attrs['last_cycle']=self.cycles[1]
@@ -263,10 +263,28 @@ class data(object):
         f.close()
         return
 
-
+    def as_dict(self, field_dict=None):
+        out=[]
+        if field_dict is None:
+            field_dict={'corrected_h':['latitude','longitude','delta_time',\
+                                       'h_corr','h_corr_sigma','h_corr_sigma_systematic'],\
+                        'derived':['cycle', 'rgt']}
+            for group in field_dict:
+                if group=='derived':
+                    continue
+                temp=getattr(self, group)
+                for field in field_dict[group]:
+                    out[field]=temp[field]
+        if 'derived' in field_dict:
+            if 'cycle' in field_dict['derived']:
+                out['cycle']=np.tile(self.cycles, [self.corrected_h.h_corr.shape[0], 1])
+            if 'rgt' in field_dict['derived']:
+                out['rgt']=np.zeros_like(self.corrected_h.h_corr)+self.rgt
+        return out
+        
     def get_xovers(self):
         rgt=self.attrs['ReferenceGroundTrack']
-        pair=self.attrs['pair_num']
+        pair=self.attrs['beam_pair']
         xo={'ref':{},'crossing':{},'both':{}}
         for field in ['time','h','h_sigma','ref_pt','rgt','PT','atl06_quality_summary','latitude','longitude','cycle']:
             xo['ref'][field]=[]
@@ -393,7 +411,7 @@ class data(object):
             if ~np.any(np.isfinite(pair_data.y)):
                 continue
             P11=ATL11.point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0],\
-                            ref_pt=ref_pt, pair_num=D6_sub.BP[0, 0],  \
+                            ref_pt=ref_pt, beam_pair=D6_sub.BP[0, 0],  \
                             x_atc_ctr=x_atc_ctr, \
                             track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),\
                             cycles=cycles,  mission_time_bds=mission_time_bds)
@@ -471,7 +489,7 @@ class data(object):
         if len(P11_list) > 0:
             cycles=[np.nanmin([Pi.cycles for Pi in P11_list]), np.nanmax([Pi.cycles for Pi in P11_list])]
             N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in P11_list])
-            return ATL11.data(track_num=P11_list[0].rgt, pair_num=beam_pair, cycles=cycles, N_coeffs=N_coeffs, N_pts=len(P11_list)).from_list(P11_list)
+            return ATL11.data(track_num=P11_list[0].rgt, beam_pair=beam_pair, cycles=cycles, N_coeffs=N_coeffs, N_pts=len(P11_list)).from_list(P11_list)
         else:
             return None
 
