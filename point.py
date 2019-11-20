@@ -16,7 +16,7 @@ import ATL11
 
 class point(ATL11.data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
-    def __init__(self, N_pairs=1, ref_pt=None, pair_num=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], cycles=[1,12],  rgt=None, mission_time_bds=None, params_11=None):
+    def __init__(self, N_pairs=1, ref_pt=None, beam_pair=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], cycles=[1,12],  rgt=None, mission_time_bds=None, params_11=None):
         # input variables:
         # N_pairs: Number of distinct pairs in the ATL06 data
         # ref_pt: the reference-point number for the ATL11 fit.  This is the geoseg number for the central segment of the fit
@@ -38,7 +38,7 @@ class point(ATL11.data):
         self.cycles=cycles
         self.N_coeffs=self.params_11.N_coeffs
         self.x_atc_ctr=x_atc_ctr
-        self.pair_num=pair_num
+        self.beam_pair=beam_pair
         self.ref_pt=ref_pt
         self.track_azimuth=track_azimuth
         self.mx_poly_fit=None
@@ -771,7 +771,7 @@ class point(ATL11.data):
         #z_xover_sigma_systematic = ???
         orb_pair=(Dsub.cycle_number-1)*1387+Dsub.rgt+Dsub.BP*0.1
         u_orb_pair=np.unique(orb_pair)
-        u_orb_pair=u_orb_pair[~np.in1d(u_orb_pair, self.ref_surf_cycles*1387+self.rgt+self.pair_num*0.1)]
+        u_orb_pair=u_orb_pair[~np.in1d(u_orb_pair, self.ref_surf_cycles*1387+self.rgt+self.beam_pair*0.1)]
         ref_surf_slope_mag=np.sqrt(self.ref_surf_slope_x**2+self.ref_surf_slope_y**2)
         for orb_pair_i in u_orb_pair:
             # select the smallest-error segment from each orbit  and pair
