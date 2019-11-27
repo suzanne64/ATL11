@@ -38,6 +38,7 @@ class data(object):
         self.slope_change_t0=None
         self.track_num=track_num
         self.beam_pair=beam_pair
+        self.pair_num=beam_pair
         self.cycles=cycles
         self.N_coeffs=N_coeffs
         self.attrs={}
@@ -183,7 +184,7 @@ class data(object):
                 self.attrs[attr]=FH[pt].attrs[attr]
         return self
 
-    def get_xy(self, proj4_string, EPSG=None):
+    def get_xy(self, proj4_string=None, EPSG=None):
         # method to get projected coordinates for the data.  Adds 'x' and 'y' fields to the structure
         out_srs=osr.SpatialReference()
         if proj4_string is None and EPSG is not None:
@@ -264,31 +265,41 @@ class data(object):
         return
 
     def as_dict(self, field_dict=None):
-        out=[]
+        out={}
         if field_dict is None:
             field_dict={'corrected_h':['latitude','longitude','delta_time',\
                                        'h_corr','h_corr_sigma','h_corr_sigma_systematic'],\
                         'derived':['cycle', 'rgt']}
-            for group in field_dict:
-                if group=='derived':
-                    continue
+        h_shape=self.corrected_h.h_corr.shape
+        for group in field_dict:
+            if group=='derived':
+                continue
+            if group is None:
+                temp=self
+            else:
                 temp=getattr(self, group)
-                for field in field_dict[group]:
-                    out[field]=temp[field]
+            for field in field_dict[group]:
+                out[field]=getattr(temp,field)
+                if len(out[field].shape) == 1:
+                    out[field]=np.tile(out[field].reshape([out[field].shape[0], 1]), [1, h_shape[1]])
         if 'derived' in field_dict:
             if 'cycle' in field_dict['derived']:
-                out['cycle']=np.tile(self.cycles, [self.corrected_h.h_corr.shape[0], 1])
+                out['cycle']=np.tile(self.cycles, [h_shape[0], 1])
             if 'rgt' in field_dict['derived']:
-                out['rgt']=np.zeros_like(self.corrected_h.h_corr)+self.rgt
+                out['rgt']=np.zeros_like(self.corrected_h.h_corr)+self.attrs['ReferenceGroundTrack']
         return out
         
     def get_xovers(self):
         rgt=self.attrs['ReferenceGroundTrack']
         pair=self.attrs['beam_pair']
         xo={'ref':{},'crossing':{},'both':{}}
-        for field in ['time','h','h_sigma','ref_pt','rgt','PT','atl06_quality_summary','latitude','longitude','cycle']:
+        for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle','along_track_rss']:
             xo['ref'][field]=[]
             xo['crossing'][field]=[]
+        if hasattr(self,'x'):
+            for field in ['x','y']:
+                 xo['ref'][field]=[]
+                 xo['crossing'][field]=[]
         xo['crossing']['RSSz']=[]
 
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt):
@@ -296,26 +307,19 @@ class data(object):
             for ic in range(self.corrected_h.delta_time.shape[1]):
                 if not np.isfinite(self.corrected_h.h_corr[i0, ic]):
                     continue
-                xo['ref']['latitude'] += [self.corrected_h.latitude[i0]]
-                xo['ref']['longitude'] += [self.corrected_h.longitude[i0]]
-
-                xo['ref']['time'] += [self.corrected_h.delta_time[i0, ic]]
-                xo['ref']['h']    += [self.corrected_h.h_corr[i0, ic]]
-                xo['ref']['h_sigma']    += [self.corrected_h.h_corr_sigma[i0, ic]]
+                for field in ['latitude','longitude']:
+                    xo['ref'][field] += getattr(self.corrected_h, field)[i0]
+                for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:
+                     xo['ref'][field] += getattr(self.corrected_h, field)[i0, ic]
                 xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]]
+                if hasattr(self, 'x'):
+                    for field in ['x','y']:      
+                        xo['ref'][field] += getattr(self, field)[i0]
                 xo['ref']['rgt'] += [rgt]
-                xo['ref']['PT'] += [pair]
-                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.ATL06_summary_zero_count[i0, ic] == 0]
-                xo['ref']['cycle'] += [ic+self.cycles[0]]
-                xo['crossing']['time'] += [self.crossing_track_data.delta_time[i1]]
-                xo['crossing']['h']  +=  [self.crossing_track_data.h_corr[i1]]
-                xo['crossing']['h_sigma']  +=  [self.crossing_track_data.h_corr_sigma[i1]]
-                xo['crossing']['ref_pt'] += [self.crossing_track_data.ref_pt[i1]]
-                xo['crossing']['rgt'] += [self.crossing_track_data.rgt[i1]]
-                xo['crossing']['PT'] += [self.crossing_track_data.spot_crossing[i1]]
-                xo['crossing']['atl06_quality_summary'] += [self.crossing_track_data.atl06_quality_summary[i1]]
-                xo['crossing']['RSSz']  += [self.crossing_track_data.along_track_rss[i1]]
-                xo['crossing']['cycle'] += [self.crossing_track_data.cycle_number[i1]]
+                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.ATL06_summary_zero_count[i0, ic] > 0]
+                xo['ref']['cycle_number'] += [ic+self.cycles[0]]
+                for field in ['delta_time','h_corr','h_corr_sigma','ref_pt','rgt','atl06_quality_summary', 'cycle_number','along_track_rss' ]:
+                    xo['crossing'][field] = getattr(self.crossing_track_data, field)[i1]               
         xo['crossing']['latitude']=xo['ref']['latitude']
         xo['crossing']['longitude']=xo['ref']['longitude']
         for field in xo['crossing']:
@@ -325,9 +329,9 @@ class data(object):
         ref=point_data().from_dict(xo['ref'])
         crossing=point_data().from_dict(xo['crossing'])
         delta={}
-        delta['h']=crossing.h-ref.h
-        delta['time']=crossing.time-ref.time
-        delta['sigma_h']=np.sqrt(crossing.h_sigma**2+ref.h_sigma**2)
+        delta['h_corr']=crossing.h_corr-ref.h_corr
+        delta['delta_time']=crossing.delta_time-ref.delta_time
+        delta['h_corr_sigma']=np.sqrt(crossing.h_corr_sigma**2+ref.h__corr_sigma**2)
         delta['latitude']=ref.latitude.copy()
         delta['longitude']=ref.longitude.copy()
         delta=point_data().from_dict(delta)
@@ -461,6 +465,11 @@ class data(object):
                         
             # correct the heights from other cycles to the reference point using the reference surface
             P11.corr_heights_other_cycles(D6_sub)
+
+            P11.corrected_h.quality_summary = np.logical_not(
+                    (P11.cycle_stats.min_signal_selection_source <=1) &\
+                    (P11.cycle_stats.min_snr_significance < 0.02) &\
+                    (P11.cycle_stats.ATL06_summary_zero_count > 0) )
 
             # find the center of the bin in polar stereographic coordinates
             x0, y0=regress_to(D6_sub, ['x','y'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
