@@ -13,13 +13,15 @@ import ATL11
 import pointCollection as pc
 import numpy as np
 
-cycles=[0,1]
+
+cycles=[3, 4]
+cycle_ind=[0,1]
 
 field_dict={'corrected_h':['h_corr','latitude','longitude','delta_time']}
 
 if True:   
     MOG=pc.grid.data().from_geotif('/Volumes/ice1/ben/MOG/2005/mog_2005_1km.tif')
-    thedir='/Volumes/ice2/ben/scf/GL_11_alpha'
+    thedir='/Volumes/ice2/ben/scf/GL_11/U01'
     files=glob.glob(thedir+'/ATL11*.h5')
     xydh=[]
     for count, file in enumerate(files):
@@ -29,7 +31,7 @@ if True:
             try:
                 ind=np.arange(5, D11.x.size, 10)
                 temp=pc.data().from_dict({'x':D11.x[ind],'y':D11.y[ind], \
-                            'dh':D11.corrected_h.h_corr[ind, cycles[1]]-D11.corrected_h.h_corr[ind, cycles[0]],\
+                            'dh':D11.corrected_h.h_corr[ind, cycle_ind[1]]-D11.corrected_h.h_corr[ind, cycle_ind[0]],\
                             'file_ind': np.zeros_like(ind, dtype=int)+count})
                 els=(temp.x > MOG.x[0]) & (temp.x < MOG.x[-1]) & \
                     (temp.y > MOG.y[0]) & (temp.y < MOG.y[-1])

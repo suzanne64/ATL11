@@ -11,6 +11,7 @@ import ATL11
 from PointDatabase import ATL06_data
 import matplotlib.pyplot as plt
 import numpy as np
+import pointCollection as pc
 import re
 pair=2
 import sys
@@ -22,10 +23,11 @@ def ATL11_multi_plot(ATL11_file, ATL06_wc=None, pair=2, cycles=[3, 4], hemispher
     
     if ATL06_wc is None:
         if hemisphere==1:
-            ATL06_wc="/Volumes/ice2/ben/scf/GL_06/002/03_plus/cycle_*/"
+            ATL06_wc="/Volumes/ice2/ben/scf/GL_06/002/cycle_*/"
+            EPSG=3413
         else:
             ATL06_wc="/Volumes/ice2/ben/scf/AA_06/002/cycle_*/"
-    
+            EPSG=3031
     ATL11_re=re.compile('ATL11_(\d\d\d\d)(\d\d)')
     rgt, subprod = ATL11_re.search(ATL11_file).groups()
     
@@ -50,8 +52,9 @@ def ATL11_multi_plot(ATL11_file, ATL06_wc=None, pair=2, cycles=[3, 4], hemispher
     plt.clf()
     cyc_ind=[D11.cycles.index(cycles[0]), D11.cycles.index(cycles[1])]
     dh = D11.corrected_h.h_corr[:,cyc_ind[1]]-D11.corrected_h.h_corr[:,cyc_ind[0]]
+    dh_sigma = np.sqrt(D11.corrected_h.h_corr_sigma[:,cyc_ind[1]]**2+D11.corrected_h.h_corr_sigma[:,cyc_ind[0]]**2)
     
-    h0=plt.subplot(231)
+    h0=plt.subplot(241)
     colors=['r','b']
     t0=np.zeros(len(D6))
     for ii in range(len(D6)):
@@ -67,40 +70,46 @@ def ATL11_multi_plot(ATL11_file, ATL06_wc=None, pair=2, cycles=[3, 4], hemispher
     plt.ylabel('ATL06 h_li')
     #plt.legend()
     
-    plt.subplot(232, sharex=h0)
-    good=(D11.ref_surf.misfit_chi2r < 8000)  & (np.sum(D11.cycle_stats.seg_count[:, 2:5]>=2, axis=1)>=1)
-    plt.plot(D11.corrected_h.ref_pt[good], dh[good],'k.')
-    
+    plt.subplot(242, sharex=h0)
+    good=(D11.ref_surf.misfit_chi2r < 8000)  & (np.sum(D11.cycle_stats.seg_count[:, cyc_ind[0]:cyc_ind[1]+1]>=2, axis=1)>=1)
+    plt.errorbar(D11.corrected_h.ref_pt[good], dh[good], yerr=dh_sigma[good], fmt='ko')
     
     #plt.scatter(xo.)
-    
-    
     #plt.plot(D11.corrected_h.ref_pt[good], dhm[good],'.')
     
     plt.ylabel('ATL11 dh')
     
-    plt.subplot(233, sharex=h0)
+    plt.subplot(243, sharex=h0)
     for ii in range(len(D6)):
         plt.plot(D6[ii].segment_id, D6[ii].y_atc,colors[ii])
     plt.ylabel('y_atc')
     
     
-    plt.subplot(234, sharex=h0)
+    plt.subplot(245, sharex=h0)
     plt.plot(D11.corrected_h.ref_pt, D11.ref_surf.deg_x,'r.')
     plt.plot(D11.corrected_h.ref_pt, D11.ref_surf.deg_y,'b.')
     plt.plot(D11.corrected_h.ref_pt, D11.ref_surf.complex_surface_flag,'k')
     plt.ylabel('degree')
     
-    plt.subplot(235, sharex=h0)
+    plt.subplot(246, sharex=h0)
     plt.plot(D11.corrected_h.ref_pt[good], D11.ref_surf.misfit_chi2r[good],'b.')
     plt.plot(D11.corrected_h.ref_pt[good], D11.ref_surf.quality_summary[good],'r.')
     plt.ylabel('misfit, quality summary')
     
-    plt.subplot(236, sharex=h0)
+    plt.subplot(247, sharex=h0)
     plt.plot(D11.corrected_h.ref_pt[good], D11.cycle_stats.seg_count[good, cyc_ind[0]],'r.')
     plt.plot(D11.corrected_h.ref_pt[good], D11.cycle_stats.seg_count[good, cyc_ind[1]],'b.')
     plt.ylabel('n_segs')
-    return D11, D6
 
+
+    if hemisphere==1:
+        MOS=pc.grid.data().from_geotif('/Volumes/ice1/ben/MOG/2005/mog_2005_1km.tif')
+        plt.subplot(144)
+        MOS.show(cmap='gray', vmin=14000, vmax=17000)
+        D11.get_xy(EPSG=EPSG)
+        plt.plot(D11.x, D11.y,'.')
+
+
+    return D11, D6
 if __name__=='__main__':
     ATL11_multi_plot(sys.argv[1])
