@@ -86,7 +86,7 @@ def main(argv):
     GI.attrs['bin_root']=None
     # the 'file' attributes of the geo_index are of the form :pair1, :pair2, :pair3, which means that the 
     # data for each bin are to be read from the current file
-    for file in ['file_1','file_2','file_3']:
+    for file in ['file_0','file_1','file_2']:
         if file in GI.attrs:
             temp = ':'+GI.attrs[file].split(':')[1]
             GI.attrs[file] = temp
