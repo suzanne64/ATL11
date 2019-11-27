@@ -300,8 +300,7 @@ class point(ATL11.data):
         # method to calculate the reference surface for a reference point
         # Input:
         # D6: ATL06 data structure
-        self.corrected_h.quality_summary=np.logical_not((self.cycle_stats.min_signal_selection_source<=1) & (self.cycle_stats.min_SNR_significance<0.02) & (self.cycle_stats.ATL06_summary_zero_count>0 ))
-
+ 
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
         # Table 4-2
@@ -464,7 +463,7 @@ class point(ATL11.data):
             self.ref_surf.misfit_chi2r=misfit_chi2/(n_rows-n_cols)
         else:
             self.ref_surf.misfit_chi2r=np.NaN
-        self.ref_surf.misfit_RMS = ATL11.RDE(r_fit)
+        self.ref_surf.misfit_RMS = np.sqrt(np.mean(r_fit**2))
         self.selected_segments[np.nonzero(self.selected_segments)] = selected_segs
         # identify the ref_surf cycles that survived the fit
         self.ref_surf_cycles=self.ref_surf_cycles[fit_columns[TOC['zp']]]
@@ -522,7 +521,7 @@ class point(ATL11.data):
             W_by_error=h_li_sigma[cycle==ref_cycle]**(-2)/np.sum(h_li_sigma[cycle==ref_cycle]**(-2))
 
             # weighted means:
-            for dataset in ('latitude','longitude','x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','h_robust_sprd'): #,'h_rms_misfit'):
+            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','h_rms_misfit'): #,'h_rms_misfit'):
                 self.cycle_stats.__dict__[dataset][0,cc]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
             self.cycle_stats.h_mean[0,cc]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
 
@@ -536,6 +535,8 @@ class point(ATL11.data):
             self.cycle_stats.cloud_flg_asr[0,cc]    = np.min(D6.cloud_flg_asr.ravel()[cycle_segs])
             self.cycle_stats.cloud_flg_atm[0,cc]    = np.min(D6.cloud_flg_atm.ravel()[cycle_segs])
             self.cycle_stats.bsnow_conf[0,cc]       = np.max(D6.bsnow_conf.ravel()[cycle_segs])
+            self.cycle_stats.min_snr_significance[0,cc] = np.min(D6.snr_significance.ravel()[cycle_segs])
+            self.cycle_stats.min_signal_selection_source[0,cc] = np.min(D6.signal_selection_source.ravel()[cycle_segs])
             if np.isfinite(self.corrected_h.h_corr[0,cc]):
                 self.corrected_h.h_corr_sigma_systematic[0,cc] = np.sqrt(np.sum(W_by_error*sigma_systematic_squared[cycle_segs] ))
 
@@ -705,7 +706,7 @@ class point(ATL11.data):
         # get terms of h_corr_sigma_systematic, equation 12
         term1=(D6.dh_fit_dx.ravel()[non_ref_segments] * D6.sigma_geo_at.ravel()[non_ref_segments])**2
         term2=(self.ref_surf_slope_y * D6.sigma_geo_xt.ravel()[non_ref_segments])**2
-        term3=(D6.sigma_geo_h.ravel()[non_ref_segments])**2
+        term3=(D6.sigma_geo_r.ravel()[non_ref_segments])**2
 
         non_ref_cycle_ind=np.flatnonzero(non_ref_segments)
         for non_ref_cycle in self.non_ref_surf_cycles.astype(int):
@@ -714,17 +715,18 @@ class point(ATL11.data):
             best_seg=np.argmin(z_kc_sigma[cycle==non_ref_cycle])
             # index into D6:
             best_seg_ind=non_ref_cycle_ind[cycle==non_ref_cycle][best_seg]
-            for dataset in ('latitude','longitude','x_atc','y_atc','bsnow_h','r_eff','tide_ocean','h_robust_sprd','sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
+            for dataset in ('x_atc','y_atc','bsnow_h','r_eff','tide_ocean','sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
                 self.cycle_stats.__dict__[dataset][0,cc]=getattr(D6, dataset).ravel()[best_seg_ind]
             if z_kc_sigma[cycle==non_ref_cycle][best_seg] < 15:
-                # edit out errors larger than 15 m
-                
+                # edit out errors larger than 15 m                
                 self.corrected_h.h_corr[0,cc]      =z_kc[cycle==non_ref_cycle][best_seg]
                 self.corrected_h.h_corr_sigma[0,cc]= z_kc_sigma[cycle==non_ref_cycle][best_seg]
                 self.corrected_h.h_corr_sigma_systematic[0,cc] = \
                     np.sqrt(term1.ravel()[best_seg] + term2.ravel()[best_seg]  + term3.ravel()[best_seg])
             self.corrected_h.delta_time[0,cc]        =D6.delta_time.ravel()[best_seg_ind]
             self.cycle_stats.h_mean[0, cc]         =D6.h_li.ravel()[best_seg_ind]
+            self.cycle_stats.min_signal_selection_source[0, cc] = D6.signal_selection_source.ravel()[best_seg_ind]
+            self.cycle_stats.min_snr_significance[0, cc] = D6.snr_significance.ravel()[best_seg_ind]
         # establish segment_id_by_cycle for selected segments from reference surface finding and for non_ref_surf
         self.segment_id_by_cycle=[]
         self.selected_segments_by_cycle=[]
@@ -755,6 +757,10 @@ class point(ATL11.data):
         dN=dN[in_search_radius]
         dE=dE[in_search_radius]
         Dsub=D.subset(in_search_radius)
+        
+        # fix missing Dsub.sigma_geo_r:
+        if not hasattr(Dsub, 'sigma_geo_r'):
+            Dsub.assign({'sigma_geo_r': np.zeros_like(Dsub.delta_time)+0.03})
 
         # convert these coordinates in to along-track coordinates
         dx, dy=self.local_atc_coords(dE, dN)
@@ -768,7 +774,6 @@ class point(ATL11.data):
         # calculate corrected heights, z_xover, and their errors
         z_xover = Dsub.h_li - np.dot(S_poly,surf_model[self.surf_mask]).ravel()
         z_xover_sigma = np.sqrt( np.diag( np.dot(np.dot(S_poly,self.C_m_surf),np.transpose(S_poly)) ) + Dsub.h_li_sigma.ravel()**2 ) # equation 11
-        #z_xover_sigma_systematic = ???
         orb_pair=(Dsub.cycle_number-1)*1387+Dsub.rgt+Dsub.BP*0.1
         u_orb_pair=np.unique(orb_pair)
         u_orb_pair=u_orb_pair[~np.in1d(u_orb_pair, self.ref_surf_cycles*1387+self.rgt+self.beam_pair*0.1)]
@@ -785,8 +790,9 @@ class point(ATL11.data):
             if ss_atc_diff==0:
                 ss_atc_diff=[np.NaN]
 
-            sigma_systematic = ref_surf_slope_mag*np.sqrt(Dsub.sigma_geo_xt**2+\
-                                                         Dsub.sigma_geo_at**2)
+            sigma_systematic = np.sqrt((ref_surf_slope_mag**2 * (Dsub.sigma_geo_xt**2+\
+                                                         Dsub.sigma_geo_at**2)) +\
+                                                         Dsub.sigma_geo_r**2)
 
             self.crossing_track_data.rgt.append([Dsub.rgt[best]])
             self.crossing_track_data.spot_crossing.append([Dsub.spot[best]])
