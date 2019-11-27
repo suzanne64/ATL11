@@ -51,6 +51,7 @@ class defaults:
         
 
 def default_ATL06_fields():
+    # NOTE: when release 3 comes out, change sigma_geo_r to a parameter in the ground_track group
     field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude',
                       'atl06_quality_summary','segment_id','sigma_geo_h'],
                     'ground_track':['x_atc', 'y_atc','seg_azimuth','sigma_geo_at',
@@ -63,6 +64,6 @@ def default_ATL06_fields():
                                    'cloud_flg_atm','r_eff','tide_ocean'],
                     'orbit_info':['rgt','cycle_number'],
                     'derived':['valid','BP', 'LR', 'spot', 'n_pixels', 
-                               'min_along_track_dh']}
+                               'min_along_track_dh', 'sigma_geo_r']}
     return field_dict
 
