@@ -43,10 +43,10 @@ cycle_stats,x_atc_mean,meters,,"N_pts, N_cycles",,,x_atc,,Y,Y
 cycle_stats,y_atc_mean,meters,,"N_pts, N_cycles",,,y_atc,,Y,Y
 cycle_stats,ref_pt_number,counts,,N_pts,,,ref_pt,,Y,Y
 cycle_stats,cycle_included_in_fit,counts,,"N_pts, N_cycles",,,seg_count,,Y,Y
-cycle_stats,cycle_seg_count,counts,,"N_pts, N_cycles",,,DELETE ,,Y,
-cycle_stats,strong_beam_number,counts,,"N_pts, N_cycles",,,DELETE,,Y,
-cycle_stats,latitude_mean,degrees North,,"N_pts, N_cycles",,,DELETE,,Y,
-cycle_stats,longitude_mean,degrees East,,"N_pts, N_cycles",,,DELETE,,Y,
+cycle_stats,cycle_seg_count,counts,,"N_pts, N_cycles",,,DELETE ,,Y,Y
+cycle_stats,strong_beam_number,counts,,"N_pts, N_cycles",,,DELETE,,Y,Y
+cycle_stats,latitude_mean,degrees North,,"N_pts, N_cycles",,,DELETE,,Y,Y
+cycle_stats,longitude_mean,degrees East,,"N_pts, N_cycles",,,DELETE,,Y,Y
 cycle_stats,min_signal_selection_source,counts,,"N_pts, N_cycles",,,,,N,
 cycle_stats,min_SNR_significance,counts,,"N_pts, N_cycles",,,,,N,
 cycle_stats,sigma_geo_h_mean,meters,,"N_pts, N_cycles",,,sigma_geo_h,,Y,Y
