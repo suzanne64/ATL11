@@ -567,9 +567,33 @@ class point(ATL11.data):
         # write out the errors in h_corr
         self.corrected_h.h_corr_sigma[0,cycle_ind[zp_used]]=m_surf_zp_sigma[zp_used]*zp_nan_mask
 
-        # calculate fit slopes and curvature:
+        if self.DOPLOT is not None and "3D time plot" in self.DOPLOT:
+            x_atc = D6.x_atc[self.selected_segments]
+            y_atc = D6.y_atc[self.selected_segments]
+            x_ctr=np.nanmean(x_atc)
+            y_ctr=np.nanmean(y_atc)
+            h_li  = D6.h_li[self.selected_segments]
+            h_li_sigma = D6.h_li_sigma[self.selected_segments]
+            cycle=D6.cycle_number[self.selected_segments]
+            fig=plt.figure(31); plt.clf(); ax=fig.add_subplot(111, projection='3d')
+            p=ax.scatter(x_atc-x_ctr, y_atc-y_ctr, h_li, c=cycle);
+            plt.xlabel('delta x ATC, m')
+            plt.ylabel('delta_y ATC, m')
+            fig.colorbar(p, label='cycle number')
+            fig=plt.figure(32); plt.clf(); ax=fig.add_subplot(111, projection='3d')
+            p=ax.scatter(x_atc-x_ctr, y_atc-y_ctr, h_li, c=np.abs(r_seg[selected_segs]/h_li_sigma))
+            plt.xlabel('delta x ATC, m')
+            plt.ylabel('delta_y ATC, m')
+            fig.colorbar(p, label='residual, m')
+
+        return
+
+    def characterize_reference_surf(self):
+        """
+        method to calculate the slope and curvature of the reference surface
+        """
         # make a grid of northing and easting values
-        [N,E]=np.meshgrid(np.arange(-50., 60, 10),np.arange(-50., 60, 10))
+        [N,E]=np.meshgrid(np.arange(-50., 60, 10), np.arange(-50., 60, 10))
 
         # calculate the corresponding values in the ATC system
         xg, yg  = self.local_atc_coords(E, N)
@@ -597,26 +621,6 @@ class point(ATL11.data):
         self.ref_surf_slope_x=msub_xy[0]
         self.ref_surf_slope_y=msub_xy[1]
 
-        if self.DOPLOT is not None and "3D time plot" in self.DOPLOT:
-            x_atc = D6.x_atc[self.selected_segments]
-            y_atc = D6.y_atc[self.selected_segments]
-            x_ctr=np.nanmean(x_atc)
-            y_ctr=np.nanmean(y_atc)
-            h_li  = D6.h_li[self.selected_segments]
-            h_li_sigma = D6.h_li_sigma[self.selected_segments]
-            cycle=D6.cycle_number[self.selected_segments]
-            fig=plt.figure(31); plt.clf(); ax=fig.add_subplot(111, projection='3d')
-            p=ax.scatter(x_atc-x_ctr, y_atc-y_ctr, h_li, c=cycle);
-            plt.xlabel('delta x ATC, m')
-            plt.ylabel('delta_y ATC, m')
-            fig.colorbar(p, label='cycle number')
-            fig=plt.figure(32); plt.clf(); ax=fig.add_subplot(111, projection='3d')
-            p=ax.scatter(x_atc-x_ctr, y_atc-y_ctr, h_li, c=np.abs(r_seg[selected_segs]/h_li_sigma))
-            plt.xlabel('delta x ATC, m')
-            plt.ylabel('delta_y ATC, m')
-            fig.colorbar(p, label='residual, m')
-
-        return
 
     def evaluate_reference_surf(self, x_atc, y_atc, delta_time=None, calc_errors=True):
         """
