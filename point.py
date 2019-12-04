@@ -542,13 +542,11 @@ class point(ATL11.data):
 
         self.ref_surf.N_cycle_used = np.count_nonzero(self.ref_surf_cycles)
 
-        # identify which of the columns that were included in the fit belong to the surface model
-        surf_mask=np.arange(np.sum(fit_columns[TOC['surf']]))
-        # write out the part of the covariance matrix corresponding to the surface model
-        self.C_m_surf=C_m[surf_mask,:][:,surf_mask]
         # export the indices of the columns that represent the surface components
         self.surf_mask=np.flatnonzero(fit_columns[TOC['surf']])
-
+        # write out the part of the covariance matrix corresponding to the surface model
+        self.C_m_surf=C_m[self.surf_mask,:][:,self.surf_mask]
+ 
 
         # write out the errors to the data parameters
         self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)]=m_surf_zp_sigma[TOC['poly']]
@@ -632,7 +630,7 @@ class point(ATL11.data):
             calc_errors: default = true, if set to false, the error calculation is skipped
         """
 
-        poly_mask=np.isfinite(self.ref_surf.poly_coeffs).ravel()
+        poly_mask=np.isfinite(self.ref_surf.poly_coeffs).ravel() 
         x_degree=self.params_11.poly_exponent['x'][poly_mask]
         y_degree=self.params_11.poly_exponent['y'][poly_mask]
         S_fit_poly=ATL11.poly_ref_surf(exp_xy=(x_degree, y_degree), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
@@ -646,6 +644,8 @@ class point(ATL11.data):
             G_surf=S_fit_poly  #  G=[S]
             surf_model=np.transpose(self.ref_surf.poly_coeffs.ravel()[np.where(poly_mask)])
 
+        G_surf=G_surf[:, self.surf_mask]
+        surf_model=surf_model[self.surf_mask]
         # section 3.5
         # calculate corrected heights, z_kc, with non selected segs design matrix and surface shape polynomial from selected segments
         z_ref_surf=np.dot(G_surf,surf_model).ravel()
@@ -700,7 +700,7 @@ class point(ATL11.data):
         cycle=D6.cycle_number.ravel()[non_ref_segments]
         #2. build design matrix, G_other, for non selected segments (poly and slope-change parts only)
         z_ref_surf, z_ref_surf_sigma = self.evaluate_reference_surf(x_atc, y_atc, delta_time)
-
+       
         self.non_ref_surf_cycles=np.unique(cycle)
         # section 3.5
         # calculate corrected heights, z_kc, with non selected segs design matrix and surface shape polynomial from selected segments

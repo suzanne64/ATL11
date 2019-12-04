@@ -462,7 +462,7 @@ class data(object):
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
-                        
+
             # correct the heights from other cycles to the reference point using the reference surface
             P11.corr_heights_other_cycles(D6_sub)
 
