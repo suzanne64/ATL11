@@ -1,60 +1,62 @@
 group,field,units,description,dimensions
-corrected_h,latitude,degrees North,,N_pts
-corrected_h,longitude,degrees East,,N_pts
-corrected_h,ref_pt,counts,,N_pts
-corrected_h,delta_time,seconds,,"N_pts, N_cycles"
-corrected_h,h_corr,meters,,"N_pts, N_cycles"
-corrected_h,h_corr_sigma,meters,,"N_pts, N_cycles"
-corrected_h,h_corr_sigma_systematic,meters,,"N_pts, N_cycles"
-corrected_h,quality_summary,counts,,"N_pts, N_cycles"
-ref_surf,complex_surface_flag,counts,,N_pts
-ref_surf,curvature,counts,,N_pts
-ref_surf,e_slope,counts,,N_pts
-ref_surf,n_slope,counts,,N_pts
-ref_surf,xt_slope,counts,,N_pts
-ref_surf,at_slope,counts,,
-ref_surf,deg_x,counts,,N_pts
-ref_surf,deg_y,counts,,N_pts
-ref_surf,poly_coeffs,counts,,"N_pts, N_coeffs"
-ref_surf,poly_coeffs_sigma,counts,,"N_pts, N_coeffs"
-ref_surf,ref_pt,counts,,N_pts
-ref_surf,x_atc,meters,,N_pts
-ref_surf,y_atc,meters,,N_pts
-ref_surf,rgt_azimuth,degrees,,N_pts
-ref_surf,slope_change_rate_x,years^-1,,N_pts
-ref_surf,slope_change_rate_y,years^-1,,N_pts
-ref_surf,slope_change_rate_x_sigma,years^-1,,N_pts
-ref_surf,slope_change_rate_y_sigma,years^-1,,N_pts
-ref_surf,misfit_chi2r,meters,,N_pts
-ref_surf,misfit_RMS,meters,,N_pts
-ref_surf,quality_summary,counts,,N_pts
-cycle_stats,ATL06_summary_zero_count,counts,,"N_pts, N_cycles"
-cycle_stats,h_rms_misfit,meters,,"N_pts, N_cycles"
-cycle_stats,r_eff,counts,,"N_pts, N_cycles"
-cycle_stats,tide_ocean,meters,,"N_pts, N_cycles"
-cycle_stats,cloud_flg_atm,counts,,"N_pts, N_cycles"
-cycle_stats,cloud_flg_asr,counts,,"N_pts, N_cycles"
-cycle_stats,bsnow_h,meters,,"N_pts, N_cycles"
-cycle_stats,bsnow_conf,counts,,"N_pts, N_cycles"
-cycle_stats,x_atc,meters,,"N_pts, N_cycles"
-cycle_stats,y_atc,meters,,"N_pts, N_cycles"
-cycle_stats,ref_pt,counts,,N_pts
-cycle_stats,seg_count,counts,,"N_pts, N_cycles"
-cycle_stats,min_signal_selection_source,counts,,"N_pts, N_cycles"
-cycle_stats,min_snr_significance,counts,,"N_pts, N_cycles"
-cycle_stats,sigma_geo_h,meters,,"N_pts, N_cycles"
-cycle_stats,sigma_geo_at,meters,,"N_pts, N_cycles"
-cycle_stats,sigma_geo_xt,meters,,"N_pts, N_cycles"
-cycle_stats,h_mean,meters,,"N_pts, N_cycles"
-crossing_track_data,ref_pt,counts,,Nxo
-crossing_track_data,delta_time,seconds,,Nxo
-crossing_track_data,h_corr,meters,,Nxo
-crossing_track_data,h_corr_sigma,meters,,Nxo
-crossing_track_data,h_corr_sigma_systematic,meters,,Nxo
-crossing_track_data,latitude,Degrees North,,Nxo
-crossing_track_data,longitude,Degrees East,,Nxo
-crossing_track_data,cycle_number,counts,,Nxo
-crossing_track_data,rgt,counts,,Nxo
-crossing_track_data,spot_crossing,counts,,Nxo
-crossing_track_data,atl06_quality_summary,counts,,Nxo
-crossing_track_data,along_track_rss,counts,,Nxo
+corrected_h,cycle_number,counts,cycle number,N_pts
+corrected_h,latitude,degrees North,center latitude based on selected segments,N_pts
+corrected_h,longitude,degrees East,center longitude based on selected segments,N_pts
+corrected_h,ref_pt,counts,"the reference point number, m, counted from the equator crossing of the RGT",N_pts
+corrected_h,delta_time,seconds,mean GPS time for the segments for each pass,"N_pts, N_cycles"
+corrected_h,h_corr,meters,the mean corrected height,"N_pts, N_cycles"
+corrected_h,h_corr_sigma,meters,the formal error in the corrected height,"N_pts, N_cycles"
+corrected_h,h_corr_sigma_systematic,meters,"the magnitude of all errors that might be correlated at scales larger than a single fit center (e.g. pointing errors, GPS errors, etc)","N_pts, N_cycles"
+corrected_h,quality_summary,counts,"Summary flag: zero indicates high-quality cycles: where min_signal_selection_source <=1 and min_SNR_significance < 0.02, and ATL06_summary_zero_count >0.","N_pts, N_cycles"
+ref_surf,complex_surface_flag,counts,"0 indicates that normal fitting was attempted, 1 indicates that the signal selection algorithm rejected too many repeats, and only a linear fit was attempted",N_pts
+ref_surf,curvature,counts,the RMS of the slope of the fit polynomial within 50 m of the fit center,N_pts
+ref_surf,e_slope,counts,the mean East-component slope for the reference surface within 50 m of the fit center,N_pts
+ref_surf,n_slope,counts,the mean North-component slope for the reference surface within 50 m of the fit center,N_pts
+ref_surf,at_slope,counts,Mean along-track component of the slope of the reference surface within 50 m of the fit center,N_pts
+ref_surf,xt_slope,counts,Mean cross-track component of the slope of the reference surface within 50 m of the fit center,N_pts
+ref_surf,deg_x,counts,Maximum degree of non-zero polynomial components in x,N_pts
+ref_surf,deg_y,counts,Maximum degree of non-zero polynomial components in y,N_pts
+ref_surf,poly_coeffs,counts,"polynomial coefficients (up to degree 3), for polynomial components scaled by 100 m ","N_pts, N_coeffs"
+ref_surf,poly_coeffs_sigma,counts,formal errors for the polynomial coefficients,"N_pts, N_coeffs"
+ref_surf,ref_pt,counts,"Ref point number, counted from the equator crossing along the RGT.",N_pts
+ref_surf,x_atc,meters,"Along-track coordinate of the reference point, measured along the RGT from its first equator crossing. ",N_pts
+ref_surf,y_atc,meters,"Across-track coordinate of the reference point, measured along the RGT from its first equator crossing. ",N_pts
+ref_surf,rgt_azimuth,degrees,"Reference track azimuth, in degrees east of local north",N_pts
+ref_surf,slope_change_rate_x,years^-1,rate of change of the x component of the surface slope,N_pts
+ref_surf,slope_change_rate_y,years^-1,rate of change of the y component of the  surface slope,N_pts
+ref_surf,slope_change_rate_x_sigma,years^-1,Formal error in the rate of change of the x component of the surface slope,N_pts
+ref_surf,slope_change_rate_y_sigma,years^-1,Formal error in the rate of change of the y component of the surface slope,N_pts
+ref_surf,misfit_chi2r,meters,"misfit chi square, divided by the number of degrees in the solution",N_pts
+ref_surf,misfit_RMS,meters,RMS misfit for the surface-polynomial fit,N_pts
+ref_surf,quality_summary,counts,"Indicates quality of the fit: 0: no problem identified, 1: number cycles available less than 1, 2: no valid pairs after height error check, 3: no valid pairs after slope editing, 4: only one valid pair in x direction, 5: polynomial fit failed, 6: polynomial coefficients with high errors, 7: surface fit slope high, 8: all cycles have errors > 15 mRMS ",N_pts
+cycle_stats,cycle_number,counts,cycle number,N_cycles
+cycle_stats,atl06_summary_zero_count,counts,Number of segments with ATL06_quality_summary==0 (0 indicates the best-quality data),"N_pts, N_cycles"
+cycle_stats,h_rms_misfit,meters,Weighted-average RMS misfit between PE heights and along-track land-ice segment fit,"N_pts, N_cycles"
+cycle_stats,r_eff,counts,"Weighted-average effective, uncorrected reflectance for each pass.","N_pts, N_cycles"
+cycle_stats,tide_ocean,meters,Weighted-average ocean tide for each pass,"N_pts, N_cycles"
+cycle_stats,cloud_flg_atm,counts,Minimum cloud flag from ATL06: Flag indicates confidence that clouds with OT > 0.2 are present in the lower 3 km of the atmosphere based on ATL09,"N_pts, N_cycles"
+cycle_stats,cloud_flg_asr,counts,Minimum apparent-surface-reflectance -based cloud flag from ATL06: Flag indicates confidence that clouds with OT > 0.2 are present in the lower 3 km of the atmosphere based on ATL09,"N_pts, N_cycles"
+cycle_stats,bsnow_h,meters,Weighted-average  blowing snow layer height for each cycle,"N_pts, N_cycles"
+cycle_stats,bsnow_conf,counts,Maximum bsnow_conf flag from ATL06: indicates the greatest (among segments) confidence flag for presence of blowing snow for each cycle,"N_pts, N_cycles"
+cycle_stats,x_atc,meters,weighted average of pair-center RGT y coordinates for each cycle  ,"N_pts, N_cycles"
+cycle_stats,y_atc,meters,weighted mean of pair-center RGT y coordinates for each cycle ,"N_pts, N_cycles"
+cycle_stats,ref_pt,counts,"Ref point number, counted from the equator crossing along the RGT.",N_pts
+cycle_stats,seg_count,counts,Number of segments marked as valid for each cycle.  Equal to 0 for those cycles not included in the reference-surface shape fit.,"N_pts, N_cycles"
+cycle_stats,min_signal_selection_source,counts,Minimum of the ATL06 signal_selection_source value (indicates the highest-quality segment in the cycle),"N_pts, N_cycles"
+cycle_stats,min_snr_significance,counts,Minimum of SNR_significance (indicates the quality of the best segment in the cycle),"N_pts, N_cycles"
+cycle_stats,sigma_geo_h,meters,Root-mean-weighted-square-average total vertical geolocation error due to PPD and POD,"N_pts, N_cycles"
+cycle_stats,sigma_geo_at,meters,Root-mean-weighted-square-average Êlocal-coordinate x horizontal geolocation error for each cycle due to PPD and POD ,"N_pts, N_cycles"
+cycle_stats,sigma_geo_xt,meters,Root-mean-weighted-square-average Êlocal-coordinate y horizontal geolocation error for each cycle due to PPD and POD ,"N_pts, N_cycles"
+cycle_stats,h_mean,meters,"Weighted-average of surface heights, not including the correction for the reference surface","N_pts, N_cycles"
+crossing_track_data,ref_pt,counts,The reference-point number of the fit center for the datum track,Nxo
+crossing_track_data,delta_time,seconds,Time relative to the ICESat-2 reference epoch,Nxo
+crossing_track_data,h_corr,meters,"WGS-84 height, corrected for the ATL11 surface shape",Nxo
+crossing_track_data,h_corr_sigma,meters,Error in the height estimate,Nxo
+crossing_track_data,h_corr_sigma_systematic,meters,Error in the height estimate,Nxo
+crossing_track_data,latitude,Degrees North,latitude of the crossover point,Nxo
+crossing_track_data,longitude,Degrees East,longitude of the crossover point,Nxo
+crossing_track_data,cycle_number,counts,Cycle number for the crossing data,Nxo
+crossing_track_data,rgt,counts,The RGT number for the crossing data,Nxo
+crossing_track_data,spot_crossing,counts,The spot number for the crossing data,Nxo
+crossing_track_data,atl06_quality_summary,counts,"Quality flag for the crossing data derived from ATL06.  0 indicates no problems detected, 1 indicates potential problems",Nxo
+crossing_track_data,along_track_rss,meters,Root sum of the squared differences between the heights of the endpoints for the current segment and the centers of the previous and next segments,Nxo
