@@ -11,6 +11,8 @@ ref_surf,complex_surface_flag,counts,,N_pts,,,complex_surface_flag,,N,
 ref_surf,fit_curvature,counts,,N_pts,,,curvature,,Y,Y
 ref_surf,fit_E_slope,counts,,N_pts,,,e_slope,,Y,Y
 ref_surf,fit_N_slope,counts,,N_pts,,,n_slope,,Y,Y
+ref_surf,,counts,,N_pts,,,xy_slope,,Y,Y
+ref_surf,,counts,,N_pts,,,at_slope,,Y,Y
 ref_surf,n_deg_x,counts,,N_pts,,,deg_x,,Y,Y
 ref_surf,n_deg_y,counts,,N_pts,,,deg_y,,Y,Y
 ref_surf,N_cycle_avail,counts,,N_pts,,,DELETE ,,Y,Y
@@ -26,7 +28,7 @@ ref_surf,slope_change_rate_y,years^-1,,N_pts,,,slope_change_rate_y,,N,
 ref_surf,slope_change_rate_x_sigma,years^-1,,N_pts,,,slope_change_rate_x_sigma,,N,
 ref_surf,slope_change_rate_y_sigma,years^-1,,N_pts,,,slope_change_rate_y_sigma,,N,
 ref_surf,surf_fit_misfit_chi2r,meters,,N_pts,,,misfit_chi2r,,Y,Y
-,surf_fit_misfit_chi2,,,,,,misfit_chi2,,Y,Y
+ref_surf,surf_fit_misfit_chi2,,,N_pts,,,misfit_chi2,,Y,Y
 ref_surf,surf_fit_misfit_RMS,meters,,N_pts,,,misfit_RMS,,Y,Y
 ref_surf,surf_fit_quality_summary,counts,,N_pts,,,quality_summary,,Y,Y
 ,,,,,,,,,,

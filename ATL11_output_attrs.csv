@@ -11,6 +11,8 @@ ref_surf,complex_surface_flag,counts,,N_pts
 ref_surf,curvature,counts,,N_pts
 ref_surf,e_slope,counts,,N_pts
 ref_surf,n_slope,counts,,N_pts
+ref_surf,xt_slope,counts,,N_pts
+ref_surf,at_slope,counts,,
 ref_surf,deg_x,counts,,N_pts
 ref_surf,deg_y,counts,,N_pts
 ref_surf,poly_coeffs,counts,,"N_pts, N_coeffs"
