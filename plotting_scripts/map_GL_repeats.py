@@ -39,16 +39,20 @@ if True:
             except:
                 print("problem with "+file)
     xydh=pc.data().from_list(xydh)      
-     
+    on_ice=pc.grid.data().from_geotif('/Volumes/ice1/ben/GimpMasks_v1.1/GimpIceMask_100m.tif')\
+        .interp(xydh.x, xydh.y)
+    on_ice=np.abs(on_ice-1)<0.01
 
 if True:
-    plt.figure()
+    plt.figure(); plt.clf()
     MOG.show(cmap='gray', vmin=14000, vmax=17000)
-    hl=plt.scatter(xydh.x, xydh.y, 3, linewidth=0, \
-                           c=xydh.dh, \
-                           vmin=-1.25, vmax=1.25, cmap='Spectral')
-    hb=plt.colorbar(shrink=0.5, extend='both')
-    hb.set_label(f'cycle {cycles[1]+1} minus cycle {cycles[0]+1}, m')
+    hl=plt.scatter(xydh.x[on_ice], xydh.y[on_ice], 3, linewidth=0, \
+                           c=xydh.dh[on_ice], \
+                           vmin=-1.75, vmax=1.75, cmap='Spectral')
+    hb=plt.colorbar(shrink=0.75, extend='both')
+    plt.gca().set_xticks([])
+    plt.gca().set_yticks([])
+    hb.set_label(f'cycle {cycles[1]} minus cycle {cycles[0]}, m')
     
 if False:
     plt.figure(1); xy0=plt.ginput()[0]; 
