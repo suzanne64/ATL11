@@ -333,7 +333,7 @@ class data(object):
         if field_dict is None:
             field_dict={'corrected_h':['latitude','longitude','delta_time',\
                                        'h_corr','h_corr_sigma','h_corr_sigma_systematic'],\
-                        'derived':['cycle', 'rgt']}
+                        'derived':['cycle', 'rgt', 'n_cycles']}
         h_shape=self.corrected_h.h_corr.shape
         for group in field_dict:
             if group=='derived':
@@ -348,9 +348,15 @@ class data(object):
                     out[field]=np.tile(out[field].reshape([out[field].shape[0], 1]), [1, h_shape[1]])
         if 'derived' in field_dict:
             if 'cycle' in field_dict['derived']:
-                out['cycle']=np.tile(self.cycles, [h_shape[0], 1])
+                cycles=np.arange(self.cycles[0], self.cycles[1]+1)
+                cycles=cycles.reshape([1, len(cycles)])
+                out['cycle']=np.tile(cycles, [h_shape[0], 1])
             if 'rgt' in field_dict['derived']:
                 out['rgt']=np.zeros_like(self.corrected_h.h_corr)+self.attrs['ReferenceGroundTrack']
+            if 'n_cycles' in field_dict['derived']:
+                out['n_cycles']=np.tile(\
+                        np.sum(np.isfinite(self.corrected_h.h_corr), axis=1)\
+                        .reshape([h_shape[0],1]), [1, h_shape[1]])
         return out
         
     def get_xovers(self):
@@ -529,14 +535,17 @@ class data(object):
             
             # regress the geographic coordinates from the data to the fit center
             P11.corrected_h.latitude, P11.corrected_h.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
+
             # find the reference surface
             P11.find_reference_surface(D6_sub, pair_data)
-
+            
             if 'inversion failed' in P11.status:
                 #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
                 continue
+            # get the slope and curvature parameters
+            P11.characterize_ref_surf()
 
             # correct the heights from other cycles to the reference point using the reference surface
             P11.corr_heights_other_cycles(D6_sub)
