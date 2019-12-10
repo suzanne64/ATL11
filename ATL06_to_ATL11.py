@@ -45,7 +45,11 @@ def main(argv):
     parser.add_argument('--num_points','-N', type=int, default=None, help="Number of reference points to process")
     parser.add_argument('--Hemisphere','-H', type=int, default=-1)
     parser.add_argument('--bounds', '-b', type=float, nargs=4, default=None, help="latlon bounds: west, south, east, north")
+<<<<<<< HEAD
     parser.add_argument('--test_plot', action='store_true', help="plots locations, elevations, and elevation differences between cycles")
+=======
+    parser.add_argument('--Blacklist','-B', action='store_true')
+>>>>>>> ATL06_to_ATL11.py: added blacklist option
     parser.add_argument('--verbose','-v', action='store_true')
     args=parser.parse_args()
 
@@ -75,8 +79,8 @@ def main(argv):
     print("found GI files:"+str(GI_files))
     
     for pair in pairs:
-        print('files in ',files)
-        D6 = ATL11.read_ATL06_data(files, beam_pair=pair, cycles=args.cycles)
+        print('files in =',files)
+        D6 = ATL11.read_ATL06_data(files, beam_pair=pair, cycles=args.cycles, use_blacklist=args.Blacklist)
         if D6 is None:
             continue
         D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds, num_ref_pts=args.num_points)
