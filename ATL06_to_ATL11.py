@@ -8,7 +8,7 @@ os.environ['OPENBLAS_NUM_THREADS']="1"
 import numpy as np
 import ATL11
 import glob
-import sys
+import sys, h5py
 import matplotlib.pyplot as plt
 from PointDatabase import geo_index
 
@@ -36,7 +36,7 @@ def main(argv):
     parser.add_argument('--Release','-R', type=int, default=2, help="Release number")
     parser.add_argument('--Version','-V', type=str, default='001')
     parser.add_argument('--cycles', '-c', type=int, nargs=2, default=[3, 4], help="first and last cycles")
-    parser.add_argument('--GI_file_glob','-G', type=str, default=None, help="Glob (wildcard) string used to math geoindex files for crossing tracks")
+    parser.add_argument('--GI_file_glob','-G', type=str, default=None, help="Glob (wildcard) string used to match geoindex files for crossing tracks")
     parser.add_argument('--out_dir','-o', default=None, required=True, help="Output directory")
     parser.add_argument('--first_point','-f', type=int, default=None, help="First reference point")
     parser.add_argument('--last_point','-l', type=int, default=None, help="Last reference point")
@@ -50,9 +50,10 @@ def main(argv):
     out_file="%s/ATL11_%04d%02d_%02d%02d_%02d_v%s.h5" %( \
             args.out_dir,args.rgt, args.subproduct, args.cycles[0], \
             args.cycles[1], args.Release, args.Version)
+    if os.path.isfile(out_file):
+        os.remove(out_file)
 
     if args.verbose:
-        print("working on :")
         print(out_file)
     glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
     files=glob.glob(glob_str)
@@ -75,11 +76,15 @@ def main(argv):
         if D6 is None:
             continue
         D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds, num_ref_pts=args.num_points)
+
         if D6 is None or len(ref_pt_numbers)==0: 
             continue
         D11=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
                       cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
                       GI_files=GI_files, hemisphere=args.Hemisphere) # defined in ATL06_to_ATL11
+        # fill cycle_number list in cycle_stats
+        setattr(D11.cycle_stats,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
+        
         if D11 is not None:
             D11.write_to_file(out_file)
     
@@ -95,6 +100,18 @@ def main(argv):
                 GI.attrs[file] = temp
         GI.to_file(out_file)
     
+    # create a METADATA/lineage/ group where the ATL06 filenames are saved. 
+    if os.path.isfile(out_file):
+        f = h5py.File(out_file,'r+')
+        if 'METADATA' in f:
+            del f['METADATA']
+        gmeta=f.create_group('METADATA')
+        gl=gmeta.create_group('lineage')
+        for ii,fi in enumerate(sorted(files)):
+            grp = gl.create_group('ATL06-{:02d}'.format(ii+1))
+            grp.attrs['fileName'] = os.path.basename(fi)
+        f.close()
+        
     print("ATL06_to_ATL11: done with "+out_file)
     
 if __name__=="__main__":

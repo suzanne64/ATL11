@@ -33,7 +33,8 @@ class data(object):
             full_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_cycles']
             poly_fields=[item['field'] for item in field_dims if item['dimensions']=='N_pts, N_coeffs']
             xover_fields=[item['field'] for item in field_dims if item['dimensions']=='Nxo']
-            setattr(self, group, ATL11.group(N_pts, cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
+            setattr(self, group, ATL11.group(N_pts, cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))            
+        
         self.groups=group_names
         self.slope_change_t0=None
         self.track_num=track_num
@@ -246,16 +247,20 @@ class data(object):
             reader=list(csv.DictReader(attrfile))
         group_names=set([row['group'] for row in reader])
         attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']
-        field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader}
+
         for group in group_names:
             if hasattr(getattr(self,group),'list_of_fields'):
                 grp = g.create_group(group)
+                field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if group in row['group']}
                 if 'ref_surf' in group:
                     grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['slope_change_t0'] =np.mean(self.slope_change_t0).astype('int')
                     g.attrs['N_poly_coeffs']=int(self.N_coeffs)
+                    
                 list_vars=getattr(self,group).list_of_fields
+                if 'cycle_stats' in group:
+                    list_vars.append('cycle_number')
                 if list_vars is not None:
                     for field in list_vars:
                         dset = grp.create_dataset(field,data=getattr(getattr(self,group),field))
@@ -316,7 +321,7 @@ class data(object):
                     for field in ['x','y']:      
                         xo['ref'][field] += getattr(self, field)[i0]
                 xo['ref']['rgt'] += [rgt]
-                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.ATL06_summary_zero_count[i0, ic] > 0]
+                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_summary_zero_count[i0, ic] > 0]
                 xo['ref']['cycle_number'] += [ic+self.cycles[0]]
                 for field in ['delta_time','h_corr','h_corr_sigma','ref_pt','rgt','atl06_quality_summary', 'cycle_number','along_track_rss' ]:
                     xo['crossing'][field] = getattr(self.crossing_track_data, field)[i1]               
@@ -469,7 +474,7 @@ class data(object):
             P11.corrected_h.quality_summary = np.logical_not(
                     (P11.cycle_stats.min_signal_selection_source <=1) &\
                     (P11.cycle_stats.min_snr_significance < 0.02) &\
-                    (P11.cycle_stats.ATL06_summary_zero_count > 0) )
+                    (P11.cycle_stats.atl06_summary_zero_count > 0) )
 
             # find the center of the bin in polar stereographic coordinates
             x0, y0=regress_to(D6_sub, ['x','y'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
