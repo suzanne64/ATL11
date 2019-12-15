@@ -101,16 +101,63 @@ def main(argv):
         GI.to_file(out_file)
     
     # create a METADATA/lineage/ group where the ATL06 filenames are saved. 
-    if os.path.isfile(out_file):
-        f = h5py.File(out_file,'r+')
-        if 'METADATA' in f:
-            del f['METADATA']
-        gmeta=f.create_group('METADATA')
-        gl=gmeta.create_group('lineage')
-        for ii,fi in enumerate(sorted(files)):
-            grp = gl.create_group('ATL06-{:02d}'.format(ii+1))
-            grp.attrs['fileName'] = os.path.basename(fi)
-        f.close()
+    root = 'METADATA'
+    if os.path.isfile(out_file):        
+        g = h5py.File(out_file,'r+')
+        if 'METADATA' in g:
+            del g['METADATA']
+        gmeta=g.create_group('METADATA')
+
+        for ii,infile in enumerate(sorted(files)):
+            if os.path.isfile(infile):
+                f = h5py.File(infile,'r')         
+                for x in list(f[root].attrs):
+                    gmeta.attrs.create(x,f[root].attrs[x]) 
+                if ii==0:
+                    fgrp='AcquisitionInformation'
+                    ggrp=gmeta.create_group(fgrp)
+                    if len(list(f[root][fgrp].attrs))>0:
+                        for x in list(f[root][fgrp].attrs):
+                            ggrp.attrs.create(x,f[root][fgrp].attrs[x])
+                    if len(list(f[root][fgrp].keys()))>0:
+                        for fsubgrp in list(f[root][fgrp].keys()):
+                            gsubgrp=ggrp.create_group(fsubgrp)
+                            if len(list(f[root][fgrp][fsubgrp].attrs))>0:
+                                for x in list(f[root][fgrp][fsubgrp].attrs):
+                                    gsubgrp.attrs.create(x,f[root][fgrp][fsubgrp].attrs[x])
+                    
+                    fgrp='Lineage'
+                    ggrp=gmeta.create_group(fgrp)
+                    
+                gf=g[root]['Lineage'].create_group('ATL06-{:02d}'.format(ii+1))        
+                gf.attrs['fileName'] = os.path.basename(infile)
+                            
+                for fgrp in list(f[root].keys()):  
+                    if 'AcquisitionInformation' not in fgrp and 'Lineage' not in fgrp:
+                        ggrp=g[root]['Lineage']['ATL06-{:02d}'.format(ii+1)].create_group(fgrp)
+                        if len(list(f[root][fgrp].attrs))>0:
+                            for x in list(f[root][fgrp].attrs):
+                                ggrp.attrs.create(x,f[root][fgrp].attrs[x])
+                        for fsubgrp in list(f[root][fgrp].keys()):
+                            gsubgrp=ggrp.create_group(fsubgrp)
+                            if len(list(f[root][fgrp][fsubgrp].attrs))>0:
+                                for x in list(f[root][fgrp][fsubgrp].attrs):
+                                    gsubgrp.attrs.create(x,f[root][fgrp][fsubgrp].attrs[x])
+                                    
+                    if 'Lineage' in fgrp:
+                        for lgrp in f[root]['Lineage'].keys():
+                            ggrp=g[root]['Lineage']['ATL06-{:02d}'.format(ii+1)].create_group(lgrp)
+                            if len(list(f[root]['Lineage'][lgrp].attrs))>0:
+                                for x in list(f[root]['Lineage'][lgrp].attrs):
+                                    ggrp.attrs.create(x,f[root]['Lineage'][lgrp].attrs[x])
+                            for lsubgrp in list(f[root]['Lineage'][lgrp].keys()):
+                                gsubgrp=ggrp.create_group(lsubgrp)
+                                if len(list(f[root]['Lineage'][lgrp][fsubgrp].attrs))>0:
+                                    for x in list(f[root]['Lineage'][lgrp][fsubgrp].attrs):
+                                        gsubgrp.attrs.create(x,f[root]['Lineage'][lgrp][fsubgrp].attrs[x]) 
+                                    
+                f.close()
+        g.close()
         
     print("ATL06_to_ATL11: done with "+out_file)
     
