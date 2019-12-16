@@ -1,5 +1,5 @@
 group,field,units,dimensions,description
-corrected_h,cycle_number,counts,N_pts,"""cycle number"""
+corrected_h,cycle_number,counts,N_cycles,"""cycle number"""
 corrected_h,latitude,degrees North,N_pts,"""center latitude based on selected segments"""
 corrected_h,longitude,degrees East,N_pts,"""center longitude based on selected segments"""
 corrected_h,ref_pt,counts,N_pts,"""the reference point number, m, counted from the equator crossing of the RGT"""

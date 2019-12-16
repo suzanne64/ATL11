@@ -129,6 +129,7 @@ class data(object):
                         print("Problem writing %s" %field)
 
         self.slope_change_t0=P11_list[0].slope_change_t0
+
         return self
 
     def from_file(self,  filename, pair=2, index_range=[0, -1], field_dict=None):
@@ -259,7 +260,7 @@ class data(object):
                     g.attrs['N_poly_coeffs']=int(self.N_coeffs)
                     
                 list_vars=getattr(self,group).list_of_fields
-                if 'cycle_stats' in group:
+                if 'cycle_stats' in group or 'corrected_h' in group:
                     list_vars.append('cycle_number')
                 if list_vars is not None:
                     for field in list_vars:
@@ -458,7 +459,6 @@ class data(object):
             
             # regress the geographic coordinates from the data to the fit center
             P11.corrected_h.latitude, P11.corrected_h.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
-
             # find the reference surface
             P11.find_reference_surface(D6_sub, pair_data)
 

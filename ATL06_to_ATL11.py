@@ -84,6 +84,7 @@ def main(argv):
                       GI_files=GI_files, hemisphere=args.Hemisphere) # defined in ATL06_to_ATL11
         # fill cycle_number list in cycle_stats
         setattr(D11.cycle_stats,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
+        setattr(D11.corrected_h,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         
         if D11 is not None:
             D11.write_to_file(out_file)
