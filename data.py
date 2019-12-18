@@ -174,7 +174,7 @@ class data(object):
                     for field in field_dict['crossing_track_data']:
                         try:
                             setattr(getattr(self, group), field, \
-                                    np.array(FH[pt]['crossing_track_data'][field][xing_ind]))
+                                    np.array(FH[pt]['crossing_track_data'][field][list(xing_ind)]))
                         except KeyError:
                             print("ATL11 file %s: missing %s/%s" % (filename, 'crossing_track_data', field))
                         except ValueError:
