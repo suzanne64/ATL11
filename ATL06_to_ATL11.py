@@ -117,20 +117,66 @@ def main(argv):
             if os.path.isfile(infile):
                 f = h5py.File(infile,'r')         
                 if ii==0:
-                    f.copy('METADATA',g)
+                    f.copy('METADATA',g) # get all METADATA groups except Lineage
                     if 'Lineage' in list(g['METADATA'].keys()):
                         del g['METADATA']['Lineage']
-                    g['METADATA'].create_group('Lineage')                
+                    g['METADATA'].create_group('Lineage')
+                # make ATL06 file group
                 gf = g['METADATA']['Lineage'].create_group('ATL06-{:02d}'.format(ii+1))
                 gf.attrs['fileName'] = os.path.basename(infile)
-                
+                # fill ATL06 file group with unique file metadata
                 for fgrp in list(f['METADATA']['Lineage']):
                     f.copy('METADATA/Lineage/{}'.format(fgrp), g['METADATA']['Lineage']['ATL06-{:02d}'.format(ii+1)])
 
                 f.close()
         g.close()
-        
     print("ATL06_to_ATL11: done with "+out_file)
         
+    if args.test_plot:
+        print(out_file)
+        D = ATL11.data().from_file(out_file, field_dict=None)
+        cm = matplotlib.cm.get_cmap('jet')
+        colorslist = ['blue','green','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow']
+        
+        fig = plt.figure(1)
+        im = plt.scatter(D.corrected_h.longitude, D.corrected_h.latitude, c=D.corrected_h.delta_time[:,0], s=35, marker='.', cmap=cm)
+        im = plt.scatter(D.crossing_track_data.longitude, D.crossing_track_data.latitude, c=D.crossing_track_data.delta_time, s=35, marker='.', cmap=cm)
+        plt.title('Delta times of ATL11 data')
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+        fig.colorbar(im)
+        #m = Basemap(projection='stere',resolution='i',lat_ts=70, lat_0=90, lon_0=45,
+        #            llcrnrlon=-56, llcrnrlat=58, urcrnrlon=11, urcrnrlat=80, rsphere=(6378137.0, 6356752.3142))
+        #m.drawcoastlines()
+        
+        ref, xo, delta = D.get_xovers()
+        
+        fig = plt.figure(2)
+        for ii in range(len(ref.h_corr[:])):
+            im = plt.errorbar(ref.x_atc,ref.h_corr[ii],ref.h_corr_sigma[ii],fmt='.',capsize=4,color=colorslist[ii]) 
+        im = plt.errorbar(xo.x_atc,xo.h_corr[:],xo.h_corr_sigma[:],fmt='.',capsize=4,color=colorslist[ii+1])
+        plt.title('Corrected Heights: cyc3(b), cyc4(g), crossing(r)')
+        plt.xlabel('Along Track Distance [m]')
+        plt.ylabel('Heights [m]')
+        
+        fig = plt.figure(3)
+        for ii in range(len(ref.h_corr[:])-1):
+            im = plt.scatter(ref.x_atc,ref.h_corr[ii+1]-ref.h_corr[ii],c=colorslist[ii],marker='.') 
+        plt.title('Difference in Corrected Heights btn sequential cycles: later minus earlier')
+        plt.xlabel('Along Track Distance [m]')
+        plt.ylabel('Heights [m]')
+        plt.grid()
+        
+        fig = plt.figure(4)
+        print
+        for ii in range(len(ref.h_corr[:])):
+            im = plt.scatter(ref.x_atc,ref.h_corr[ii].ravel()-xo.h_corr[:],c=colorslist[ii],marker='.') 
+        plt.title('Diff Corrected Heights: cyc3-xo(b), cyc4-xo(g)')
+        plt.xlabel('Along Track Distance [m]')
+        plt.ylabel('Heights [m]')
+        plt.grid()
+        print('type Control-C after viewing figures, to continue')
+        plt.show()
+
 if __name__=="__main__":
     main(sys.argv)
