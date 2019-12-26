@@ -10,6 +10,8 @@ import ATL11
 import glob
 import sys, h5py
 import matplotlib.pyplot as plt
+import matplotlib
+#from mpl_toolkits.basemap import Basemap
 from PointDatabase import geo_index
 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
@@ -43,6 +45,7 @@ def main(argv):
     parser.add_argument('--num_points','-N', type=int, default=None, help="Number of reference points to process")
     parser.add_argument('--Hemisphere','-H', type=int, default=-1)
     parser.add_argument('--bounds', '-b', type=float, nargs=4, default=None, help="latlon bounds: west, south, east, north")
+    parser.add_argument('--test_plot', action='store_true', help="plots locations, elevations, and elevation differences between cycles")
     parser.add_argument('--verbose','-v', action='store_true')
     args=parser.parse_args()
 
@@ -72,27 +75,33 @@ def main(argv):
     print("found GI files:"+str(GI_files))
     
     for pair in pairs:
+        print('files in ',files)
         D6 = ATL11.read_ATL06_data(files, beam_pair=pair, cycles=args.cycles)
         if D6 is None:
             continue
         D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds, num_ref_pts=args.num_points)
+#        D6.get_xy(EPSG=3413)
+#        plt.plot(D6.x, D6.y,'r.')
+#        plt.show()
+#        exit(-1)
 
         if D6 is None or len(ref_pt_numbers)==0: 
             continue
         D11=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
                       cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
                       GI_files=GI_files, hemisphere=args.Hemisphere) # defined in ATL06_to_ATL11
-        # fill cycle_number list in cycle_stats
+        # fill cycle_number list in cycle_stats and corrected_h
         setattr(D11.cycle_stats,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         setattr(D11.corrected_h,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         
         if D11 is not None:
             D11.write_to_file(out_file)
-    
+
     # create a geo index for the current file.  This gets saved in the '/index' group
     if os.path.isfile(out_file):
         GI=geo_index(SRS_proj4=get_proj4(args.Hemisphere), delta=[1.e4, 1.e4]).for_file(out_file, 'ATL11', dir_root=args.out_dir)
         GI.attrs['bin_root']=None
+
         # the 'file' attributes of the geo_index are of the form :pair1, :pair2, :pair3, which means that the 
         # data for each bin are to be read from the current file
         for file in ['file_0','file_1','file_2']:
@@ -101,66 +110,27 @@ def main(argv):
                 GI.attrs[file] = temp
         GI.to_file(out_file)
     
-    # create a METADATA/lineage/ group where the ATL06 filenames are saved. 
-    root = 'METADATA'
+    # copy METADATA group from ATL06. Make lineage/ group for each ATL06 file, where the ATL06 filenames and their unique metadata are saved. 
     if os.path.isfile(out_file):        
         g = h5py.File(out_file,'r+')
-        if 'METADATA' in g:
-            del g['METADATA']
-        gmeta=g.create_group('METADATA')
-
         for ii,infile in enumerate(sorted(files)):
             if os.path.isfile(infile):
                 f = h5py.File(infile,'r')         
-                for x in list(f[root].attrs):
-                    gmeta.attrs.create(x,f[root].attrs[x]) 
                 if ii==0:
-                    fgrp='AcquisitionInformation'
-                    ggrp=gmeta.create_group(fgrp)
-                    if len(list(f[root][fgrp].attrs))>0:
-                        for x in list(f[root][fgrp].attrs):
-                            ggrp.attrs.create(x,f[root][fgrp].attrs[x])
-                    if len(list(f[root][fgrp].keys()))>0:
-                        for fsubgrp in list(f[root][fgrp].keys()):
-                            gsubgrp=ggrp.create_group(fsubgrp)
-                            if len(list(f[root][fgrp][fsubgrp].attrs))>0:
-                                for x in list(f[root][fgrp][fsubgrp].attrs):
-                                    gsubgrp.attrs.create(x,f[root][fgrp][fsubgrp].attrs[x])
-                    
-                    fgrp='Lineage'
-                    ggrp=gmeta.create_group(fgrp)
-                    
-                gf=g[root]['Lineage'].create_group('ATL06-{:02d}'.format(ii+1))        
+                    f.copy('METADATA',g)
+                    if 'Lineage' in list(g['METADATA'].keys()):
+                        del g['METADATA']['Lineage']
+                    g['METADATA'].create_group('Lineage')                
+                gf = g['METADATA']['Lineage'].create_group('ATL06-{:02d}'.format(ii+1))
                 gf.attrs['fileName'] = os.path.basename(infile)
-                            
-                for fgrp in list(f[root].keys()):  
-                    if 'AcquisitionInformation' not in fgrp and 'Lineage' not in fgrp:
-                        ggrp=g[root]['Lineage']['ATL06-{:02d}'.format(ii+1)].create_group(fgrp)
-                        if len(list(f[root][fgrp].attrs))>0:
-                            for x in list(f[root][fgrp].attrs):
-                                ggrp.attrs.create(x,f[root][fgrp].attrs[x])
-                        for fsubgrp in list(f[root][fgrp].keys()):
-                            gsubgrp=ggrp.create_group(fsubgrp)
-                            if len(list(f[root][fgrp][fsubgrp].attrs))>0:
-                                for x in list(f[root][fgrp][fsubgrp].attrs):
-                                    gsubgrp.attrs.create(x,f[root][fgrp][fsubgrp].attrs[x])
-                                    
-                    if 'Lineage' in fgrp:
-                        for lgrp in f[root]['Lineage'].keys():
-                            ggrp=g[root]['Lineage']['ATL06-{:02d}'.format(ii+1)].create_group(lgrp)
-                            if len(list(f[root]['Lineage'][lgrp].attrs))>0:
-                                for x in list(f[root]['Lineage'][lgrp].attrs):
-                                    ggrp.attrs.create(x,f[root]['Lineage'][lgrp].attrs[x])
-                            for lsubgrp in list(f[root]['Lineage'][lgrp].keys()):
-                                gsubgrp=ggrp.create_group(lsubgrp)
-                                if len(list(f[root]['Lineage'][lgrp][fsubgrp].attrs))>0:
-                                    for x in list(f[root]['Lineage'][lgrp][fsubgrp].attrs):
-                                        gsubgrp.attrs.create(x,f[root]['Lineage'][lgrp][fsubgrp].attrs[x]) 
-                                    
+                
+                for fgrp in list(f['METADATA']['Lineage']):
+                    f.copy('METADATA/Lineage/{}'.format(fgrp), g['METADATA']['Lineage']['ATL06-{:02d}'.format(ii+1)])
+
                 f.close()
         g.close()
         
     print("ATL06_to_ATL11: done with "+out_file)
-    
+        
 if __name__=="__main__":
     main(sys.argv)

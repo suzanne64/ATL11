@@ -146,14 +146,18 @@ class data(object):
             if field_dict is None:
                 field_dict={}
                 for group in FH[pt].keys():
+                    #print('group line 149',group)
                     field_dict[group]=[]
                     for field in FH[pt][group].keys():
+                        #print('line 153',group, field)
                         field_dict[group].append(field)
+
             N_pts=FH[pt]['corrected_h']['h_corr'][index_range[0]:index_range[-1],:].shape[0]
             cycles=[FH[pt].attrs['first_cycle'], FH[pt].attrs['last_cycle']]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs)
-            for group in (field_dict):
+
+            for group in (field_dict):             
                 if group != 'crossing_track_data':
                     for field in field_dict[group]:
                         try:
@@ -161,7 +165,10 @@ class data(object):
                             if len(this_field.shape) > 1:
                                 setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
                             else:
-                                setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
+                                if 'cycle_number' in field and ('corrected_h' in group or 'cycle_stats' in group):
+                                    setattr(getattr(self, group), field, this_field[:])
+                                else:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
                         except KeyError:
                             print("ATL11 file %s: missing %s/%s" % (filename, group, field))
                 else:
@@ -179,8 +186,7 @@ class data(object):
                             print("ATL11 file %s: missing %s/%s" % (filename, 'crossing_track_data', field))
                         except ValueError:
                             print("ATL11 file %s: misshapen %s/%s" % (filename, 'crossing_track_data', field))
-                            #setattr(getattr(self, group), field, \
-                            #        np.array(FH[pt]['crossing_track_data'][field][xing_ind]))
+
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
@@ -299,45 +305,62 @@ class data(object):
         rgt=self.attrs['ReferenceGroundTrack']
         pair=self.attrs['beam_pair']
         xo={'ref':{},'crossing':{},'both':{}}
-        for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle','along_track_rss']:
+        for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle_number','along_track_rss','x_atc','y_atc']:
             xo['ref'][field]=[]
             xo['crossing'][field]=[]
+            if field in  ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic']:
+                xo['ref'][field].append([])
+                xo['ref'][field].append([])
         if hasattr(self,'x'):
             for field in ['x','y']:
                  xo['ref'][field]=[]
                  xo['crossing'][field]=[]
         xo['crossing']['RSSz']=[]
-
+       # print(xo['ref']['h_corr'].shape)
+        
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt):
             i0=np.where(self.corrected_h.ref_pt==ref_pt)[0][0]
-            for ic in range(self.corrected_h.delta_time.shape[1]):
+            # fill vectors
+            for field in ['latitude','longitude']:
+                xo['ref'][field] += [getattr(self.corrected_h, field)[i0]]
+            for field in ['x_atc','y_atc']:
+                xo['ref'][field] += [getattr(self.ref_surf, field)[i0]]
+            xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]]
+            xo['ref']['rgt'] += [rgt]
+            for field in ['delta_time','h_corr','h_corr_sigma','ref_pt','rgt','atl06_quality_summary', 'cycle_number','along_track_rss' ]:
+                xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]]            
+            
+            # fill vectors for each cycle
+            for ic in range(self.corrected_h.delta_time.shape[1]):  # number of cycles
+                print('i1,ic',i1,ic)
                 if not np.isfinite(self.corrected_h.h_corr[i0, ic]):
                     continue
-                for field in ['latitude','longitude']:
-                    xo['ref'][field] += getattr(self.corrected_h, field)[i0]
-                for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:
-                     xo['ref'][field] += getattr(self.corrected_h, field)[i0, ic]
-                xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]]
+                for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:  # vars that are N_pts x N_cycles
+                    print(ic, [getattr(self.corrected_h, field)[i0, ic]])
+                    print('length',len(xo['ref'][field]))
+                    print('length',len(xo['ref'][field][:]))
+                    xo['ref'][field][ic].append([getattr(self.corrected_h, field)[i0, ic]])
+                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_summary_zero_count[i0, ic] > 0]
+                xo['ref']['cycle_number'] += [getattr(self.corrected_h,'cycle_number')[ic]]
                 if hasattr(self, 'x'):
                     for field in ['x','y']:      
-                        xo['ref'][field] += getattr(self, field)[i0]
-                xo['ref']['rgt'] += [rgt]
-                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_summary_zero_count[i0, ic] > 0]
-                xo['ref']['cycle_number'] += [ic+self.cycles[0]]
-                for field in ['delta_time','h_corr','h_corr_sigma','ref_pt','rgt','atl06_quality_summary', 'cycle_number','along_track_rss' ]:
-                    xo['crossing'][field] = getattr(self.crossing_track_data, field)[i1]               
+                        xo['ref'][field] += [getattr(self, field)[i0]]
+                        
         xo['crossing']['latitude']=xo['ref']['latitude']
         xo['crossing']['longitude']=xo['ref']['longitude']
+        xo['crossing']['x_atc']=xo['ref']['x_atc']
+        xo['crossing']['y_atc']=xo['ref']['y_atc']
         for field in xo['crossing']:
             xo['crossing'][field]=np.array(xo['crossing'][field])
         for field in xo['ref']:
             xo['ref'][field]=np.array(xo['ref'][field])
         ref=point_data().from_dict(xo['ref'])
         crossing=point_data().from_dict(xo['crossing'])
+        
         delta={}
         delta['h_corr']=crossing.h_corr-ref.h_corr
         delta['delta_time']=crossing.delta_time-ref.delta_time
-        delta['h_corr_sigma']=np.sqrt(crossing.h_corr_sigma**2+ref.h__corr_sigma**2)
+        delta['h_corr_sigma']=np.sqrt(crossing.h_corr_sigma**2+ref.h_corr_sigma**2)
         delta['latitude']=ref.latitude.copy()
         delta['longitude']=ref.longitude.copy()
         delta=point_data().from_dict(delta)
