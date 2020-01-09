@@ -98,8 +98,8 @@ class point(ATL11.data):
 
         for cc in range(self.cycles[0], self.cycles[1]+1):
             if np.sum(D6.cycle_number==cc) > 0:
-                self.cycle_stats.ATL06_summary_zero_count[0,cc-self.cycles[0]]=np.sum(self.valid_segs.data[D6.cycle_number==cc])
-        self.ref_surf.N_cycle_avail=np.count_nonzero(self.cycle_stats.ATL06_summary_zero_count)
+                self.cycle_stats.atl06_summary_zero_count[0,cc-self.cycles[0]]=np.sum(self.valid_segs.data[D6.cycle_number==cc])
+        self.ref_surf.N_cycle_avail=np.count_nonzero(self.cycle_stats.atl06_summary_zero_count)
 
         if self.ref_surf.N_cycle_avail<1:
             self.status['No_cycles_available']=True

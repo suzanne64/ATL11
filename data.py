@@ -270,7 +270,15 @@ class data(object):
                     list_vars.append('cycle_number')
                 if list_vars is not None:
                     for field in list_vars:
+                        dimensions = field_attrs[field]['dimensions'].split(',')
+                        print('dimensions',field_attrs[field],dimensions)
+#                        if 'counts' in field_attrs[field]['units']:
+#                            dt = 'int8'
+#                        else:
+#                            dt = 'float32'
                         dset = grp.create_dataset(field,data=getattr(getattr(self,group),field))
+                        for ii,dim in enumerate(dimensions):
+                            dset.dims[ii].label = dim.strip()
                         for attr in attr_names:
                             dset.attrs[attr] = field_attrs[field][attr]
         f.close()
@@ -316,7 +324,6 @@ class data(object):
                  xo['ref'][field]=[]
                  xo['crossing'][field]=[]
         xo['crossing']['RSSz']=[]
-       # print(xo['ref']['h_corr'].shape)
         
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt):
             i0=np.where(self.corrected_h.ref_pt==ref_pt)[0][0]

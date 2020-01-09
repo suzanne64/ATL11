@@ -80,10 +80,6 @@ def main(argv):
         if D6 is None:
             continue
         D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds, num_ref_pts=args.num_points)
-#        D6.get_xy(EPSG=3413)
-#        plt.plot(D6.x, D6.y,'r.')
-#        plt.show()
-#        exit(-1)
 
         if D6 is None or len(ref_pt_numbers)==0: 
             continue
@@ -93,6 +89,9 @@ def main(argv):
         # fill cycle_number list in cycle_stats and corrected_h
         setattr(D11.cycle_stats,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         setattr(D11.corrected_h,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
+        # add dimensions to D11
+        D11.N_pts, D11.N_cycles = D11.corrected_h.h_corr.shape
+        D11.Nxo = D11.crossing_track_data.h_corr.shape[0]
         
         if D11 is not None:
             D11.write_to_file(out_file)
@@ -117,14 +116,15 @@ def main(argv):
             if os.path.isfile(infile):
                 f = h5py.File(infile,'r')         
                 if ii==0:
-                    f.copy('METADATA',g) # get all METADATA groups except Lineage
+                    # get all METADATA groups except Lineage, which we set to zero
+                    f.copy('METADATA',g)
                     if 'Lineage' in list(g['METADATA'].keys()):
                         del g['METADATA']['Lineage']
                     g['METADATA'].create_group('Lineage')
-                # make ATL06 file group
+                # make ATL06 file group for each cycle
                 gf = g['METADATA']['Lineage'].create_group('ATL06-{:02d}'.format(ii+1))
                 gf.attrs['fileName'] = os.path.basename(infile)
-                # fill ATL06 file group with unique file metadata
+                # fill ATL06 file group with unique ATL06 file metadata
                 for fgrp in list(f['METADATA']['Lineage']):
                     f.copy('METADATA/Lineage/{}'.format(fgrp), g['METADATA']['Lineage']['ATL06-{:02d}'.format(ii+1)])
 
@@ -145,9 +145,6 @@ def main(argv):
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
         fig.colorbar(im)
-        #m = Basemap(projection='stere',resolution='i',lat_ts=70, lat_0=90, lon_0=45,
-        #            llcrnrlon=-56, llcrnrlat=58, urcrnrlon=11, urcrnrlat=80, rsphere=(6378137.0, 6356752.3142))
-        #m.drawcoastlines()
         
         ref, xo, delta = D.get_xovers()
         
