@@ -258,29 +258,59 @@ class data(object):
         for group in group_names:
             if hasattr(getattr(self,group),'list_of_fields'):
                 grp = g.create_group(group)
+
                 field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if group in row['group']}
+                # get the dimensions for the group
+                unique_dims = []
+                [unique_dims.append(dim.strip()) for field in field_attrs for dim in field_attrs[field]['dimensions'].split(',')]
+                udims = list(set(unique_dims))
+                # make dimension scales 
+                if 'N_pts' in udims:
+                    dset = grp.create_dataset('ref_pt',data=getattr(getattr(self,group),'ref_pt')) 
+                    dset.dims[0].label = 'N_pts'
+                if 'Nxo' in udims:
+                    dset = grp.create_dataset('ref_pt',data=getattr(getattr(self,group),'ref_pt')) 
+                    dset.dims[0].label = 'Nxo'                 
+                if 'N_cycles' in udims:
+                    dset = grp.create_dataset('cycle_number',data=getattr(getattr(self,group),'cycle_number')) 
+                    dset.dims[0].label = 'N_cycles'                   
+                if 'N_coeffs' in udims:
+                    dset = grp.create_dataset('coeff_index',data=np.arange(0,self.N_coeffs)) 
+                    dset.dims[0].label = 'N_coeffs'                 
+
                 if 'ref_surf' in group:
                     grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['slope_change_t0'] =np.mean(self.slope_change_t0).astype('int')
                     g.attrs['N_poly_coeffs']=int(self.N_coeffs)
-                    
+                                        
                 list_vars=getattr(self,group).list_of_fields
                 if 'cycle_stats' in group or 'corrected_h' in group:
                     list_vars.append('cycle_number')
                 if list_vars is not None:
                     for field in list_vars:
                         dimensions = field_attrs[field]['dimensions'].split(',')
-                        print('dimensions',field_attrs[field],dimensions)
 #                        if 'counts' in field_attrs[field]['units']:
-#                            dt = 'int8'
+#                            dt = 'int8   # ! poly_coeffs have units of counts, as well as many others
 #                        else:
 #                            dt = 'float32'
-                        dset = grp.create_dataset(field,data=getattr(getattr(self,group),field))
-                        for ii,dim in enumerate(dimensions):
-                            dset.dims[ii].label = dim.strip()
-                        for attr in attr_names:
-                            dset.attrs[attr] = field_attrs[field][attr]
+                        if 'ref_pt' not in field and 'cycle_number' not in field:
+                            dset = grp.create_dataset(field,data=getattr(getattr(self,group),field)) #,dtype=dt)
+                            for ii,dim in enumerate(dimensions):
+                                dim=dim.strip()
+                                dset.dims[ii].label = dim
+                                if 'N_pts' in dim: 
+                                    dset.dims[ii].attach_scale(grp['ref_pt'])
+                                if 'Nxo' in dim: 
+                                    dset.dims[ii].attach_scale(grp['ref_pt'])
+                                if 'N_cycles' in dim:
+                                    dset.dims[ii].attach_scale(grp['cycle_number'])
+                                if 'N_coeffs' in dim:
+                                    dset.dims[ii].attach_scale(grp['coeff_index'])
+                                
+                            for attr in attr_names:
+                                if 'dimensions' not in attr:
+                                    dset.attrs[attr] = field_attrs[field][attr]
         f.close()
         return
 
