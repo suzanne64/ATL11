@@ -266,25 +266,30 @@ class data(object):
                 [unique_dims.append(dim.strip()) for field in field_attrs for dim in field_attrs[field]['dimensions'].split(',')]
                 udims = list(set(unique_dims))
                 # make datasets for dimension scales ~
-                if 'N_pts' in udims:
+                if 'N_pts' in udims or 'Nxo' in udims:
                     dset = grp.create_dataset('ref_pt',data=getattr(getattr(self,group),'ref_pt')) 
-                    #dset.dims[0].label = 'N_pts'
                     dset.dims[0].label = 'ref_pt'
-                if 'Nxo' in udims:
-                    dset = grp.create_dataset('ref_pt',data=getattr(getattr(self,group),'ref_pt')) 
-                    #dset.dims[0].label = 'Nxo'                 
-                    dset.dims[0].label = 'ref_pt'
+                    for attr in attr_names:
+                        if 'dimensions' not in attr:
+                            dset.attrs[attr] = field_attrs['ref_pt'][attr]
                 if 'N_cycles' in udims:
                     dset = grp.create_dataset('cycle_number',data=getattr(getattr(self,group),'cycle_number')) 
-                    #dset.dims[0].label = 'N_cycles'                   
                     dset.dims[0].label = 'cycle_number'                   
+                    for attr in attr_names:
+                        if 'dimensions' not in attr:
+                            dset.attrs[attr] = field_attrs['cycle_number'][attr]
                 if 'N_coeffs' in udims:
                     dset = grp.create_dataset('poly_exponent_x',data=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)) 
-                    #dset.dims[0].label = 'N_coeffs'                 
                     dset.dims[0].label = 'poly_exponent_x'                 
+                    for attr in attr_names:
+                        if 'dimensions' not in attr:
+                            dset.attrs[attr] = field_attrs['poly_exponent_x'][attr]
                     dset = grp.create_dataset('poly_exponent_y',data=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)) 
                     dset.dims[0].label = 'poly_exponent_y'                 
-
+                    for attr in attr_names:
+                        if 'dimensions' not in attr:
+                            dset.attrs[attr] = field_attrs['poly_exponent_y'][attr]
+                            
                 if 'ref_surf' in group:
                     grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
@@ -305,13 +310,9 @@ class data(object):
                             dset = grp.create_dataset(field,data=getattr(getattr(self,group),field)) #,dtype=dt)
                             for ii,dim in enumerate(dimensions):
                                 dim=dim.strip()
-                                #dset.dims[ii].label = dim
-                                if 'N_pts' in dim: 
+                                if 'N_pts' in dim or 'Nxo' in dim: 
                                     dset.dims[ii].attach_scale(grp['ref_pt'])
                                     dset.dims[ii].label = 'ref_pt'
-                                if 'Nxo' in dim: 
-                                    dset.dims[ii].attach_scale(grp['ref_pt'])
-                                    dset.dims[ii].label = 'ref_pt' #_xo'
                                 if 'N_cycles' in dim:
                                     dset.dims[ii].attach_scale(grp['cycle_number'])
                                     dset.dims[ii].label = 'cycle_number'
