@@ -291,8 +291,8 @@ class data(object):
                             dset.attrs[attr] = field_attrs['poly_exponent_y'][attr]
                             
                 if 'ref_surf' in group:
-                    grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
-                    grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
+#                    grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
+#                    grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['slope_change_t0'] =np.mean(self.slope_change_t0).astype('int')
                     g.attrs['N_poly_coeffs']=int(self.N_coeffs)
                                         
