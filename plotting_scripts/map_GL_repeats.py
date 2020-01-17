@@ -21,7 +21,7 @@ field_dict={'corrected_h':['h_corr','latitude','longitude','delta_time']}
 
 if True:   
     MOG=pc.grid.data().from_geotif('/Volumes/ice1/ben/MOG/2005/mog_2005_1km.tif')
-    thedir='/Volumes/ice2/ben/scf/GL_11/U01'
+    thedir='/Volumes/ice2/ben/scf/GL_11/U02'
     files=glob.glob(thedir+'/ATL11*.h5')
     xydh=[]
     for count, file in enumerate(files):
