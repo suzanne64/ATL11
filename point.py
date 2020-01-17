@@ -71,8 +71,7 @@ class point(ATL11.data):
         self.y_atc_ctr=self.ref_surf.y_atc
         self.params_11.poly_exponent=D11.poly_exponent
         return self
-
-
+    
     def select_ATL06_pairs(self, D6, pair_data):
         # Select ATL06 data based on data-quality flags in ATL06 data, and based on
         # consistency checks on the along-track and across-track slope.
@@ -465,9 +464,12 @@ class point(ATL11.data):
             self.ref_surf.misfit_chi2r=np.NaN
         self.ref_surf.misfit_RMS = np.sqrt(np.mean(r_fit**2))
         self.selected_segments[np.nonzero(self.selected_segments)] = selected_segs
-        # identify the ref_surf cycles that survived the fit
+        # identify the ref_surf cycles that survived the fit  
         self.ref_surf_cycles=self.ref_surf_cycles[fit_columns[TOC['zp']]]
-
+        # map the columns remaining into a TOC that gives the location of each
+        # field in the subsetted fitting matrix
+        TOC_sub=remap_TOC(TOC, fit_columns)
+        
         # recalculate selected_pairs (possibly redundant, but the break statements can make this necessary)
         selected_pairs = selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
@@ -543,8 +545,8 @@ class point(ATL11.data):
         self.ref_surf.N_cycle_used = np.count_nonzero(self.ref_surf_cycles)
 
         # export the indices of the columns that represent the surface components
-        self.surf_mask=np.flatnonzero(fit_columns[TOC['surf']])
-        # write out the part of the covariance matrix corresponding to the surface model
+        self.surf_mask=TOC_sub['surf']
+        # write out the part of the covariance matrix corresponding to the surface model  C_m already corresponds to fit_columns
         self.C_m_surf=C_m[self.surf_mask,:][:,self.surf_mask]
  
 
@@ -586,7 +588,7 @@ class point(ATL11.data):
 
         return
 
-    def characterize_reference_surf(self):
+    def characterize_ref_surf(self):
         """
         method to calculate the slope and curvature of the reference surface
         """
@@ -849,3 +851,14 @@ def gen_inv(self,G,sigma):
     # calculate the generalized inverse of G
     G_g=np.linalg.solve(G_sq, np.dot(np.transpose(G), C_di.toarray()))
     return C_d, C_di, G_g
+
+def remap_TOC(TOC, fit_columns):
+    """
+    Function to handle remapping of columns after subsetting
+    """
+    TOC_sub={}
+    new_cols=np.cumsum(fit_columns)-1
+    for field in TOC:
+        old_cols=TOC[field][fit_columns[TOC[field]]]
+        TOC_sub[field]=new_cols[old_cols]
+    return TOC_sub
