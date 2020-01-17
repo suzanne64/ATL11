@@ -10,8 +10,9 @@ from PointDatabase.ATL06_data import ATL06_data
 import ATL11
 import numpy as np
 import re
+from PointDatabase.check_ATL06_blacklist import check_rgt_cycle_blacklist
 
-def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12]):
+def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=False):
     '''
     Read ATL06 data from a list of files for a specific beam pair
     
@@ -21,23 +22,30 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12]):
         cycles: first and last cycles to include
     '''
     params_11=ATL11.defaults()
-    # read in the ATL06 data from all the repeats
-    D6_list=[]
     ATL06_re=re.compile('ATL06_\d+_\d\d\d\d(\d\d)\d\d_')
+
+    # check the files against the blacklist
     for filename in ATL06_files:
         try:
             m=ATL06_re.search(filename)
             if (int(m.group(1)) < cycles[0]) or (int(m.group(1)) > cycles[1]) :
+                ATL06_files.remove(filename)
                 continue
         except Exception:
             pass
+        if check_rgt_cycle_blacklist(filename=filename)[0]:
+            ATL06_files.remove(filename)
+    if len(ATL06_files)==0:
+        print("edited D6 list has no files")
+        return None
+    # read in the ATL06 data from all the repeats
+    D6_list=[]
+    for filename in ATL06_files:
         try:
             D6_list.append(ATL06_data(field_dict=params_11.ATL06_field_dict, beam_pair=beam_pair).from_file(filename))
         except KeyError:
             pass
-    if len(D6_list)==0:
-        return None
-    
+
     D6=ATL06_data(beam_pair=beam_pair).from_list(D6_list)
     if D6.size == 0:
         return None
