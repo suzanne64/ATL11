@@ -14,7 +14,8 @@ from ATL11.RDE import RDE
 class defaults:
     def __init__(self):
         # provide option to read keyword=val pairs from the input file
-        self.L_search_AT=100 # meters, along track (in x), filters along track
+        #self.L_search_AT=100 # meters, along track (in x), filters along track
+        self.L_search_AT=60
         self.L_search_XT=65 # meters, cross track (in y), filters across track
         self.seg_sigma_threshold_min=0.05
         self.beam_spacing=90 # meters
