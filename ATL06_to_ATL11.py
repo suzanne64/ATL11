@@ -134,6 +134,7 @@ def main(argv):
         
     if args.test_plot:
         print(out_file)
+        #
         D = ATL11.data().from_file(out_file, field_dict=None)
         cm = matplotlib.cm.get_cmap('jet')
         colorslist = ['blue','green','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow']
@@ -165,14 +166,13 @@ def main(argv):
         plt.grid()
         
         fig = plt.figure(4)
-        print
         for ii in range(len(ref.h_corr[:])):
             im = plt.scatter(ref.x_atc,ref.h_corr[ii].ravel()-xo.h_corr[:],c=colorslist[ii],marker='.') 
         plt.title('Diff Corrected Heights: cyc3-xo(b), cyc4-xo(g)')
         plt.xlabel('Along Track Distance [m]')
         plt.ylabel('Heights [m]')
         plt.grid()
-        print('type Control-C after viewing figures, to continue')
+        print('After viewing figures, type Control-C and put cursor over figures, to continue')
         plt.show()
 
 if __name__=="__main__":

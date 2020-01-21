@@ -291,8 +291,8 @@ class data(object):
                             dset.attrs[attr] = field_attrs['poly_exponent_y'][attr]
                             
                 if 'ref_surf' in group:
-#                    grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
-#                    grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
+                    grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
+                    grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['slope_change_t0'] =np.mean(self.slope_change_t0).astype('int')
                     g.attrs['N_poly_coeffs']=int(self.N_coeffs)
                                         
@@ -306,24 +306,25 @@ class data(object):
 #                            dt = 'int32   # ! poly_coeffs have units of counts, as well as many others
 #                        else:
 #                            dt = 'float32'
-                        if 'ref_pt' not in field and 'cycle_number' not in field:
-                            dset = grp.create_dataset(field,data=getattr(getattr(self,group),field)) #,dtype=dt)
-                            for ii,dim in enumerate(dimensions):
-                                dim=dim.strip()
-                                if 'N_pts' in dim or 'Nxo' in dim: 
-                                    dset.dims[ii].attach_scale(grp['ref_pt'])
-                                    dset.dims[ii].label = 'ref_pt'
-                                if 'N_cycles' in dim:
-                                    dset.dims[ii].attach_scale(grp['cycle_number'])
-                                    dset.dims[ii].label = 'cycle_number'
-                                if 'N_coeffs' in dim:
-                                    dset.dims[ii].attach_scale(grp['poly_exponent_x'])
-                                    dset.dims[ii].attach_scale(grp['poly_exponent_y'])
-                                    dset.dims[ii].label = '(poly_exponent_x, poly_exponent_y)'
-
-                            for attr in attr_names:
-                                if 'dimensions' not in attr:
-                                    dset.attrs[attr] = field_attrs[field][attr]
+                        if ('ref_pt' not in field and 'cycle_number' not in field) or ('cycle_number' in field and 'crossing_track_data' in group):
+                                dset = grp.create_dataset(field,data=getattr(getattr(self,group),field)) #,dtype=dt)
+                                for ii,dim in enumerate(dimensions):
+                                    dim=dim.strip()
+                                    if 'N_pts' in dim or 'Nxo' in dim: 
+                                        dset.dims[ii].attach_scale(grp['ref_pt'])
+                                        dset.dims[ii].label = 'ref_pt'
+                                    if 'N_cycles' in dim:
+                                        dset.dims[ii].attach_scale(grp['cycle_number'])
+                                        dset.dims[ii].label = 'cycle_number'
+                                    if 'N_coeffs' in dim:
+                                        dset.dims[ii].attach_scale(grp['poly_exponent_x'])
+                                        dset.dims[ii].attach_scale(grp['poly_exponent_y'])
+                                        dset.dims[ii].label = '(poly_exponent_x, poly_exponent_y)'
+                                        
+                                for attr in attr_names:
+                                    if 'dimensions' not in attr:
+                                        dset.attrs[attr] = field_attrs[field][attr]
+                                        
         f.close()
         return
 
@@ -382,13 +383,9 @@ class data(object):
             
             # fill vectors for each cycle
             for ic in range(self.corrected_h.delta_time.shape[1]):  # number of cycles
-                print('i1,ic',i1,ic)
                 if not np.isfinite(self.corrected_h.h_corr[i0, ic]):
                     continue
                 for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:  # vars that are N_pts x N_cycles
-                    print(ic, [getattr(self.corrected_h, field)[i0, ic]])
-                    print('length',len(xo['ref'][field]))
-                    print('length',len(xo['ref'][field][:]))
                     xo['ref'][field][ic].append([getattr(self.corrected_h, field)[i0, ic]])
                 xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_summary_zero_count[i0, ic] > 0]
                 xo['ref']['cycle_number'] += [getattr(self.corrected_h,'cycle_number')[ic]]
