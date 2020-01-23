@@ -7,8 +7,9 @@ Created on Sun Aug 11 20:52:34 2019
 """
 
 import numpy as np
-from PointDatabase.point_data import point_data
-from PointDatabase import geo_index
+#from PointDatabase.point_data import point_data
+#from PointDatabase import geo_index
+import pointCollection as pc
 
 def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11):
     """
@@ -36,20 +37,20 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
             # if we haven't already read in the data, read it in.  These data will be in xover_cache[this_key]
             temp=[]
             for GI_file in GI_files:
-                new_data = geo_index().from_file(GI_file).query_xy(this_key, fields=params_11.ATL06_xover_field_list);
+                new_data = pc.geoIndex().from_file(GI_file).query_xy(this_key, fields=params_11.ATL06_field_dict);
                 if new_data is not None:
                     temp += new_data
             if len(temp) == 0:
                 xover_cache[this_key]=None
                 continue
-            xover_cache[this_key]={'D':point_data(list_of_fields=params_11.ATL06_xover_field_list).from_list(temp)}
+            xover_cache[this_key]={'D':pc.data(fields=params_11.ATL06_xover_field_list).from_list(temp)}
             # remove the current rgt from data in the cache
             xover_cache[this_key]['D'].index(~np.in1d(xover_cache[this_key]['D'].rgt, [rgt]))
             if xover_cache[this_key]['D'].size==0:
                 continue
             xover_cache[this_key]['D'].get_xy(EPSG=params_11.EPSG)
             # index the cache at 100-m resolution
-            xover_cache[this_key]['index']=geo_index(delta=[100, 100], data=xover_cache[this_key]['D'])
+            xover_cache[this_key]['index']=pc.geoIndex(delta=[100, 100], data=xover_cache[this_key]['D'])
         # now read the data from the crossover cache
         if (xover_cache[this_key] is not None) and (xover_cache[this_key]['D'] is not None):
             try:
@@ -61,9 +62,9 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
             # if we have read in any data for the current bin, subset it to the bins around the reference point
             for key in Q:
                 for i0, i1 in zip(Q[key]['offset_start'], Q[key]['offset_end']):
-                    D_xover.append(xover_cache[this_key]['D'].subset(np.arange(i0, i1+1, dtype=int)))
+                    D_xover.append(xover_cache[this_key]['D'][np.arange(i0, i1+1, dtype=int)])
     if len(D_xover) > 0:
-        D_xover=point_data().from_list(D_xover)
+        D_xover=pc.data().from_list(D_xover)
         
     # cleanup the cache if it is too large
     if len(xover_cache.keys()) > 50:
