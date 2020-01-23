@@ -42,6 +42,7 @@ class data(object):
         self.pair_num=beam_pair
         self.cycles=cycles
         self.N_coeffs=N_coeffs
+        self.Nxo=0
         self.attrs={}
         self.filename=None
 
@@ -187,7 +188,7 @@ class data(object):
                         except ValueError:
                             print("ATL11 file %s: misshapen %s/%s" % (filename, 'crossing_track_data', field))
 
-            self.poly_exponent={'x':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf'].attrs['poly_exponent_y'])}
+            self.poly_exponent={'x':np.array(FH[pt]['ref_surf']['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf']['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
         return self
