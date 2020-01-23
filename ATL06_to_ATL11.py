@@ -12,7 +12,7 @@ import sys, h5py
 import matplotlib.pyplot as plt
 import matplotlib
 #from mpl_toolkits.basemap import Basemap
-from PointDatabase import geo_index
+import pointCollection as pc
 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
@@ -45,11 +45,8 @@ def main(argv):
     parser.add_argument('--num_points','-N', type=int, default=None, help="Number of reference points to process")
     parser.add_argument('--Hemisphere','-H', type=int, default=-1)
     parser.add_argument('--bounds', '-b', type=float, nargs=4, default=None, help="latlon bounds: west, south, east, north")
-<<<<<<< HEAD
     parser.add_argument('--test_plot', action='store_true', help="plots locations, elevations, and elevation differences between cycles")
-=======
     parser.add_argument('--Blacklist','-B', action='store_true')
->>>>>>> ATL06_to_ATL11.py: added blacklist option
     parser.add_argument('--verbose','-v', action='store_true')
     args=parser.parse_args()
 
@@ -83,7 +80,11 @@ def main(argv):
         D6 = ATL11.read_ATL06_data(files, beam_pair=pair, cycles=args.cycles, use_blacklist=args.Blacklist)
         if D6 is None:
             continue
-        D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, first_ref_pt=args.first_point, last_ref_pt=args.last_point, lonlat_bounds=args.bounds, num_ref_pts=args.num_points)
+        D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, \
+                            first_ref_pt=args.first_point,\
+                            last_ref_pt=args.last_point, \
+                            lonlat_bounds=args.bounds, 
+                            num_ref_pts=args.num_points)
 
         if D6 is None or len(ref_pt_numbers)==0: 
             continue
@@ -95,14 +96,15 @@ def main(argv):
         setattr(D11.corrected_h,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         # add dimensions to D11
         D11.N_pts, D11.N_cycles = D11.corrected_h.h_corr.shape
-        D11.Nxo = D11.crossing_track_data.h_corr.shape[0]
+        if isinstance(D11.crossing_track_data.h_corr, np.ndarray):
+            D11.Nxo = D11.crossing_track_data.h_corr.shape[0]
         
         if D11 is not None:
             D11.write_to_file(out_file)
 
     # create a geo index for the current file.  This gets saved in the '/index' group
     if os.path.isfile(out_file):
-        GI=geo_index(SRS_proj4=get_proj4(args.Hemisphere), delta=[1.e4, 1.e4]).for_file(out_file, 'ATL11', dir_root=args.out_dir)
+        GI=pc.geoIndex(SRS_proj4=get_proj4(args.Hemisphere), delta=[1.e4, 1.e4]).for_file(out_file, 'ATL11', dir_root=args.out_dir)
         GI.attrs['bin_root']=None
 
         # the 'file' attributes of the geo_index are of the form :pair1, :pair2, :pair3, which means that the 
