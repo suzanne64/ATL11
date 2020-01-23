@@ -6,7 +6,7 @@ Created on Thu Oct 26 11:08:33 2017f
 """
 
 import numpy as np
-from PointDatabase.point_data import point_data
+import pointCollection as pc
 #from poly_ref_surf import poly_ref_surf
 import matplotlib.pyplot as plt
 import scipy.sparse as sparse
@@ -186,13 +186,17 @@ class point(ATL11.data):
             mx_regression_y_degree=1
         else:
             mx_regression_y_degree=0
-
+        # if points are colinear, reduce the y degree to zero
+        if len(uY)==2 and len(uX)==2:
+            mx_regression_y_degree=0
+            
         #4c: Calculate along-track slope regression tolerance
         mx_regression_tol=np.maximum(0.01, 3*np.median(D6.dh_fit_dx_sigma[pairs_valid_for_x_fit,:].flatten()))
         x_slope_threshold=0
         for iteration in range(2):
             # 4d: regression of along-track slope against x_pair and y_pair
             self.mx_poly_fit=ATL11.poly_ref_surf(degree_xy=(mx_regression_x_degree, mx_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
+            
             if np.sum(pairs_valid_for_x_fit)>0:
                 x_slope_model, x_slope_resid,  x_slope_chi2r, x_slope_valid_flag=self.mx_poly_fit.fit(D6.x_atc[pairs_valid_for_x_fit,:].ravel(), D6.y_atc[pairs_valid_for_x_fit,:].ravel(), D6.dh_fit_dx[pairs_valid_for_x_fit,:].ravel(), max_iterations=1, min_sigma=mx_regression_tol)
                 # update what is valid based on regression flag
@@ -308,6 +312,7 @@ class point(ATL11.data):
         # establish new boolean arrays for selecting
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool)
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
+        
         # Subset some variables for shorthand
         x_atc      =D6.x_atc[self.valid_pairs.all,:].ravel()
         y_atc      =D6.y_atc[self.valid_pairs.all,:].ravel()
@@ -331,7 +336,7 @@ class point(ATL11.data):
         x_atcU = np.unique(np.round(x_atc/20).astype(int)) # np.unique orders the unique values
         y_atcU = np.unique(np.round((pair_data.y[self.valid_pairs.all]-self.ref_surf.y_atc)/20).astype(int))
         np.unique(np.round((y_atc-self.ref_surf.y_atc)/20)) # np.unique orders the unique values
-        # Table 4-4   # NOTE: need to note the change: round x_atcU and y_atcU to the nearest 20
+        # Table 4-4   
         self.ref_surf.deg_x = np.maximum(0, np.minimum(self.params_11.poly_max_degree_AT,len(x_atcU)-1) )
         self.ref_surf.deg_y = np.maximum(0, np.minimum(self.params_11.poly_max_degree_XT,len(y_atcU)) )
         if self.ref_surf.complex_surface_flag > 0:
@@ -375,7 +380,11 @@ class point(ATL11.data):
         # fit_columns is a boolean array identifying those columns of zp_original
         # that survive the fitting process
         fit_columns=np.ones(G_surf_zp_original.shape[1],dtype=bool)
-
+        # calculate the order in which the columns will be removed as the size and
+        # shape of G changes
+        deg_wt_sum=np.zeros_like(fit_columns, dtype=float)
+        deg_wt_sum[TOC['poly']]=self.degree_list_x+self.degree_list_y + 0.1*self.degree_list_y
+        
         # iterate to remove remaining outlier segments
         for iteration in range(self.params_11.max_fit_iterations):
             #  Make G a copy of G_surf_zp_original, containing only the selected segs
@@ -399,8 +408,13 @@ class point(ATL11.data):
                 selected_segs=np.ones( (np.sum(self.valid_pairs.all)*2),dtype=bool)
                 # use only the linear poly columns
                 fit_columns[TOC['poly'][self.degree_list_x+self.degree_list_y>1]]=False
+            # Force fit to be overdetermined
+            while fit_columns.sum() >= selected_segs.sum():
+                # eliminate the column with the largest weighted degree
+                fit_columns[deg_wt_sum==deg_wt_sum[fit_columns].max()]=False
             G=G[:, fit_columns]
-            if G.shape[0] < G.shape[1] or G.shape[1]==0:
+                
+            if G.shape[1]==0:
                 self.status['inversion failed']=True
                 if self.ref_surf.quality_summary==0:
                     self.ref_surf.quality_summary=5
@@ -440,15 +454,16 @@ class point(ATL11.data):
                 break
 
             # 3j.
+            selected_segs_prev=selected_segs.copy()
             if P<0.025 and iteration < self.params_11.max_fit_iterations-1:
-                selected_segs_prev=selected_segs
                 selected_segs = np.abs(r_seg/h_li_sigma) < r_tol # boolean
-                if np.all( selected_segs_prev==selected_segs ):
-                    break
-                
+            
             # make selected_segs pair-wise consistent
             selected_pairs=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
             selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
+            if np.all( selected_segs_prev==selected_segs ):
+                break
+
             
             if not np.any(selected_segs):
                 self.status['inversion failed']=True
@@ -665,10 +680,11 @@ class point(ATL11.data):
             else:
                 surf_model_sigma=np.transpose(self.ref_surf.poly_coeffs_sigma.ravel()[np.where(poly_mask)[0]])
             C_m_surf=sparse.diags(surf_model_sigma**2)
+        #C_m_surf may be sparse or full -- if sparse, convert to full
         try:
             C_m_surf=C_m_surf.toarray()
         except Exception:
-                pass
+            pass
         z_ref_surf_sigma= np.sqrt( np.diag( np.dot(np.dot(G_surf,C_m_surf),np.transpose(G_surf)) ) ) # equation 11
         return z_ref_surf, z_ref_surf_sigma
 
@@ -753,7 +769,7 @@ class point(ATL11.data):
         self.selected_segments = self.selected_segments | non_ref_segments.reshape(self.valid_pairs.all.shape[0],2)
 
     def corr_xover_heights(self, D):
-        if not isinstance(D, point_data):
+        if not isinstance(D, pc.data):
             return
          # find the segments that are within L_search_XT of the reference point
         dE, dN=self.local_NE_coords(D.latitude, D.longitude)
@@ -762,7 +778,7 @@ class point(ATL11.data):
             return
         dN=dN[in_search_radius]
         dE=dE[in_search_radius]
-        Dsub=D.subset(in_search_radius)
+        Dsub=D[in_search_radius]
         
         # fix missing Dsub.sigma_geo_r:
         if not hasattr(Dsub, 'sigma_geo_r'):
