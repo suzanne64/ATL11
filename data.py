@@ -194,6 +194,8 @@ class data(object):
         return self
 
     def get_xy(self, proj4_string=None, EPSG=None):
+        lat=self.corrected_h.latitude
+        lon=self.corrected_h.longitude
         # method to get projected coordinates for the data.  Adds 'x' and 'y' fields to the structure
         out_srs=osr.SpatialReference()
         if proj4_string is None and EPSG is not None:
@@ -204,8 +206,7 @@ class data(object):
                 out_srs.ImportFromWkt(proj4_string)
         ll_srs=osr.SpatialReference()
         ll_srs.ImportFromEPSG(4326)
-        lat=self.corrected_h.latitude
-        lon=self.corrected_h.longitude
+
         ct=osr.CoordinateTransformation(ll_srs, out_srs)
         if lat.size==0:
             self.x=np.zeros_like(lat)
@@ -364,50 +365,52 @@ class data(object):
         rgt=self.attrs['ReferenceGroundTrack']
         pair=self.attrs['beam_pair']
         xo={'ref':{},'crossing':{},'both':{}}
-        for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle_number','along_track_rss','x_atc','y_atc']:
+        n_cycles=self.corrected_h.h_corr.shape[1]
+        zz=np.zeros(n_cycles)
+        for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle_number','x_atc','y_atc']:
             xo['ref'][field]=[]
             xo['crossing'][field]=[]
-            if field in  ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic']:
-                xo['ref'][field].append([])
-                xo['ref'][field].append([])
+            #if field in  ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic']:
+            #    xo['ref'][field].append([])
+            #    xo['ref'][field].append([])
         if hasattr(self,'x'):
             for field in ['x','y']:
                  xo['ref'][field]=[]
                  xo['crossing'][field]=[]
-        xo['crossing']['RSSz']=[]
         
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt):
-            i0=np.where(self.corrected_h.ref_pt==ref_pt)[0][0]
+            i0=np.flatnonzero(self.corrected_h.ref_pt==ref_pt)[0]
             # fill vectors
             for field in ['latitude','longitude']:
-                xo['ref'][field] += [getattr(self.corrected_h, field)[i0]]
+                xo['ref'][field] += [getattr(self.corrected_h, field)[i0]+zz]
             for field in ['x_atc','y_atc']:
-                xo['ref'][field] += [getattr(self.ref_surf, field)[i0]]
-            xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]]
-            xo['ref']['rgt'] += [rgt]
-            for field in ['delta_time','h_corr','h_corr_sigma','ref_pt','rgt','atl06_quality_summary', 'cycle_number','along_track_rss' ]:
-                xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]]            
+                xo['ref'][field] += [getattr(self.ref_surf, field)[i0]+zz]
+            xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]+zz]
+            xo['ref']['rgt'] += [rgt+zz]
+            for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary', 'cycle_number']:#,'along_track_min_dh' ]:
+                xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]+zz]            
             
             # fill vectors for each cycle
-            for ic in range(self.corrected_h.delta_time.shape[1]):  # number of cycles
-                if not np.isfinite(self.corrected_h.h_corr[i0, ic]):
-                    continue
-                for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:  # vars that are N_pts x N_cycles
-                    xo['ref'][field][ic].append([getattr(self.corrected_h, field)[i0, ic]])
-                xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_summary_zero_count[i0, ic] > 0]
-                xo['ref']['cycle_number'] += [getattr(self.corrected_h,'cycle_number')[ic]]
-                if hasattr(self, 'x'):
-                    for field in ['x','y']:      
-                        xo['ref'][field] += [getattr(self, field)[i0]]
+            for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:  # vars that are N_pts x N_cycles
+                xo['ref'][field] += [getattr(self.corrected_h, field)[i0,:]]
+            xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_summary_zero_count[i0,:] > 0]
+            xo['ref']['cycle_number'] += [getattr(self.corrected_h,'cycle_number')]
+            if hasattr(self, 'x'):
+                for field in ['x','y']:      
+                    xo['ref'][field] += [getattr(self, field)[i0]+zz]
                         
         xo['crossing']['latitude']=xo['ref']['latitude']
         xo['crossing']['longitude']=xo['ref']['longitude']
         xo['crossing']['x_atc']=xo['ref']['x_atc']
         xo['crossing']['y_atc']=xo['ref']['y_atc']
         for field in xo['crossing']:
-            xo['crossing'][field]=np.array(xo['crossing'][field])
+            print(field)
+            xo['crossing'][field]=np.concatenate(xo['crossing'][field], axis=0)
         for field in xo['ref']:
-            xo['ref'][field]=np.array(xo['ref'][field])
+            try:
+                xo['ref'][field]=np.concatenate(xo['ref'][field], axis=0)
+            except ValueError:
+                print(field+"!!!")
         ref=point_data().from_dict(xo['ref'])
         crossing=point_data().from_dict(xo['crossing'])
         
