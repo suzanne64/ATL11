@@ -380,7 +380,7 @@ class point(ATL11.data):
         # fit_columns is a boolean array identifying those columns of zp_original
         # that survive the fitting process
         fit_columns=np.ones(G_surf_zp_original.shape[1],dtype=bool)
-        # calculate the order in which the columns will be removed as the size and
+        # (part of 3f) :calculate the order in which the columns will be removed as the size and
         # shape of G changes
         deg_wt_sum=np.zeros_like(fit_columns, dtype=float)
         deg_wt_sum[TOC['poly']]=self.degree_list_x+self.degree_list_y + 0.1*self.degree_list_y
@@ -408,7 +408,7 @@ class point(ATL11.data):
                 selected_segs=np.ones( (np.sum(self.valid_pairs.all)*2),dtype=bool)
                 # use only the linear poly columns
                 fit_columns[TOC['poly'][self.degree_list_x+self.degree_list_y>1]]=False
-            # Force fit to be overdetermined
+            # 3f: Force fit to be overdetermined
             while fit_columns.sum() >= selected_segs.sum():
                 # eliminate the column with the largest weighted degree
                 fit_columns[deg_wt_sum==deg_wt_sum[fit_columns].max()]=False
@@ -420,7 +420,7 @@ class point(ATL11.data):
                     self.ref_surf.quality_summary=5
                 return
 
-            # 3f, 3g. generate the data-covariance matrix, its inverse, and
+            # 3g, 3h. generate the data-covariance matrix, its inverse, and
             # the generalized inverse of G
             try:
                 C_d, C_di, G_g = gen_inv(self,G,h_li_sigma[selected_segs])
@@ -436,11 +436,11 @@ class point(ATL11.data):
             # the rest are zero
             m_surf_zp[fit_columns]=np.dot(G_g,h_li[selected_segs])
 
-            # 3h. Calculate model residuals for all segments
+            # 3i. Calculate model residuals for all segments
             r_seg=h_li-np.dot(G_surf_zp_original,m_surf_zp)
             r_fit=r_seg[selected_segs]
 
-            # 3i. Calculate the fitting tolerance,
+            # 3j. Calculate the fitting tolerance,
             r_tol = 3*ATL11.RDE(r_fit/h_li_sigma[selected_segs])
             # reduce chi-squared value
             misfit_chi2 = np.dot(np.dot(np.transpose(r_fit),C_di.toarray()),r_fit)
@@ -453,7 +453,7 @@ class point(ATL11.data):
             if self.ref_surf.complex_surface_flag:
                 break
 
-            # 3j.
+            # 3k
             selected_segs_prev=selected_segs.copy()
             if P<0.025 and iteration < self.params_11.max_fit_iterations-1:
                 selected_segs = np.abs(r_seg/h_li_sigma) < r_tol # boolean
@@ -508,7 +508,7 @@ class point(ATL11.data):
             self.ref_surf.slope_change_rate_x=np.nan
             self.ref_surf.slope_change_rate_y=np.nan
 
-        # 3k. propagate the errors
+        # 3l. propagate the errors
         # calculate the data covariance matrix including the scatter component
         h_li_sigma = D6.h_li_sigma[self.selected_segments]
         cycle      = D6.cycle_number[self.selected_segments]
@@ -859,7 +859,7 @@ def gen_inv(self,G,sigma):
     #  C_di: Inverse of C_d
     #  G_g: Generalized inverse of G
 
-    # 3f. Generate data-covariance matrix
+    # 3g. Generate data-covariance matrix
     C_d=sparse.diags(sigma**2)
     C_di=sparse.diags(1/sigma**2)
     G_sq=np.dot(np.dot(np.transpose(G),C_di.toarray()),G)
