@@ -1,3 +1,8 @@
+#! /usr/bin/env python3
+
+'''
+Executable script to generate ATL11 files based on ATL06 data.
+'''
 
 import os
 os.environ['MKL_NUM_THREADS']="1"
@@ -13,6 +18,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 #from mpl_toolkits.basemap import Basemap
 import pointCollection as pc
+
 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
@@ -139,47 +145,7 @@ def main(argv):
     print("ATL06_to_ATL11: done with "+out_file)
         
     if args.test_plot:
-        print(out_file)
-        #
-        D = ATL11.data().from_file(out_file, field_dict=None)
-        cm = matplotlib.cm.get_cmap('jet')
-        colorslist = ['blue','green','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow']
-        
-        fig = plt.figure(1)
-        im = plt.scatter(D.corrected_h.longitude, D.corrected_h.latitude, c=D.corrected_h.delta_time[:,0], s=35, marker='.', cmap=cm)
-        im = plt.scatter(D.crossing_track_data.longitude, D.crossing_track_data.latitude, c=D.crossing_track_data.delta_time, s=35, marker='.', cmap=cm)
-        plt.title('Delta times of ATL11 data')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        fig.colorbar(im)
-        
-        ref, xo, delta = D.get_xovers()
-        
-        fig = plt.figure(2)
-        for ii in range(len(ref.h_corr[:])):
-            im = plt.errorbar(ref.x_atc,ref.h_corr[ii],ref.h_corr_sigma[ii],fmt='.',capsize=4,color=colorslist[ii]) 
-        im = plt.errorbar(xo.x_atc,xo.h_corr[:],xo.h_corr_sigma[:],fmt='.',capsize=4,color=colorslist[ii+1])
-        plt.title('Corrected Heights: cyc3(b), cyc4(g), crossing(r)')
-        plt.xlabel('Along Track Distance [m]')
-        plt.ylabel('Heights [m]')
-        
-        fig = plt.figure(3)
-        for ii in range(len(ref.h_corr[:])-1):
-            im = plt.scatter(ref.x_atc,ref.h_corr[ii+1]-ref.h_corr[ii],c=colorslist[ii],marker='.') 
-        plt.title('Difference in Corrected Heights btn sequential cycles: later minus earlier')
-        plt.xlabel('Along Track Distance [m]')
-        plt.ylabel('Heights [m]')
-        plt.grid()
-        
-        fig = plt.figure(4)
-        for ii in range(len(ref.h_corr[:])):
-            im = plt.scatter(ref.x_atc,ref.h_corr[ii].ravel()-xo.h_corr[:],c=colorslist[ii],marker='.') 
-        plt.title('Diff Corrected Heights: cyc3-xo(b), cyc4-xo(g)')
-        plt.xlabel('Along Track Distance [m]')
-        plt.ylabel('Heights [m]')
-        plt.grid()
-        print('After viewing figures, type Control-C and put cursor over figures, to continue')
-        plt.show()
+        ATL11.ATL11_test_plot.ATL11_test_plot(out_file)
 
 if __name__=="__main__":
     main(sys.argv)
