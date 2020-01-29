@@ -309,23 +309,35 @@ class data(object):
 #                        else:
 #                            dt = 'float32'
                         if ('ref_pt' not in field and 'cycle_number' not in field) or ('cycle_number' in field and 'crossing_track_data' in group):
-                                dset = grp.create_dataset(field,data=getattr(getattr(self,group),field)) #,dtype=dt)
-                                for ii,dim in enumerate(dimensions):
-                                    dim=dim.strip()
-                                    if 'N_pts' in dim or 'Nxo' in dim: 
-                                        dset.dims[ii].attach_scale(grp['ref_pt'])
-                                        dset.dims[ii].label = 'ref_pt'
-                                    if 'N_cycles' in dim:
-                                        dset.dims[ii].attach_scale(grp['cycle_number'])
-                                        dset.dims[ii].label = 'cycle_number'
-                                    if 'N_coeffs' in dim:
-                                        dset.dims[ii].attach_scale(grp['poly_exponent_x'])
-                                        dset.dims[ii].attach_scale(grp['poly_exponent_y'])
-                                        dset.dims[ii].label = '(poly_exponent_x, poly_exponent_y)'
-                                        
-                                for attr in attr_names:
-                                    if 'dimensions' not in attr:
-                                        dset.attrs[attr] = field_attrs[field][attr]
+                            data = getattr(getattr(self,group),field)
+                            # change nans to proper invalid, depending on datatype
+                            if field_attrs[field]['datatype'].startswith('int'):
+                                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
+                            elif field_attrs[field]['datatype'].startswith('Float'):
+                                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
+                                
+                            dset = grp.create_dataset(field,data=data) #,dtype=dt)                            
+                            for ii,dim in enumerate(dimensions):
+                                dim=dim.strip()
+                                if 'N_pts' in dim or 'Nxo' in dim: 
+                                    dset.dims[ii].attach_scale(grp['ref_pt'])
+                                    dset.dims[ii].label = 'ref_pt'
+                                if 'N_cycles' in dim:
+                                    dset.dims[ii].attach_scale(grp['cycle_number'])
+                                    dset.dims[ii].label = 'cycle_number'
+                                if 'N_coeffs' in dim:
+                                    dset.dims[ii].attach_scale(grp['poly_exponent_x'])
+                                    dset.dims[ii].attach_scale(grp['poly_exponent_y'])
+                                    dset.dims[ii].label = '(poly_exponent_x, poly_exponent_y)'
+                                    
+                            for attr in attr_names:
+                                if 'dimensions' not in attr:
+                                    dset.attrs[attr] = field_attrs[field][attr]
+                            if field_attrs[field]['datatype'].startswith('int'):
+                                dset.attrs['_FillValue'] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                            elif field_attrs[field]['datatype'].startswith('Float'):
+                                dset.attrs['_FillValue'] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                            
                                         
         f.close()
         return

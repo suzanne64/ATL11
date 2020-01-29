@@ -10,7 +10,7 @@ from PointDatabase.ATL06_data import ATL06_data
 import ATL11
 import numpy as np
 import re
-from PointDatabase.check_ATL06_blacklist import check_rgt_cycle_blacklist
+from ATL11.check_ATL06_blacklist import check_rgt_cycle_blacklist
 
 def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=False):
     '''
