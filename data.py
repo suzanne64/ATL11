@@ -7,13 +7,12 @@ Created on Thu Oct 26 11:08:33 2017f
 
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py, re, os, csv
+import h5py,  os, csv
 import ATL11
 from osgeo import osr
 import inspect
-from PointDatabase import point_data
-from PointDatabase.ATL06_data import ATL06_data
-
+import pointCollection as pc
+from ATL11.ATL06_pair import ATL06_pair
 
 class data(object):
     # class to hold ATL11 data in ATL11.groups
@@ -385,7 +384,6 @@ class data(object):
         
     def get_xovers(self):
         rgt=self.attrs['ReferenceGroundTrack']
-        pair=self.attrs['beam_pair']
         xo={'ref':{},'crossing':{},'both':{}}
         n_cycles=self.corrected_h.h_corr.shape[1]
         zz=np.zeros(n_cycles)
@@ -433,8 +431,8 @@ class data(object):
                 xo['ref'][field]=np.concatenate(xo['ref'][field], axis=0)
             except ValueError:
                 print(field+"!!!")
-        ref=point_data().from_dict(xo['ref'])
-        crossing=point_data().from_dict(xo['crossing'])
+        ref=pc.data().from_dict(xo['ref'])
+        crossing=pc.data().from_dict(xo['crossing'])
         
         delta={}
         delta['h_corr']=crossing.h_corr-ref.h_corr
@@ -442,7 +440,7 @@ class data(object):
         delta['h_corr_sigma']=np.sqrt(crossing.h_corr_sigma**2+ref.h_corr_sigma**2)
         delta['latitude']=ref.latitude.copy()
         delta['longitude']=ref.longitude.copy()
-        delta=point_data().from_dict(delta)
+        delta=pc.data().from_dict(delta)
         return ref, crossing, delta
 
     def plot(self):
@@ -512,14 +510,14 @@ class data(object):
 
             x_atc_ctr=ref_pt_x[count]
             # section 5.1.1
-            D6_sub=D6.subset(np.any(np.abs(D6.segment_id-ref_pt) <= params_11.N_search, axis=1), by_row=True)
+            D6_sub=D6[np.any(np.abs(D6.segment_id-ref_pt) <= params_11.N_search, axis=1)]
             if D6_sub.h_li.shape[0]<=1:
                 if verbose:
                     print("not enough data at ref pt=%d" % ref_pt)
                 continue
 
             #2a. define representative x and y values for the pairs
-            pair_data=D6_sub.get_pairs(datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle_number','h_li', 'h_li_sigma'])   # this might go, similar to D6_sub
+            pair_data=ATL06_pair().from_ATL06(D6_sub, datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle_number','h_li', 'h_li_sigma'])   # this might go, similar to D6_sub
             if ~np.any(np.isfinite(pair_data.y)):
                 continue
             P11=ATL11.point(N_pairs=len(pair_data.x), rgt=D6_sub.rgt[0, 0],\
@@ -589,7 +587,7 @@ class data(object):
                 D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
                 P11.corr_xover_heights(D_xover)
             # if we have read any data for the current bin, run the crossover calculation
-            PLOTME=False#isinstance(D_xover, point_data);
+            PLOTME=False
             if PLOTME:
                 plt.figure()
                 for key in D_xover_cache.keys():

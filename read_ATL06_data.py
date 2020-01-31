@@ -6,10 +6,10 @@ Created on Tue Aug 13 16:27:09 2019
 @author: ben
 """
 
-from PointDatabase.ATL06_data import ATL06_data
 import ATL11
 import numpy as np
 import re
+import pointCollection as pc
 from ATL11.check_ATL06_blacklist import check_rgt_cycle_blacklist
 
 def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=False):
@@ -42,11 +42,11 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=Fals
     D6_list=[]
     for filename in ATL06_files:
         try:
-            D6_list.append(ATL06_data(field_dict=params_11.ATL06_field_dict, beam_pair=beam_pair).from_file(filename))
+            D6_list.append(pc.ATL06.data(field_dict=params_11.ATL06_field_dict, beam_pair=beam_pair).from_h5(filename))
         except KeyError:
             pass
 
-    D6=ATL06_data(beam_pair=beam_pair).from_list(D6_list)
+    D6=pc.ATL06.data(beam_pair=beam_pair).from_list(D6_list)
     if D6.size == 0:
         return None
     # reorder data rows from D6 by cycle

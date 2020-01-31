@@ -14,9 +14,6 @@ import numpy as np
 import ATL11
 import glob
 import sys, h5py
-import matplotlib.pyplot as plt
-import matplotlib
-#from mpl_toolkits.basemap import Basemap
 import pointCollection as pc
 
 
