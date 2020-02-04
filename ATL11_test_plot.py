@@ -61,6 +61,10 @@ def ATL11_test_plot(ATL11_file):
     plt.ylabel('Heights [m]')
     plt.grid()
     print('After viewing figures, type Control-C and put cursor over figures, to continue')
+    
+    fig = plt.figure(5)
+    good = np.flatnonzero(np.abs(D.corrected_h.h_corr[:,1])<10000)
+    plt.plot(D.corrected_h.h_corr[good,1],'.')
     plt.show()
     
 if __name__=='__main__':
