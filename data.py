@@ -152,7 +152,7 @@ class data(object):
                     for field in FH[pt][group].keys():
                         #print('line 153',group, field)
                         field_dict[group].append(field)
-
+            # Suzanne, rework this using dim scales.
             N_pts=FH[pt]['corrected_h']['h_corr'][index_range[0]:index_range[-1],:].shape[0]
             cycles=[FH[pt].attrs['first_cycle'], FH[pt].attrs['last_cycle']]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
@@ -162,7 +162,19 @@ class data(object):
                 if group != 'crossing_track_data':
                     for field in field_dict[group]:
                         try:
-                            this_field=FH[pt][group][field]
+                            this_field_data_type = FH[pt][group][field].attrs['datatype']
+                            this_field = np.array(FH[pt][group][field])
+
+                            # check for invalids replace with nans
+                            if 'int' in this_field_data_type:
+                                hex_field = np.array([hex(item) for item in this_field.flatten()]).reshape(this_field.shape)
+                                # change to float because nan is a float
+                                this_field = this_field.astype('float')
+                                this_field[hex_field==hex(np.iinfo(np.dtype(this_field_data_type)).max)] = np.nan
+                            if 'Float' in this_field_data_type:
+                                hex_field = np.array([item.hex() for item in this_field.flatten()]).reshape(this_field.shape)
+                                this_field[hex_field==np.finfo(np.dtype(this_field_data_type)).max.hex()] = np.nan
+                                
                             if len(this_field.shape) > 1:
                                 setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
                             else:
@@ -269,7 +281,7 @@ class data(object):
                 udims = list(set(unique_dims))
                 # make datasets for dimension scales ~
                 if 'N_pts' in udims or 'Nxo' in udims:
-                    dset = grp.create_dataset('ref_pt',data=getattr(getattr(self,group),'ref_pt')) 
+                    dset = grp.create_dataset('ref_pt',data=getattr(getattr(self,group),'ref_pt').astype(int)) 
                     dset.dims[0].label = 'ref_pt'
                     for attr in attr_names:
                         if 'dimensions' not in attr:
@@ -304,15 +316,12 @@ class data(object):
                 if list_vars is not None:
                     for field in list_vars:
                         dimensions = field_attrs[field]['dimensions'].split(',')
-#                        if 'counts' in field_attrs[field]['units']:
-#                            dt = 'int32   # ! poly_coeffs have units of counts, as well as many others
-#                        else:
-#                            dt = 'float32'
                         if ('ref_pt' not in field and 'cycle_number' not in field) or ('cycle_number' in field and 'crossing_track_data' in group):
                             data = getattr(getattr(self,group),field)
                             # change nans to proper invalid, depending on datatype
                             if field_attrs[field]['datatype'].startswith('int'):
                                 data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
+                                data = data.astype('int')  # don't change to int before substituting nans with invalid.
                             elif field_attrs[field]['datatype'].startswith('Float'):
                                 data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
                                 
