@@ -64,6 +64,7 @@ def ATL11_test_plot(ATL11_file):
 
     fig = plt.figure(5)
     plt.plot(D.corrected_h.h_corr[:,1],'.')
+    print(D.corrected_h.h_corr[260:263,:])
     plt.show()
     
 if __name__=='__main__':
