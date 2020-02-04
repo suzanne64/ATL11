@@ -60,11 +60,10 @@ def ATL11_test_plot(ATL11_file):
     plt.xlabel('Along Track Distance [m]')
     plt.ylabel('Heights [m]')
     plt.grid()
-    print('After viewing figures, type Control-C and put cursor over figures, to continue')
 
     fig = plt.figure(5)
     plt.plot(D.corrected_h.h_corr[:,1],'.')
-    print(D.corrected_h.h_corr[260:263,:])
+    print('After viewing figures, type Control-C and put cursor over figures, to continue')
     plt.show()
     
 if __name__=='__main__':

@@ -133,7 +133,7 @@ class data(object):
 
         return self
 
-    def from_file(self,  filename, pair=2, index_range=[0, -1], field_dict=None):
+    def from_file(self,  filename, pair=2, index_range=[0, -1], field_dict=None, invalid_to_nan=True):
         '''
         read ATL11 data for a pair track from a file
         '''
@@ -166,14 +166,15 @@ class data(object):
                             this_field = np.array(FH[pt][group][field])
 
                             # check for invalids replace with nans
-                            if 'int' in this_field_data_type:
-                                hex_field = np.array([hex(item) for item in this_field.flatten()]).reshape(this_field.shape)
-                                # change to float because nan is a float
-                                this_field = this_field.astype('float')
-                                this_field[hex_field==hex(np.iinfo(np.dtype(this_field_data_type)).max)] = np.nan
-                            if 'Float' in this_field_data_type:
-                                hex_field = np.array([item.hex() for item in this_field.flatten()]).reshape(this_field.shape)
-                                this_field[hex_field==np.finfo(np.dtype(this_field_data_type)).max.hex()] = np.nan
+                            if invalid_to_nan:
+                                if 'int' in this_field_data_type:
+                                    hex_field = np.array([hex(item) for item in this_field.flatten()]).reshape(this_field.shape)
+                                    # change to float because nan is a float
+                                    this_field = this_field.astype('float')
+                                    this_field[hex_field==hex(np.iinfo(np.dtype(this_field_data_type)).max)] = np.nan
+                                if 'Float' in this_field_data_type:
+                                    hex_field = np.array([item.hex() for item in this_field.flatten()]).reshape(this_field.shape)
+                                    this_field[hex_field==np.finfo(np.dtype(this_field_data_type)).max.hex()] = np.nan
                                 
                             if len(this_field.shape) > 1:
                                 setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
