@@ -10,10 +10,11 @@ import numpy as np
 def RDE(x):
     xs=x.copy()
     xs=np.isfinite(xs)   # this changes xs from values to a boolean
-    if np.sum(xs)<2 :
+    N=len(xs.nonzero()[0])
+    if N<2 :
         return np.nan
-    ind=np.arange(0.5, np.sum(xs))
-    LH=np.interp(np.array([0.16, 0.84])*np.sum(xs), ind, np.sort(x[xs]))
+    ind=np.arange(0.5, N)
+    LH=np.interp(np.array([0.16, 0.84])*N, ind, np.sort(x[xs]))
     #print('LH =',LH)
     return (LH[1]-LH[0])/2.  # trying to get some kind of a width of the data ~variance
 
