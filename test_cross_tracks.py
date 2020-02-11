@@ -33,6 +33,8 @@ xy_srs=osr.SpatialReference()
 xy_srs.ImportFromProj4( SRS_proj4)
 ll_srs=osr.SpatialReference()
 ll_srs.ImportFromEPSG(4326)
+if hasattr(osr,'OAMS_TRADITIONAL_GIS_ORDER'):
+    ll_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 ct=osr.CoordinateTransformation(ll_srs, xy_srs)
 x, y, z = list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(D11.corrected_h.longitude), np.ravel(D11.corrected_h.latitude), np.zeros_like(np.ravel(D11.corrected_h.latitude)))]))
  
