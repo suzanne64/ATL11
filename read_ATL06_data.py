@@ -10,7 +10,7 @@ import ATL11
 import numpy as np
 import re
 import pointCollection as pc
-from ATL11.check_ATL06_blacklist import check_rgt_cycle_blacklist
+from ATL11.check_ATL06_hold_list import check_ATL06_hold_list
 
 def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=False):
     '''
@@ -24,8 +24,10 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=Fals
     params_11=ATL11.defaults()
     ATL06_re=re.compile('ATL06_\d+_\d\d\d\d(\d\d)\d\d_')
 
+    hold_list=None
+
     # check the files against the blacklist
-    for filename in ATL06_files:
+    for filename in ATL06_files.copy():
         try:
             m=ATL06_re.search(filename)
             if (int(m.group(1)) < cycles[0]) or (int(m.group(1)) > cycles[1]) :
@@ -33,7 +35,7 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=Fals
                 continue
         except Exception:
             pass
-        if check_rgt_cycle_blacklist(filename=filename)[0]:
+        if check_ATL06_hold_list([filename], hold_list=hold_list)[0]:
             ATL06_files.remove(filename)
     if len(ATL06_files)==0:
         print("edited D6 list has no files")
