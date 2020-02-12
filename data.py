@@ -398,7 +398,6 @@ class data(object):
         if hasattr(self,'x'):
             for field in ['x','y']:
                  xo['ref'][field]=[]
-                 xo['crossing'][field]=[]
         
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt):
             i0=np.flatnonzero(self.corrected_h.ref_pt==ref_pt)[0]
@@ -426,13 +425,9 @@ class data(object):
         xo['crossing']['x_atc']=xo['ref']['x_atc']
         xo['crossing']['y_atc']=xo['ref']['y_atc']
         for field in xo['crossing']:
-            print(field)
             xo['crossing'][field]=np.concatenate(xo['crossing'][field], axis=0)
         for field in xo['ref']:
-            try:
-                xo['ref'][field]=np.concatenate(xo['ref'][field], axis=0)
-            except ValueError:
-                print(field+"!!!")
+            xo['ref'][field]=np.concatenate(xo['ref'][field], axis=0)
         ref=pc.data().from_dict(xo['ref'])
         crossing=pc.data().from_dict(xo['crossing'])
         
