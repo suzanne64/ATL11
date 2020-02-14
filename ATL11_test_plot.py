@@ -11,13 +11,10 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 import pointCollection as pc
-import re
-
 
 def ATL11_test_plot(ATL11_file, hemisphere=1, pair=2, mosaic=None):
     print(ATL11_file)
     ATL11_rgt=ATL11_file.split('_')[1][:4]
-
     #
     D = ATL11.data().from_file(ATL11_file, field_dict=None)
     
@@ -27,7 +24,7 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, pair=2, mosaic=None):
         D.get_xy(EPSG=3031)
       
     cm = matplotlib.cm.get_cmap('jet')
-    colorslist = ['blue','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow','green']
+    colorslist = ['blue','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow']
     ref, xo, delta = D.get_xovers()
 
     fig = plt.figure(1)
@@ -45,31 +42,51 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, pair=2, mosaic=None):
     
     fig = plt.figure(2)
     for ii in range(len(D.corrected_h.cycle_number)):
+        cycle=int(D.corrected_h.cycle_number[ii])
         plt.errorbar(D.ref_surf.x_atc, D.corrected_h.h_corr[:,ii], \
-                D.corrected_h.h_corr_sigma[:,ii] ,fmt='.',capsize=4,color=colorslist[ii])
-    for cycle in D.corrected_h.cycle_number:
+                D.corrected_h.h_corr_sigma[:,ii] ,fmt='.',capsize=4,color=colorslist[cycle], label='at for cycle '+str(cycle))
+    for cycle in D.corrected_h.cycle_number.astype(int):
         ii=xo.cycle_number==cycle
         im = plt.errorbar(xo.x_atc[ii],xo.h_corr[ii],xo.h_corr_sigma[ii],fmt='x',capsize=4,color='k')
         ii=ref.cycle_number==cycle
-        im = plt.errorbar(ref.x_atc[ii],ref.h_corr[ii],ref.h_corr_sigma[ii],fmt='*',capsize=4,color='g')
+        im = plt.errorbar(ref.x_atc[ii],ref.h_corr[ii],ref.h_corr_sigma[ii],fmt='*',capsize=4,color=colorslist[cycle], label='ref, cycle '+str(cycle))
 
-    plt.title('Corrected Heights: cyc3(b), cyc4(g), crossing :x, ref:*')
+    plt.title('Corrected Heights')
     plt.xlabel('Along Track Distance [m]')
     plt.ylabel('Heights [m]')
+    plt.legend()
     
     fig = plt.figure(3)
-    for col in range(1, len(D.corrected_h.cycle_number) ):
+    for col in np.arange(1, len(D.corrected_h.cycle_number), dtype=int):
         plt.errorbar(D.ref_surf.x_atc, 
             D.corrected_h.h_corr[:,col]-D.corrected_h.h_corr[:,col-1], \
             np.sqrt(np.sum(D.corrected_h.h_corr_sigma[:, col-1:col+1]**2, \
-                           axis=1)) ,fmt='.',capsize=4,color=colorslist[0])
+                           axis=1)) ,fmt='.',capsize=4,color=colorslist[col], 
+                label='cycle %d - cycle %d' % (D.corrected_h.cycle_number[col], D.corrected_h.cycle_number[col-1]))
     
     plt.title('Difference in Corrected Heights btn sequential cycles: later minus earlier')
     plt.xlabel('Along Track Distance [m]')
     plt.ylabel('Heights [m]')
+    plt.legend()
     plt.grid()
     
     fig = plt.figure(4)
+    ii=np.flatnonzero((ref.cycle_number==4) & (xo.cycle_number==3))
+    im = plt.scatter(ref.x_atc[ii], (xo.h_corr[ii]-ref.h_corr[ii].ravel()), c=colorslist[0],marker='.') 
+    plt.title('Diff Corrected Heights: cyc3-xo(b), cyc4-xo(g)')
+    plt.xlabel('Along Track Distance [m]')
+    plt.ylabel('Heights [m]')
+    plt.grid()
+
+    fig = plt.figure(5)
+    plt.plot(D.corrected_h.h_corr[:,1],'.')
+    print('After viewing figures, type Control-C and put cursor over figures, to continue')
+    
+    fig = plt.figure(5)
+    good = np.flatnonzero(np.abs(D.corrected_h.h_corr[:,1])<10000)
+    plt.plot(D.corrected_h.h_corr[good,1],'.')
+    
+    fig = plt.figure(6)
     xo_rgts = np.unique(D.crossing_track_data.rgt).astype('int')
     
     ax1 = fig.add_subplot(211)
@@ -94,14 +111,7 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, pair=2, mosaic=None):
     plt.title('Diff Corrected Heights, cycle4:  {0}-xo'.format(ATL11_rgt))
     plt.legend(prop={'size':6})  
     
-
-#    fig = plt.figure(5)
-#    plt.plot(D.corrected_h.h_corr[:,1],'.')
-#    print('After viewing figures, type Control-C and put cursor over figures, to continue')
-#    
-#    fig = plt.figure(5)
-#    good = np.flatnonzero(np.abs(D.corrected_h.h_corr[:,1])<10000)
-#    plt.plot(D.corrected_h.h_corr[good,1],'.')
+    
     plt.show()
     
 if __name__=='__main__':
@@ -113,4 +123,7 @@ if __name__=='__main__':
     parser.add_argument('--mosaic', '-m', type=str)
     args=parser.parse_args()
     ATL11_test_plot(args.ATL11_file, pair=args.pair, hemisphere=args.Hemisphere, mosaic=args.mosaic)
-    
+
+
+# a good example:
+#  -m /Volumes/ice1/ben/MOG/MOG_500.tif -p 3 /Volumes/ice2/ben/scf/GL_11/U03/ATL11_059703_0305_02_vU03.h5
