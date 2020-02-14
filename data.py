@@ -423,8 +423,8 @@ class data(object):
             xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]+zz]
             xo['ref']['rgt'] += [rgt+zz]
             for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary', 'cycle_number']:#,'along_track_min_dh' ]:
-                xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]+zz]            
-            
+                xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]+zz]
+                    
             # fill vectors for each cycle
             for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:  # vars that are N_pts x N_cycles
                 xo['ref'][field] += [getattr(self.corrected_h, field)[i0,:]]
@@ -438,7 +438,7 @@ class data(object):
         xo['crossing']['longitude']=xo['ref']['longitude']
         xo['crossing']['x_atc']=xo['ref']['x_atc']
         xo['crossing']['y_atc']=xo['ref']['y_atc']
-        xo['crossing']['atl06_quality_summary']=xo['ref']['atl06_quality_summary']
+        
         for field in xo['crossing']:
             xo['crossing'][field]=np.concatenate(xo['crossing'][field], axis=0)
         for field in xo['ref']:

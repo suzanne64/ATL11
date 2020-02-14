@@ -11,9 +11,13 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 import pointCollection as pc
+import re
+
 
 def ATL11_test_plot(ATL11_file, hemisphere=1, pair=2, mosaic=None):
     print(ATL11_file)
+    ATL11_rgt=ATL11_file.split('_')[1][:4]
+
     #
     D = ATL11.data().from_file(ATL11_file, field_dict=None)
     
@@ -23,7 +27,7 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, pair=2, mosaic=None):
         D.get_xy(EPSG=3031)
       
     cm = matplotlib.cm.get_cmap('jet')
-    colorslist = ['blue','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow']
+    colorslist = ['blue','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow','green']
     ref, xo, delta = D.get_xovers()
 
     fig = plt.figure(1)
@@ -66,20 +70,38 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, pair=2, mosaic=None):
     plt.grid()
     
     fig = plt.figure(4)
-    ii=np.flatnonzero((ref.cycle_number==4) & (xo.cycle_number==3))
-    im = plt.scatter(ref.x_atc[ii], (xo.h_corr[ii]-ref.h_corr[ii].ravel()), c=colorslist[0],marker='.') 
-    plt.title('Diff Corrected Heights: cyc3-xo(b), cyc4-xo(g)')
-    plt.xlabel('Along Track Distance [m]')
-    plt.ylabel('Heights [m]')
-    plt.grid()
-
-    fig = plt.figure(5)
-    plt.plot(D.corrected_h.h_corr[:,1],'.')
-    print('After viewing figures, type Control-C and put cursor over figures, to continue')
+    xo_rgts = np.unique(D.crossing_track_data.rgt).astype('int')
     
-    fig = plt.figure(5)
-    good = np.flatnonzero(np.abs(D.corrected_h.h_corr[:,1])<10000)
-    plt.plot(D.corrected_h.h_corr[good,1],'.')
+    ax1 = fig.add_subplot(211)
+    for jj, xo_rgt in enumerate(xo_rgts):
+        ii=np.flatnonzero((ref.cycle_number==3) & (xo.cycle_number==3) & (xo.rgt==xo_rgt) & (xo.atl06_quality_summary==0))
+        im = ax1.scatter(ref.x_atc[ii], (xo.h_corr[ii]-ref.h_corr[ii].ravel()), c=colorslist[jj],marker='.',label=xo_rgt) 
+        ii=np.flatnonzero((ref.cycle_number==3) & (xo.cycle_number==3) & (xo.rgt==xo_rgt) & (xo.atl06_quality_summary==1))
+        im = ax1.scatter(ref.x_atc[ii], (xo.h_corr[ii]-ref.h_corr[ii].ravel()), c=colorslist[jj],marker='x') 
+    plt.grid()
+    plt.title('Diff Corrected Heights, cycle3:  {0}-xo'.format(ATL11_rgt))
+    plt.legend(prop={'size':6})  
+
+    ax2 = fig.add_subplot(212, sharex=ax1)
+    for jj, xo_rgt in enumerate(xo_rgts):
+        ii=np.flatnonzero((ref.cycle_number==4) & (xo.cycle_number==4) & (xo.rgt==xo_rgt) & (xo.atl06_quality_summary==0))
+        im = ax2.scatter(ref.x_atc[ii], (xo.h_corr[ii]-ref.h_corr[ii].ravel()), c=colorslist[jj],marker='.',label=xo_rgt) 
+        ii=np.flatnonzero((ref.cycle_number==4) & (xo.cycle_number==4) & (xo.rgt==xo_rgt) & (xo.atl06_quality_summary==1))
+        im = ax2.scatter(ref.x_atc[ii], (xo.h_corr[ii]-ref.h_corr[ii].ravel()), c=colorslist[jj],marker='.') 
+    plt.setp(ax1.get_xticklabels(), visible=False)
+    plt.xlabel('Along Track Distance [m]')
+    plt.grid()
+    plt.title('Diff Corrected Heights, cycle4:  {0}-xo'.format(ATL11_rgt))
+    plt.legend(prop={'size':6})  
+    
+
+#    fig = plt.figure(5)
+#    plt.plot(D.corrected_h.h_corr[:,1],'.')
+#    print('After viewing figures, type Control-C and put cursor over figures, to continue')
+#    
+#    fig = plt.figure(5)
+#    good = np.flatnonzero(np.abs(D.corrected_h.h_corr[:,1])<10000)
+#    plt.plot(D.corrected_h.h_corr[good,1],'.')
     plt.show()
     
 if __name__=='__main__':
