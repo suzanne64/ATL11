@@ -193,8 +193,22 @@ class data(object):
                                       (xing_ref_pt <= self.corrected_h.ref_pt[-1]) )
                     for field in field_dict['crossing_track_data']:
                         try:
+                            this_field_data_type = FH[pt][group][field].attrs['datatype']
+                            this_field = np.array(FH[pt][group][field])
+                            # check for invalids replace with nans
+                            if invalid_to_nan:
+                                if 'int' in this_field_data_type:
+                                    hex_field = np.array([hex(item) for item in this_field.flatten()]).reshape(this_field.shape)
+                                    # change to float because nan is a float
+                                    this_field = this_field.astype('float')
+                                    this_field[hex_field==hex(np.iinfo(np.dtype(this_field_data_type)).max)] = np.nan
+                                if 'Float' in this_field_data_type:
+                                    hex_field = np.array([item.hex() for item in this_field.flatten()]).reshape(this_field.shape)
+                                    this_field[hex_field==np.finfo(np.dtype(this_field_data_type)).max.hex()] = np.nan
+                                
                             setattr(getattr(self, group), field, \
-                                    np.array(FH[pt]['crossing_track_data'][field][list(xing_ind)]))
+                                    np.array(this_field[list(xing_ind)]))
+                                    #np.array(FH[pt]['crossing_track_data'][field][list(xing_ind)]))
                         except KeyError:
                             print("ATL11 file %s: missing %s/%s" % (filename, 'crossing_track_data', field))
                         except ValueError:
@@ -384,7 +398,7 @@ class data(object):
                         .reshape([h_shape[0],1]), [1, h_shape[1]])
         return out
         
-    def get_xovers(self):
+    def get_xovers(self,invalid_to_nan=True):
         rgt=self.attrs['ReferenceGroundTrack']
         xo={'ref':{},'crossing':{},'both':{}}
         n_cycles=self.corrected_h.h_corr.shape[1]
@@ -424,6 +438,7 @@ class data(object):
         xo['crossing']['longitude']=xo['ref']['longitude']
         xo['crossing']['x_atc']=xo['ref']['x_atc']
         xo['crossing']['y_atc']=xo['ref']['y_atc']
+        xo['crossing']['atl06_quality_summary']=xo['ref']['atl06_quality_summary']
         for field in xo['crossing']:
             xo['crossing'][field]=np.concatenate(xo['crossing'][field], axis=0)
         for field in xo['ref']:
