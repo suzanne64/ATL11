@@ -24,7 +24,8 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, pair=2, mosaic=None):
         D.get_xy(EPSG=3031)
       
     cm = matplotlib.cm.get_cmap('jet')
-    colorslist = ['blue','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow']
+    #colorslist = ['blue','red','orange','purple','brown','pink','gray','olive','cyan','black','yellow']
+    colorslist = ['red','darkorange','gold','green','darkturquoise','blue','purple','black','magenta']
     ref, xo, delta = D.get_xovers()
 
     fig = plt.figure(1)
