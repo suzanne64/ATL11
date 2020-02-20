@@ -193,8 +193,22 @@ class data(object):
                                       (xing_ref_pt <= self.corrected_h.ref_pt[-1]) )
                     for field in field_dict['crossing_track_data']:
                         try:
+                            this_field_data_type = FH[pt][group][field].attrs['datatype']
+                            this_field = np.array(FH[pt][group][field])
+                            # check for invalids replace with nans
+                            if invalid_to_nan:
+                                if 'int' in this_field_data_type:
+                                    hex_field = np.array([hex(item) for item in this_field.flatten()]).reshape(this_field.shape)
+                                    # change to float because nan is a float
+                                    this_field = this_field.astype('float')
+                                    this_field[hex_field==hex(np.iinfo(np.dtype(this_field_data_type)).max)] = np.nan
+                                if 'Float' in this_field_data_type:
+                                    hex_field = np.array([item.hex() for item in this_field.flatten()]).reshape(this_field.shape)
+                                    this_field[hex_field==np.finfo(np.dtype(this_field_data_type)).max.hex()] = np.nan
+                                
                             setattr(getattr(self, group), field, \
-                                    np.array(FH[pt]['crossing_track_data'][field][list(xing_ind)]))
+                                    np.array(this_field[list(xing_ind)]))
+                                    #np.array(FH[pt]['crossing_track_data'][field][list(xing_ind)]))
                         except KeyError:
                             print("ATL11 file %s: missing %s/%s" % (filename, 'crossing_track_data', field))
                         except ValueError:
@@ -386,7 +400,7 @@ class data(object):
                         .reshape([h_shape[0],1]), [1, h_shape[1]])
         return out
         
-    def get_xovers(self):
+    def get_xovers(self,invalid_to_nan=True):
         rgt=self.attrs['ReferenceGroundTrack']
         xo={'ref':{},'crossing':{},'both':{}}
         n_cycles=self.corrected_h.h_corr.shape[1]
@@ -400,7 +414,6 @@ class data(object):
         if hasattr(self,'x'):
             for field in ['x','y']:
                  xo['ref'][field]=[]
-                 xo['crossing'][field]=[]
         
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt):
             i0=np.flatnonzero(self.corrected_h.ref_pt==ref_pt)[0]
@@ -412,8 +425,8 @@ class data(object):
             xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]+zz]
             xo['ref']['rgt'] += [rgt+zz]
             for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary', 'cycle_number']:#,'along_track_min_dh' ]:
-                xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]+zz]            
-            
+                xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]+zz]
+                    
             # fill vectors for each cycle
             for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:  # vars that are N_pts x N_cycles
                 xo['ref'][field] += [getattr(self.corrected_h, field)[i0,:]]
@@ -427,14 +440,11 @@ class data(object):
         xo['crossing']['longitude']=xo['ref']['longitude']
         xo['crossing']['x_atc']=xo['ref']['x_atc']
         xo['crossing']['y_atc']=xo['ref']['y_atc']
+        
         for field in xo['crossing']:
-            print(field)
             xo['crossing'][field]=np.concatenate(xo['crossing'][field], axis=0)
         for field in xo['ref']:
-            try:
-                xo['ref'][field]=np.concatenate(xo['ref'][field], axis=0)
-            except ValueError:
-                print(field+"!!!")
+            xo['ref'][field]=np.concatenate(xo['ref'][field], axis=0)
         ref=pc.data().from_dict(xo['ref'])
         crossing=pc.data().from_dict(xo['crossing'])
         
