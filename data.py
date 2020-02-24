@@ -338,10 +338,12 @@ class data(object):
                             if field_attrs[field]['datatype'].startswith('int'):
                                 data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
                                 data = data.astype('int')  # don't change to int before substituting nans with invalid.
+                                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
                             elif field_attrs[field]['datatype'].startswith('Float'):
                                 data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
+                                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
                                 
-                            dset = grp.create_dataset(field,data=data) #,dtype=dt)                            
+                            dset = grp.create_dataset(field,data=data,fillvalue=fillvalue) #,dtype=dt)                            
                             for ii,dim in enumerate(dimensions):
                                 dim=dim.strip()
                                 if 'N_pts' in dim or 'Nxo' in dim: 
