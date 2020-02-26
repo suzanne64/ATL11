@@ -281,7 +281,11 @@ class data(object):
                 udims = list(set(unique_dims))
                 # make datasets for dimension scales ~
                 if 'N_pts' in udims or 'Nxo' in udims:
-                    dset = grp.create_dataset('ref_pt',data=getattr(getattr(self,group),'ref_pt').astype(int)) 
+                    this_ref_pt=getattr(getattr(self,group),'ref_pt')
+                    if len(this_ref_pt) > 0:
+                        dset = grp.create_dataset('ref_pt',data=this_ref_pt.astype(int))
+                    else:
+                        dset = grp.create_dataset('ref_pt', shape=[0])
                     dset.dims[0].label = 'ref_pt'
                     for attr in attr_names:
                         if 'dimensions' not in attr:
