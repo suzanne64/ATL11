@@ -446,6 +446,13 @@ class point(ATL11.data):
                 if self.ref_surf.quality_summary==0:
                     self.ref_surf.quality_summary=5
                 return
+            # check if any rows of G_g are all-zero (this is in 3h)
+            # if so, set the error and return
+            if np.any(np.all(G_g==0, axis=1)):
+                self.status['inversion failed']=True
+                if self.ref_surf.quality_summary==0:
+                    self.ref_surf.quality_summary=5
+                return
 
             # inititalize the combined surface and cycle-height model, m_surf_zp
             m_surf_zp=np.zeros(np.size(G_surf_zp_original,1))

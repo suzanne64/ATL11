@@ -357,7 +357,6 @@ class data(object):
                                 dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
                             elif field_attrs[field]['datatype'].startswith('Float'):
                                 dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
-                                        
         f.close()
         return
 
