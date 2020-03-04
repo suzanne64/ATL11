@@ -166,7 +166,6 @@ class data(object):
                             # check for invalids replace with nans
                             if invalid_to_nan:
                                 this_field[this_field==FH[pt][group][field].fillvalue.astype('float')] = np.nan
-                                
                             if len(this_field.shape) > 1:
                                 setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
                             else:
@@ -239,19 +238,20 @@ class data(object):
         # Optional input:
         #   parms_11: ATL11.defaults structure
         group_name='/pt%d' % self.beam_pair
+        group_name=group_name.encode('ASCII')
         if os.path.isfile(fileout):
-            f = h5py.File(fileout,'r+')
+            f = h5py.File(fileout.encode('ASCII'),'r+')
             if group_name in f:
                 del f[group_name]
         else:
-            f = h5py.File(fileout,'w')
+            f = h5py.File(fileout.encode('ASCII'),'w')
         g=f.create_group(group_name)
 
         # set the output pair and track attributes
-        g.attrs['beam_pair']=self.beam_pair
-        g.attrs['ReferenceGroundTrack']=self.track_num
-        g.attrs['first_cycle']=self.cycles[0]
-        g.attrs['last_cycle']=self.cycles[1]
+        g.attrs['beam_pair'.encode('ASCII')]=self.beam_pair
+        g.attrs['ReferenceGroundTrack'.encode('ASCII')]=self.track_num
+        g.attrs['first_cycle'.encode('ASCII')]=self.cycles[0]
+        g.attrs['last_cycle'.encode('ASCII')]=self.cycles[1]
         # put default parameters as top level attributes
         if params_11 is None:
             params_11=ATL11.defaults()
@@ -259,9 +259,14 @@ class data(object):
         # write each variable in params_11 as an attribute
         for param, val in  vars(params_11).items():
             try:
-                g.attrs[param]=getattr(params_11, param)
-            except:
-                #print("write_to_file:could not automatically set parameter: %s" % param)
+                if param == 'ATL06_xover_field_list':
+                  xover_attr=getattr(params_11, param)
+                  xover_attr = [x.encode('ASCII') for x in xover_attr]
+                  g.attrs[param.encode('ASCII')]=xover_attr
+                else:
+                  g.attrs[param.encode('ASCII')]=getattr(params_11, param)
+            except Exception as e:
+                print("write_to_file:could not automatically set parameter: %s error = %s" % (param,str(e)))
                 continue
 
         # put groups, fields and associated attributes from .csv file
@@ -272,7 +277,7 @@ class data(object):
 
         for group in group_names:
             if hasattr(getattr(self,group),'list_of_fields'):
-                grp = g.create_group(group)
+                grp = g.create_group(group.encode('ASCII'))
 
                 field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if group in row['group']}
                 # get the dimensions for the group
@@ -283,36 +288,36 @@ class data(object):
                 if 'N_pts' in udims or 'Nxo' in udims:
                     this_ref_pt=getattr(getattr(self,group),'ref_pt')
                     if len(this_ref_pt) > 0:
-                        dset = grp.create_dataset('ref_pt',data=this_ref_pt.astype(int))
+                        dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=this_ref_pt.astype(int))
                     else:
-                        dset = grp.create_dataset('ref_pt', shape=[0])
-                    dset.dims[0].label = 'ref_pt'
+                        dset = grp.create_dataset('ref_pt'.encode('ASCII'), shape=[0])
+                    dset.dims[0].label = 'ref_pt'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-                            dset.attrs[attr] = field_attrs['ref_pt'][attr]
+                            dset.attrs[attr.encode('ASCII')] = field_attrs['ref_pt'][attr].encode('ASCII')
                 if 'N_cycles' in udims:
-                    dset = grp.create_dataset('cycle_number',data=getattr(getattr(self,group),'cycle_number')) 
-                    dset.dims[0].label = 'cycle_number'                   
+                    dset = grp.create_dataset('cycle_number'.encode('ASCII'),data=getattr(getattr(self,group),'cycle_number')) 
+                    dset.dims[0].label = 'cycle_number'.encode('ASCII')                   
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-                            dset.attrs[attr] = field_attrs['cycle_number'][attr]
+                            dset.attrs[attr.encode('ASCII')] = field_attrs['cycle_number'][attr].encode('ASCII')
                 if 'N_coeffs' in udims:
-                    dset = grp.create_dataset('poly_exponent_x',data=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)) 
-                    dset.dims[0].label = 'poly_exponent_x'                 
+                    dset = grp.create_dataset('poly_exponent_x'.encode('ASCII'),data=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)) 
+                    dset.dims[0].label = 'poly_exponent_x'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-                            dset.attrs[attr] = field_attrs['poly_exponent_x'][attr]
-                    dset = grp.create_dataset('poly_exponent_y',data=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)) 
-                    dset.dims[0].label = 'poly_exponent_y'                 
+                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_x'][attr].encode('ASCII')
+                    dset = grp.create_dataset('poly_exponent_y'.encode('ASCII'),data=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)) 
+                    dset.dims[0].label = 'poly_exponent_y'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-                            dset.attrs[attr] = field_attrs['poly_exponent_y'][attr]
+                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_y'][attr].encode('ASCII')
                             
                 if 'ref_surf' in group:
-                    grp.attrs['poly_exponent_x']=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
-                    grp.attrs['poly_exponent_y']=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
-                    grp.attrs['slope_change_t0'] =np.mean(self.slope_change_t0).astype('int')
-                    g.attrs['N_poly_coeffs']=int(self.N_coeffs)
+                    grp.attrs['poly_exponent_x'.encode('ASCII')]=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
+                    grp.attrs['poly_exponent_y'.encode('ASCII')]=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
+                    grp.attrs['slope_change_t0'.encode('ASCII')]=np.mean(self.slope_change_t0).astype('int')
+                    g.attrs['N_poly_coeffs'.encode('ASCII')]=int(self.N_coeffs)
                                         
                 list_vars=getattr(self,group).list_of_fields
                 if 'cycle_stats' in group or 'corrected_h' in group:
@@ -331,7 +336,7 @@ class data(object):
                                 data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
                                 fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
                                 
-                            dset = grp.create_dataset(field,data=data,fillvalue=fillvalue) #,dtype=dt)                            
+                            dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue) #,dtype=dt)                            
                             for ii,dim in enumerate(dimensions):
                                 dim=dim.strip()
                                 if 'N_pts' in dim or 'Nxo' in dim: 
@@ -347,13 +352,11 @@ class data(object):
                                     
                             for attr in attr_names:
                                 if 'dimensions' not in attr:
-                                    dset.attrs[attr] = field_attrs[field][attr]
+                                    dset.attrs[attr.encode('ASCII')] = str(field_attrs[field][attr]).encode('ASCII')
                             if field_attrs[field]['datatype'].startswith('int'):
-                                dset.attrs['_FillValue'] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
                             elif field_attrs[field]['datatype'].startswith('Float'):
-                                dset.attrs['_FillValue'] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
-                            
-                                        
+                                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
         f.close()
         return
 
