@@ -348,10 +348,10 @@ class data(object):
                             for attr in attr_names:
                                 if 'dimensions' not in attr:
                                     dset.attrs[attr] = field_attrs[field][attr]
-#                            if field_attrs[field]['datatype'].startswith('int'):
-#                                dset.attrs['_FillValue'] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
-#                            elif field_attrs[field]['datatype'].startswith('Float'):
-#                                dset.attrs['_FillValue'] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                            if field_attrs[field]['datatype'].startswith('int'):
+                                dset.attrs['_FillValue'] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                            elif field_attrs[field]['datatype'].startswith('Float'):
+                                dset.attrs['_FillValue'] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
                             
                                         
         f.close()
