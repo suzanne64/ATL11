@@ -129,13 +129,13 @@ def main(argv):
                     f.copy('METADATA',g)
                     if 'Lineage' in list(g['METADATA'].keys()):
                         del g['METADATA']['Lineage']
-                    g['METADATA'].create_group('Lineage')
+                    g['METADATA'].create_group('Lineage'.encode('ASCII'))
                 # make ATL06 file group for each cycle
-                gf = g['METADATA']['Lineage'].create_group('ATL06-{:02d}'.format(ii+1))
-                gf.attrs['fileName'] = os.path.basename(infile)
-                # fill ATL06 file group with unique ATL06 file metadata
-                for fgrp in list(f['METADATA']['Lineage']):
-                    f.copy('METADATA/Lineage/{}'.format(fgrp), g['METADATA']['Lineage']['ATL06-{:02d}'.format(ii+1)])
+                gf = g['METADATA']['Lineage'].create_group('ATL06-{:02d}'.format(ii+1).encode('ASCII'))
+                gf.attrs['fileName'] = os.path.basename(infile.encode('ASCII'))
+#                # fill ATL06 file group with unique ATL06 file metadata
+#                for fgrp in list(f['METADATA']['Lineage']):
+#                    f.copy('METADATA/Lineage/{}'.format(fgrp), g['METADATA']['Lineage']['ATL06-{:02d}'.format(ii+1)])
 
                 f.close()
         g.close()
