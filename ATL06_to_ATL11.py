@@ -94,6 +94,9 @@ def main(argv):
         D11=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
                       cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
                       GI_files=GI_files, hemisphere=args.Hemisphere) # defined in ATL06_to_ATL11
+        if D11 is None:
+            print("ATL06_to_ATL11: Not enough good data to calculate an ATL11, nothing written")
+            return()
         # fill cycle_number list in cycle_stats and corrected_h
         setattr(D11.cycle_stats,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         setattr(D11.corrected_h,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
