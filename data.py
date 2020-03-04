@@ -151,30 +151,21 @@ class data(object):
                     for field in FH[pt][group].keys():
                         #print('line 153',group, field)
                         field_dict[group].append(field)
+
             # Suzanne, rework this using dim scales.
             N_pts=FH[pt]['corrected_h']['h_corr'][index_range[0]:index_range[-1],:].shape[0]
             cycles=[FH[pt].attrs['first_cycle'], FH[pt].attrs['last_cycle']]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs)
-
+            
             for group in (field_dict):             
                 if group != 'crossing_track_data':
                     for field in field_dict[group]:
                         try:
-                            this_field_data_type = FH[pt][group][field].attrs['datatype']
-                            this_field = np.array(FH[pt][group][field])
-
+                            this_field = np.array(FH[pt][group][field]).astype('float')
                             # check for invalids replace with nans
                             if invalid_to_nan:
-                                 if isinstance(this_field, int):
-                                    hex_field = np.array([hex(item) for item in this_field.flatten()]).reshape(this_field.shape)
-                                    # change to float because nan is a float
-                                    this_field = this_field.astype('float')
-                                    this_field[hex_field==hex(np.iinfo(np.dtype(this_field_data_type)).max)] = np.nan
-                                 if isinstance(this_field, float):
-                                    hex_field = np.array([item.hex() for item in this_field.flatten()]).reshape(this_field.shape)
-                                    this_field[hex_field==np.finfo(np.dtype(this_field_data_type)).max.hex()] = np.nan
-                                
+                                this_field[this_field==FH[pt][group][field].fillvalue.astype('float')] = np.nan
                             if len(this_field.shape) > 1:
                                 setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
                             else:
@@ -193,18 +184,10 @@ class data(object):
                                       (xing_ref_pt <= self.corrected_h.ref_pt[-1]) )
                     for field in field_dict['crossing_track_data']:
                         try:
-                            this_field_data_type = FH[pt][group][field].attrs['datatype']
-                            this_field = np.array(FH[pt][group][field])
+                            this_field = np.array(FH[pt][group][field]).astype('float')
                             # check for invalids replace with nans
                             if invalid_to_nan:
-                                if 'int' in this_field_data_type:
-                                    hex_field = np.array([hex(item) for item in this_field.flatten()]).reshape(this_field.shape)
-                                    # change to float because nan is a float
-                                    this_field = this_field.astype('float')
-                                    this_field[hex_field==hex(np.iinfo(np.dtype(this_field_data_type)).max)] = np.nan
-                                if 'Float' in this_field_data_type:
-                                    hex_field = np.array([item.hex() for item in this_field.flatten()]).reshape(this_field.shape)
-                                    this_field[hex_field==np.finfo(np.dtype(this_field_data_type)).max.hex()] = np.nan
+                                this_field[this_field==FH[pt][group][field].fillvalue.astype('float')] = np.nan
                                 
                             setattr(getattr(self, group), field, \
                                     np.array(this_field[list(xing_ind)]))
@@ -303,7 +286,11 @@ class data(object):
                 udims = list(set(unique_dims))
                 # make datasets for dimension scales ~
                 if 'N_pts' in udims or 'Nxo' in udims:
-                    dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=getattr(getattr(self,group),'ref_pt').astype(int)) 
+                    this_ref_pt=getattr(getattr(self,group),'ref_pt')
+                    if len(this_ref_pt) > 0:
+                        dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=this_ref_pt.astype(int))
+                    else:
+                        dset = grp.create_dataset('ref_pt'.encode('ASCII'), shape=[0])
                     dset.dims[0].label = 'ref_pt'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
@@ -370,7 +357,6 @@ class data(object):
                                 dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
                             elif field_attrs[field]['datatype'].startswith('Float'):
                                 dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
-                            
                                         
         f.close()
         return
