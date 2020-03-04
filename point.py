@@ -550,7 +550,7 @@ class point(ATL11.data):
        
         # get the square of h_corr_sigma_systematic, equation 12
         sigma_systematic_squared=((D6.dh_fit_dx * D6.sigma_geo_at)**2 + \
-            (D6.dh_fit_dy * D6.sigma_geo_xt)**2 + (D6.sigma_geo_h)**2).ravel()
+            (D6.dh_fit_dy * D6.sigma_geo_xt)**2 + (D6.sigma_geo_r)**2).ravel()
 
         for ref_cycle in self.ref_surf_cycles.astype(int):
             cc=ref_cycle-self.cycles[0]
