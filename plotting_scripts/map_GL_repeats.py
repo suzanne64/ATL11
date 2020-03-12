@@ -14,24 +14,29 @@ import pointCollection as pc
 import numpy as np
 
 
-cycles=[3, 4]
-cycle_ind=[0,1]
-
+cycles=[4, 5]
 field_dict={'corrected_h':['h_corr','latitude','longitude','delta_time']}
 
 if True:   
     MOG=pc.grid.data().from_geotif('/Volumes/ice1/ben/MOG/2005/mog_2005_1km.tif')
-    thedir='/Volumes/ice2/ben/scf/GL_11/U02'
+    thedir='/Volumes/ice2/ben/scf/GL_11/U05'
     files=glob.glob(thedir+'/ATL11*.h5')
     xydh=[]
     for count, file in enumerate(files):
         for pair in [1, 2, 3]:
             filePair=(file, pair)    
             D11 = ATL11.data().from_file(filePair[0], pair=filePair[1], field_dict=field_dict).get_xy(None, EPSG=3413) 
+
+            try:
+                cycle_ind=[np.flatnonzero(D11.cycle_number==cycles[0])[0], np.flatnonzero(D11.cycle_number==cycles[1])[0]]
+            except Exception:
+                continue
+
             try:
                 ind=np.arange(5, D11.x.size, 10)
                 temp=pc.data().from_dict({'x':D11.x[ind],'y':D11.y[ind], \
-                            'dh':D11.corrected_h.h_corr[ind, cycle_ind[1]]-D11.corrected_h.h_corr[ind, cycle_ind[0]],\
+                            'dh':D11.corrected_h.h_corr[ind, cycle_ind[1]]-D11.corrected_h.h_corr[ind, cycle_ind[0]],
+                            'dt':D11.corrected_h.delta_time[ind, cycle_ind[1]]-D11.corrected_h.delta_time[ind, cycle_ind[0]],
                             'file_ind': np.zeros_like(ind, dtype=int)+count})
                 els=(temp.x > MOG.x[0]) & (temp.x < MOG.x[-1]) & \
                     (temp.y > MOG.y[0]) & (temp.y < MOG.y[-1])
@@ -48,7 +53,7 @@ if True:
     MOG.show(cmap='gray', vmin=14000, vmax=17000)
     hl=plt.scatter(xydh.x[on_ice], xydh.y[on_ice], 3, linewidth=0, \
                            c=xydh.dh[on_ice], \
-                           vmin=-1.75, vmax=1.75, cmap='Spectral')
+                           vmin=-0.25, vmax=0.25, cmap='Spectral')
     hb=plt.colorbar(shrink=0.75, extend='both')
     plt.gca().set_xticks([])
     plt.gca().set_yticks([])
