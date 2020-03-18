@@ -1,0 +1,4 @@
+/home/suzanne/git_repos/pointCollection/make_tiles.py -i cycle_03/index/GeoIndex.h5 -W 100000 -t ATL06 -H 1 --xy -200000.0 -2200000.0 -o tiles/cycle_03 -j ATL06_field_dict.json
+/home/suzanne/git_repos/pointCollection/make_tiles.py -i cycle_03/index/GeoIndex.h5 -W 100000 -t ATL06 -H 1 --xy -200000.0 -2100000.0 -o tiles/cycle_03 -j ATL06_field_dict.json
+/home/suzanne/git_repos/pointCollection/make_tiles.py -i cycle_03/index/GeoIndex.h5 -W 100000 -t ATL06 -H 1 --xy -200000.0 -2000000.0 -o tiles/cycle_03 -j ATL06_field_dict.json
+/home/suzanne/git_repos/pointCollection/make_tiles.py -i cycle_03/index/GeoIndex.h5 -W 100000 -t ATL06 -H 1 --xy -100000.0 -2000000.0 -o tiles/cycle_03 -j ATL06_field_dict.json

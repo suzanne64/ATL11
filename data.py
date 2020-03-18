@@ -16,7 +16,7 @@ from ATL11.ATL06_pair import ATL06_pair
 
 class data(object):
     # class to hold ATL11 data in ATL11.groups
-    def __init__(self, N_pts=1, cycles=[1, 12], N_coeffs=9, from_file=None, track_num=None, beam_pair=None):
+    def __init__(self, N_pts=1, cycles=[1,2], N_coeffs=9, from_file=None, track_num=None, beam_pair=None):
         self.Data=[]
         self.DOPLOT=None
 
@@ -40,6 +40,10 @@ class data(object):
         self.beam_pair=beam_pair
         self.pair_num=beam_pair
         self.cycles=cycles
+        if cycles is not None:
+            self.cycle_number=np.arange(cycles[0], cycles[1]+1)
+        else:
+            self.cycle_number=None
         self.N_coeffs=N_coeffs
         self.Nxo=0
         self.attrs={}
@@ -200,6 +204,7 @@ class data(object):
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf']['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf']['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
+            self.cycle_number=np.array(FH[pt]['corrected_h/cycle_number'])
         return self
 
     def get_xy(self, proj4_string=None, EPSG=None):

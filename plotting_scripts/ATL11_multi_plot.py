@@ -50,7 +50,7 @@ def ATL11_multi_plot(ATL11_file, ATL06_wc=None, pair=2, cycles=[3, 4], hemispher
                 D6[ii]=D6i.index(els)
 
     plt.clf()
-    cyc_ind=[D11.cycles.index(cycles[0]), D11.cycles.index(cycles[1])]
+    cyc_ind=[list(D11.cycle_number).index(cycles[0]), list(D11.cycle_number).index(cycles[1])]
     dh = D11.corrected_h.h_corr[:,cyc_ind[1]]-D11.corrected_h.h_corr[:,cyc_ind[0]]
     dh_sigma = np.sqrt(D11.corrected_h.h_corr_sigma[:,cyc_ind[1]]**2+D11.corrected_h.h_corr_sigma[:,cyc_ind[0]]**2)
     
@@ -107,7 +107,9 @@ def ATL11_multi_plot(ATL11_file, ATL06_wc=None, pair=2, cycles=[3, 4], hemispher
         plt.subplot(144)
         MOS.show(cmap='gray', vmin=14000, vmax=17000)
         D11.get_xy(EPSG=EPSG)
-        plt.plot(D11.x, D11.y,'.')
+        plt.scatter(D11.x, D11.y, c=D11.corrected_h.h_corr[:,cyc_ind[1]]-D11.corrected_h.h_corr[:,cyc_ind[0]], vmin=-0.25, vmax=0.25, cmap='Spectral')
+        plt.colorbar()
+
 
 
     return D11, D6
