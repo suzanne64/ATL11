@@ -110,22 +110,8 @@ def main(argv):
         if D11 is not None:
             D11.write_to_file(out_file)
 
-    # create a geo index for the current file.  This gets saved in the '/index' group
-    if os.path.isfile(out_file):
-        GI=pc.geoIndex(SRS_proj4=get_proj4(args.Hemisphere), delta=[1.e4, 1.e4]).for_file(out_file, 'ATL11', dir_root=args.out_dir)
-        GI.attrs['bin_root']=None
-
-        # the 'file' attributes of the geo_index are of the form :pair1, :pair2, :pair3, which means that the 
-        # data for each bin are to be read from the current file
-        for file in ['file_0','file_1','file_2']:
-            if file in GI.attrs:
-                temp = ':'+GI.attrs[file].split(':')[1]
-                GI.attrs[file] = temp
-        GI.to_file(out_file)
-        
-    # write Lineage of ATL06 files to METADATA group
     out_file = write_METADATA.write_METADATA(out_file,files)
-    
+
     print("ATL06_to_ATL11: done with "+out_file)
         
     if args.test_plot:
