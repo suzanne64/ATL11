@@ -25,12 +25,9 @@ def write_METADATA(outfile,infiles):
         eregion = np.array([0],dtype='int32')
         sorbit = []
         eorbit = []
-        sgeoseg = []
-        egeoseg = []
         uuid = []
         version = []
         for ii,infile in enumerate(sorted(infiles)):
-            print(infile)
             fname.append(os.path.basename(infile).encode('ASCII'))
             sname.append('_'.join(os.path.basename(infile).split('_',2)[:2]).encode('ASCII'))
             digits =infile.split('ATL06_')[1].split('_')
@@ -51,8 +48,6 @@ def write_METADATA(outfile,infiles):
                 f = h5py.File(infile,'r')
                 sorbit.append(f['METADATA']['Lineage']['ATL03'].attrs['start_orbit'])
                 eorbit.append(f['METADATA']['Lineage']['ATL03'].attrs['end_orbit'])
-                sgeoseg.append(f['METADATA']['Lineage']['ATL03'].attrs['start_geoseg'])
-                egeoseg.append(f['METADATA']['Lineage']['ATL03'].attrs['end_geoseg'])
                 uuid.append(f['METADATA']['Lineage']['ATL03'].attrs['uuid'])
             version.append(str(digits[2]).encode('ASCII'))
 
@@ -72,8 +67,18 @@ def write_METADATA(outfile,infiles):
         gf.attrs['start_region'] = sregion
         gf.attrs['end_region'] = eregion
         
-        gf.attrs['start_geoseg'] = sgeoseg
-        gf.attrs['end_geoseg'] = egeoseg
+        try:
+            gf.attrs['start_geoseg'] = np.min(g['pt1']['corrected_h']['ref_pt'][:])
+            gf.attrs['end_geoseg']   = np.max(g['pt1']['corrected_h']['ref_pt'][:])
+        except IOError as e:
+            print('Could not read ref_pt min/max'.format(e))
+        else:
+            gf.attrs['start_geoseg'] = np.min(g['pt2']['corrected_h']['ref_pt'][:])
+            gf.attrs['end_geoseg']   = np.max(g['pt2']['corrected_h']['ref_pt'][:])
+        finally:
+            gf.attrs['start_geoseg'] = np.min(g['pt3']['corrected_h']['ref_pt'][:])
+            gf.attrs['end_geoseg']   = np.max(g['pt3']['corrected_h']['ref_pt'][:])
+           
         
         gf.attrs['uuid'] = uuid
         gf.attrs['version'] = version

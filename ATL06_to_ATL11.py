@@ -123,6 +123,7 @@ def main(argv):
                 GI.attrs[file] = temp
         GI.to_file(out_file)
         
+    # write Lineage of ATL06 files to METADATA group
     out_file = write_METADATA.write_METADATA(out_file,files)
     
     print("ATL06_to_ATL11: done with "+out_file)
