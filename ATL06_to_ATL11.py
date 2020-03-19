@@ -12,9 +12,11 @@ os.environ['OPENBLAS_NUM_THREADS']="1"
 
 import numpy as np
 import ATL11
+import write_METADATA
 import glob
 import sys, h5py
 import pointCollection as pc
+
 
 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
@@ -120,28 +122,9 @@ def main(argv):
                 temp = ':'+GI.attrs[file].split(':')[1]
                 GI.attrs[file] = temp
         GI.to_file(out_file)
+        
+    out_file = write_METADATA.write_METADATA(out_file,files)
     
-    # copy METADATA group from ATL06. Make lineage/ group for each ATL06 file, where the ATL06 filenames and their unique metadata are saved. 
-    if os.path.isfile(out_file):        
-        g = h5py.File(out_file,'r+')
-        for ii,infile in enumerate(sorted(files)):
-            if os.path.isfile(infile):
-                f = h5py.File(infile,'r')         
-                if ii==0:
-                    # get all METADATA groups except Lineage, which we set to zero
-                    f.copy('METADATA',g)
-                    if 'Lineage' in list(g['METADATA'].keys()):
-                        del g['METADATA']['Lineage']
-                    g['METADATA'].create_group('Lineage'.encode('ASCII'))
-                # make ATL06 file group for each cycle
-                gf = g['METADATA']['Lineage'].create_group('ATL06-{:02d}'.format(ii+1).encode('ASCII'))
-                gf.attrs['fileName'] = os.path.basename(infile.encode('ASCII'))
-#                # fill ATL06 file group with unique ATL06 file metadata
-#                for fgrp in list(f['METADATA']['Lineage']):
-#                    f.copy('METADATA/Lineage/{}'.format(fgrp), g['METADATA']['Lineage']['ATL06-{:02d}'.format(ii+1)])
-
-                f.close()
-        g.close()
     print("ATL06_to_ATL11: done with "+out_file)
         
     if args.test_plot:
