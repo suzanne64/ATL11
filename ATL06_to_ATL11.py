@@ -63,7 +63,7 @@ def main(argv):
         os.remove(out_file)
 
     if args.verbose:
-        print(out_file)
+        print('ATL11 output filename',out_file)
     glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
     files=glob.glob(glob_str)
 
@@ -81,7 +81,6 @@ def main(argv):
     print("found GI files:"+str(GI_files))
     
     for pair in pairs:
-        print('files in =',files)
         D6 = ATL11.read_ATL06_data(files, beam_pair=pair, cycles=args.cycles, use_blacklist=args.Blacklist)
         if D6 is None:
             continue

@@ -263,16 +263,17 @@ class data(object):
             
         # write each variable in params_11 as an attribute
         for param, val in  vars(params_11).items():
-            try:
-                if param == 'ATL06_xover_field_list':
-                  xover_attr=getattr(params_11, param)
-                  xover_attr = [x.encode('ASCII') for x in xover_attr]
-                  g.attrs[param.encode('ASCII')]=xover_attr
-                else:
-                  g.attrs[param.encode('ASCII')]=getattr(params_11, param)
-            except Exception as e:
-                print("write_to_file:could not automatically set parameter: %s error = %s" % (param,str(e)))
-                continue
+            if not isinstance(val,(dict,type(None))):
+                try:
+                    if param == 'ATL06_xover_field_list':
+                        xover_attr=getattr(params_11, param)
+                        xover_attr = [x.encode('ASCII') for x in xover_attr]
+                        g.attrs[param.encode('ASCII')]=xover_attr
+                    else:
+                        g.attrs[param.encode('ASCII')]=getattr(params_11, param)
+                except Exception as e:
+                    print("write_to_file:could not automatically set parameter: %s error = %s" % (param,str(e)))
+                    continue
 
         # put groups, fields and associated attributes from .csv file
         with open(os.path.dirname(inspect.getfile(ATL11.data))+'/ATL11_output_attrs.csv','r') as attrfile:
@@ -282,6 +283,7 @@ class data(object):
 
         for group in group_names:
             if hasattr(getattr(self,group),'list_of_fields'):
+                
                 grp = g.create_group(group.encode('ASCII'))
 
                 field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if group in row['group']}
