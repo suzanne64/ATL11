@@ -30,6 +30,7 @@ ref_surf,slope_change_rate_x_sigma,years^-1,N_pts,Float64,"""Formal error in the
 ref_surf,slope_change_rate_y_sigma,years^-1,N_pts,Float64,"""Formal error in the rate of change of the y component of the surface slope"""
 ref_surf,misfit_chi2r,meters,N_pts,Float64,"""misfit chi square, divided by the number of degrees in the solution"""
 ref_surf,misfit_RMS,meters,N_pts,Float64,"""RMS misfit for the surface-polynomial fit"""
+ref_surf,dem_h,meters,N_pts,Float64,"""DEM elevation, derived from ATL06 /gtxx/atl06_segments/dem/dem_h"""
 ref_surf,quality_summary,1,N_pts,int8,"""Indicates quality of the fit: 0: no problem identified, 1: number cycles available less than 1, 2: no valid pairs after height error check, 3: no valid pairs after slope editing, 4: only one valid pair in x direction, 5: polynomial fit failed, 6: polynomial coefficients with high errors, 7: surface fit slope high, 8: all cycles have errors > 15 mRMS"" "
 cycle_stats,cycle_number,counts,N_cycles,int8,"""cycle number"""
 cycle_stats,atl06_summary_zero_count,counts,"N_pts, N_cycles",int8,"""Number of segments with ATL06_quality_summary==0 (0 indicates the best-quality data)"""
