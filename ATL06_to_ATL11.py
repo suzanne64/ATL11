@@ -12,9 +12,11 @@ os.environ['OPENBLAS_NUM_THREADS']="1"
 
 import numpy as np
 import ATL11
+import write_METADATA
 import glob
 import sys, h5py
 import pointCollection as pc
+
 
 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5" 
@@ -61,7 +63,7 @@ def main(argv):
         os.remove(out_file)
 
     if args.verbose:
-        print(out_file)
+        print('ATL11 output filename',out_file)
     glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
     files=glob.glob(glob_str)
 
@@ -79,7 +81,6 @@ def main(argv):
     print("found GI files:"+str(GI_files))
     
     for pair in pairs:
-        print('files in =',files)
         D6 = ATL11.read_ATL06_data(files, beam_pair=pair, cycles=args.cycles, use_blacklist=args.Blacklist)
         if D6 is None:
             continue
@@ -108,40 +109,8 @@ def main(argv):
         if D11 is not None:
             D11.write_to_file(out_file)
 
-    # create a geo index for the current file.  This gets saved in the '/index' group
-    if os.path.isfile(out_file):
-        GI=pc.geoIndex(SRS_proj4=get_proj4(args.Hemisphere), delta=[1.e4, 1.e4]).for_file(out_file, 'ATL11', dir_root=args.out_dir)
-        GI.attrs['bin_root']=None
+    out_file = write_METADATA.write_METADATA(out_file,files)
 
-        # the 'file' attributes of the geo_index are of the form :pair1, :pair2, :pair3, which means that the 
-        # data for each bin are to be read from the current file
-        for file in ['file_0','file_1','file_2']:
-            if file in GI.attrs:
-                temp = ':'+GI.attrs[file].split(':')[1]
-                GI.attrs[file] = temp
-        GI.to_file(out_file)
-    
-    # copy METADATA group from ATL06. Make lineage/ group for each ATL06 file, where the ATL06 filenames and their unique metadata are saved. 
-    if os.path.isfile(out_file):        
-        g = h5py.File(out_file,'r+')
-        for ii,infile in enumerate(sorted(files)):
-            if os.path.isfile(infile):
-                f = h5py.File(infile,'r')         
-                if ii==0:
-                    # get all METADATA groups except Lineage, which we set to zero
-                    f.copy('METADATA',g)
-                    if 'Lineage' in list(g['METADATA'].keys()):
-                        del g['METADATA']['Lineage']
-                    g['METADATA'].create_group('Lineage'.encode('ASCII'))
-                # make ATL06 file group for each cycle
-                gf = g['METADATA']['Lineage'].create_group('ATL06-{:02d}'.format(ii+1).encode('ASCII'))
-                gf.attrs['fileName'] = os.path.basename(infile.encode('ASCII'))
-#                # fill ATL06 file group with unique ATL06 file metadata
-#                for fgrp in list(f['METADATA']['Lineage']):
-#                    f.copy('METADATA/Lineage/{}'.format(fgrp), g['METADATA']['Lineage']['ATL06-{:02d}'.format(ii+1)])
-
-                f.close()
-        g.close()
     print("ATL06_to_ATL11: done with "+out_file)
         
     if args.test_plot:
