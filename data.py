@@ -594,6 +594,9 @@ class data(object):
             # find the center of the bin in polar stereographic coordinates
             x0, y0=regress_to(D6_sub, ['x','y'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
 
+            # get the DEM elevation
+            P11.ref_surf.dem_h=regress_to(D6_sub, ['dem_h'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
+
             # get the data for the crossover point
             if GI_files is not None:
                 D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
@@ -643,8 +646,8 @@ def regress_to(D, out_field_names, in_field_names, in_field_pt, DEBUG=None):
         in_field_pt: location of the regression center (in variables in_field_names)
     """
 
-    D_in = np.array((getattr(D, in_field_names[0]).ravel(), getattr(D, in_field_names[1]).ravel())).T
-    D_out = np.array([getattr(D,ff).ravel() for ff in out_field_names]).T
+    D_in = np.array(tuple([getattr(D, name).ravel() for name in in_field_names])).T
+    D_out = np.array(tuple([getattr(D, name).ravel() for name in out_field_names])).T
     if ['longitude'] in out_field_names:
         # if longitude is in the regression parameters, need to unwrqp it
         lon_col=out_field_names.index['longitude']
