@@ -30,6 +30,7 @@ class defaults:
         self.polar_radius=6356752.3 # derived, https://www.eoas.ubc.ca/~mjelline/Planetary%20class/14gravity1_2.pdf
         self.ATL06_field_dict=default_ATL06_fields()
         self.seg_number_skip=self.N_search
+
         # calculate the order for the polynomial degrees:  Sorted by degree, then by y degree, no sum of x and y degrees larger than max(degree_x, degree_y)
         degree_list_x, degree_list_y = np.meshgrid(np.arange(self.poly_max_degree_AT+1), np.arange(self.poly_max_degree_XT+1))
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
@@ -64,7 +65,8 @@ def default_ATL06_fields():
                     'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr',
                                    'cloud_flg_atm','r_eff','tide_ocean'],
                     'orbit_info':['rgt','cycle_number'],
-                    'derived':['valid','BP', 'LR', 'spot', 'n_pixels', 
+                    'dem':['dem_h'],
+                    'derived':['valid','BP', 'LR', 'spot', 'n_pixels',
                                'min_along_track_dh', 'sigma_geo_r']}
     return field_dict
 
