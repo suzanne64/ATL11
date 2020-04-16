@@ -30,6 +30,9 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
     x0_ctrs = buffered_bins(x0, y0, 2*params_11.L_search_XT, index_bin_size)
     D_xover=[]
 
+    this_field_dict=params_11.ATL06_field_dict.copy()
+    this_field_dict.pop('dem')
+
     for x0_ctr in x0_ctrs:
         this_key=(np.real(x0_ctr), np.imag(x0_ctr))
         # check if we have already read in the data for this bin
@@ -37,7 +40,7 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
             # if we haven't already read in the data, read it in.  These data will be in xover_cache[this_key]
             temp=[]
             for GI_file in GI_files:
-                new_data = pc.geoIndex().from_file(GI_file).query_xy(this_key, fields=params_11.ATL06_field_dict);
+                new_data = pc.geoIndex().from_file(GI_file).query_xy(this_key, fields=this_field_dict);
                 if new_data is not None:
                     temp += new_data
             if len(temp) == 0:
@@ -65,11 +68,11 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
                     D_xover.append(xover_cache[this_key]['D'][np.arange(i0, i1+1, dtype=int)])
     if len(D_xover) > 0:
         D_xover=pc.data().from_list(D_xover)
-        
+
     # cleanup the cache if it is too large
     if len(xover_cache.keys()) > 50:
         cleanup_xover_cache(xover_cache, x0, y0, 2e4)
-        
+
     return D_xover
 
 def cleanup_xover_cache(cache, x0, y0, W):
