@@ -598,7 +598,7 @@ class data(object):
             P11.ref_surf.dem_h=regress_to(D6_sub, ['dem_h'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
 
             # get the data for the crossover point
-            if GI_files is not None:
+            if GI_files is not None and np.abs(P11.corrected_h.latitude) < 86:
                 D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
                 P11.corr_xover_heights(D_xover)
             # if we have read any data for the current bin, run the crossover calculation
