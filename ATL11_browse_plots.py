@@ -19,7 +19,7 @@ from matplotlib.colors import ListedColormap
 from fpdf import FPDF
 #import cartopy.ccrs as ccrs
 
-def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
+def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
     print('File to plot',os.path.basename(ATL11_file))
     ATL11_file_str = os.path.basename(ATL11_file).split('.')[0]
 
@@ -125,13 +125,20 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
         pass    
     
     # make plots
-    fig1, ax1 = plt.subplots(1,3,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
+    if len(de.y) >= len(de.x):    
+        fig1, ax1 = plt.subplots(1,3,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
+    else:
+        fig1, ax1 = plt.subplots(3,1,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
     if mosaic is not None:
         for ii in np.arange(3):
             ax1[ii].imshow(gz, extent=extent, cmap='gray', vmin=gz05, vmax=gz95)
     if np.any(~np.isnan(h_corr[:,-1])):
         h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,-1]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
         ax1[0].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[-1])), fontdict={'fontsize':10});
+#    else:
+#        print('line 136',h_corr.shape)
+#        print(h_corr[~np.isnan[h_corr]])
+#        exit(-1)
     h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cm12, vmin=0-0.5, vmax=num_cycles+0.5)
     h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
     ax1[0].set_ylabel('y [km]')
@@ -142,7 +149,7 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
     fig1.colorbar(h2, ax=ax1[2]) 
     fig1.suptitle('{}'.format(os.path.basename(ATL11_file)))
     plt.subplots_adjust(bottom=0.15, top=0.9)
-    plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {} (left). Number of cycles with valid height data (center). Change in height over time, in meters/year, last cycle from the first (right). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[-1])),wrap=True)
+    plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, last cycle from the first (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[-1])),wrap=True)
     fig1.savefig('test_data/{0}_Figure1_h_corrLast_Valids_dHdt_overDEM.png'.format(ATL11_file_str),format='png')
 
     fig2,ax2 = plt.subplots()
