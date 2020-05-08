@@ -9,8 +9,11 @@ NOTE: Requires the presence of atl11_metadata_template.h5 in same directory as t
 """
 import os, h5py
 import numpy as np
+import sys
+from datetime import datetime
 import ATL11
 from ATL11.h5util import create_attribute
+from ATL11.version import version
 
 def write_METADATA(outfile,infiles):
     if os.path.isfile(outfile):        
@@ -129,9 +132,9 @@ def filemeta(outfile,infiles):
 #        'creator_name':'', 'data_rate':'',
     orbit_info={'crossing_time':0., 'cycle_number':0, 'lan':0., \
         'orbit_number':0., 'rgt':0, 'sc_orient':0, 'sc_orient_time':0.}
-    root_info={'date_created':'', 'geospatial_lat_max':0, 'geospatial_lat_min':0., \
+    root_info={'date_created':'', 'geospatial_lat_max':0., 'geospatial_lat_min':0., \
         'geospatial_lon_max':0., 'geospatial_lon_min':0., 'hdfversion':'', 'history':'', \
-        'identifier_file_uuid':'', 'identifier_product_format_version':'', 'time_coverage_duration':'', \
+        'identifier_file_uuid':'', 'identifier_product_format_version':'', 'time_coverage_duration':0., \
         'time_coverage_end':'', 'time_coverage_start':''}
     # copy METADATA group from ATL11 template. Make lineage/cycle_array conatining each ATL06 file, where the ATL06 filenames
     if os.path.isfile(outfile):
@@ -139,26 +142,49 @@ def filemeta(outfile,infiles):
         for ii,infile in enumerate(sorted(infiles)):
             print('infile:',infile)
             m = h5py.File(os.path.dirname(os.path.realpath(__file__))+'/atl11_metadata_template.h5','r')
-            if 'METADATA' in list(g['/'].keys()):
-                del g['METADATA']
-            m.copy('METADATA',g)
-            if 'Lineage' in list(g['METADATA'].keys()):
-                del g['METADATA']['Lineage']
-            g['METADATA'].create_group('Lineage'.encode('ASCII','replace'))
-            gf = g['METADATA']['Lineage'].create_group('ANC36-11'.encode('ASCII','replace'))
-            gf = g['METADATA']['Lineage'].create_group('ANC38-11'.encode('ASCII','replace'))
+            if ii==0:
+              if 'METADATA' in list(g['/'].keys()):
+                  del g['METADATA']
+              # get all METADATA groups except Lineage, which we set to zero
+              m.copy('METADATA',g)
+              if 'Lineage' in list(g['METADATA'].keys()):
+                  del g['METADATA']['Lineage']
+              g['METADATA'].create_group('Lineage'.encode('ASCII','replace'))
+              gf = g['METADATA']['Lineage'].create_group('ANC36-11'.encode('ASCII','replace'))
+              gf = g['METADATA']['Lineage'].create_group('ANC38-11'.encode('ASCII','replace'))
 
-            if os.path.isfile(infile):
+              if os.path.isfile(infile):
                 f = h5py.File(infile,'r')
+                val=' '.join(sys.argv)
+                create_attribute(g['METADATA/ProcessStep/PGE'].id, 'runTimeParameters', [], val)
                 if ii==0:
-                    # get all METADATA groups except Lineage, which we set to zero
                     for key, keyval in root_info.items():
                        dsname=key
-                       if dsname in f.attrs:
-                           val = f.attrs[key].astype('U13')
-                           print('key,val:',key,val)
-           
+                       if key=='date_created' or key=='history':
+                           val=str(datetime.now().date())
+                           val=val+'T'+str(datetime.now().time())
                            create_attribute(g.id, key, [], val)
+                           create_attribute(g['METADATA/ProcessStep/PGE'].id, 'stepDateTime', [], val)
+                           continue
+                       if key=='identifier_product_format_version':
+                           val=version()
+                           create_attribute(g.id, key, [], val)
+                           create_attribute(g['METADATA/ProcessStep/PGE'].id, 'softwareVersion', [], val)
+                           continue
+                       if dsname in f.attrs:
+                           if isinstance(keyval,float):
+                             val = f.attrs[key]
+                             print('key,val:',key,val)
+                             g.attrs[key]=val
+                           else:
+#                             val = f.attrs[key].astype('U13')
+                             val = f.attrs[key].decode()
+                             print('key,val:',key,val)
+                             create_attribute(g.id, key, [], val)
+                    del g['METADATA/Extent']
+                    f.copy('METADATA/Extent',g['METADATA'])
+                    f.copy('ancillary_data',g)
+                    del g['ancillary_data/land_ice']
 
 #
 # Read the datasets from orbit_info
