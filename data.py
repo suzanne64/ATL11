@@ -13,6 +13,7 @@ from osgeo import osr
 import inspect
 import pointCollection as pc
 from ATL11.ATL06_pair import ATL06_pair
+import time
 
 class data(object):
     # class to hold ATL11 data in ATL11.groups
@@ -515,6 +516,7 @@ class data(object):
         # initialize the xover data cache
         D_xover_cache={}
 
+        last_time=time.time()
         last_count=0
         # loop over reference points
         P11_list=list()
@@ -614,8 +616,9 @@ class data(object):
             if not np.isfinite(P11.corrected_h.latitude):
                 continue
             P11_list.append(P11)
-            if count-last_count>500:
-                print("completed %d segments, ref_pt= %d" %(count, ref_pt))
+            if count-last_count>1000:
+                print("completed %d/%d segments, ref_pt= %d, last 1000 segments in %2.2f s." %(count, len(ref_pt_numbers), ref_pt, time.time()-last_time))
+                last_time=time.time()
                 last_count=count
 
         if len(P11_list) > 0:
