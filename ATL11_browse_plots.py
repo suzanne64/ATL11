@@ -19,15 +19,16 @@ from matplotlib.colors import ListedColormap
 from fpdf import FPDF
 #import cartopy.ccrs as ccrs
 
-def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
+def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
     print('File to plot',os.path.basename(ATL11_file))
     ATL11_file_str = os.path.basename(ATL11_file).split('.')[0]
 
-    with h5py.File(ATL11_file,'r') as FH:
-        start_cycle = np.int(FH['METADATA']['Lineage']['ATL06'].attrs['start_cycle'])
-        end_cycle   = np.int(FH['METADATA']['Lineage']['ATL06'].attrs['end_cycle'])
-    num_cycles=end_cycle-start_cycle+1
-    cycles = np.arange(start_cycle,end_cycle+1)
+#    with h5py.File(ATL11_file,'r') as FH:
+#        start_cycle = np.int(FH['METADATA']['Lineage']['ATL06'].attrs['start_cycle'])
+#        end_cycle   = np.int(FH['METADATA']['Lineage']['ATL06'].attrs['end_cycle'])
+#    start_cycle
+#    num_=end_cycle-start_cycle+1
+#    cycles = np.arange(start_cycle,end_cycle+1)
 
     cm = matplotlib.cm.get_cmap('magma')
     colorslist = ['black','darkred','red','darkorange','gold','yellowgreen','green','darkturquoise','steelblue','blue','purple','orchid','deeppink']
@@ -36,7 +37,7 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
 #    plt.figtext(0.1,0.01,'This is the color scale for cycle numbers and can be used to make you feel good about the rainbow. Bring on the rainbow ponies!', wrap=True)
 #    plt.show()
 #    exit(-1)
-    cm12 = ListedColormap(colorslist[0:num_cycles+1])
+#    cm12 = ListedColormap(colorslist[0:num_cycles+1])
     cmpr = ['red','green','blue']
     buf = 1e4
     sec2year = 60*60*24*365.25
@@ -48,6 +49,13 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
         pair = pr+1
 
         D = ATL11.data().from_file(ATL11_file, pair=pair, field_dict=None)
+        if pair == 1:
+            start_cycle=D.corrected_h.cycle_number[0]
+            end_cycle=D.corrected_h.cycle_number[-1]
+            num_cycles=len(D.corrected_h.cycle_number)
+            cm12 = ListedColormap(colorslist[0:num_cycles+1])
+#            cycles = np.arange(start_cycle,end_cycle+1)
+
         if hemisphere==1:
             D.get_xy(EPSG=3413)
             # set cartopy projection as EPSG 3413
@@ -69,7 +77,6 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
             h_corr     = D.corrected_h.h_corr
             delta_time = D.corrected_h.delta_time
             ref_pt     = D.corrected_h.ref_pt
-            dHdt = ( (h_corr[:,-1] - h_corr[:,0]) / (delta_time[:,-1] - delta_time[:,0]) ) * sec2year
             x = D.x
             y = D.y
             dem_h      = D.ref_surf.dem_h
@@ -89,7 +96,6 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
             h_corr     = np.concatenate( (h_corr,D.corrected_h.h_corr), axis=0) 
             delta_time = np.concatenate( (delta_time,D.corrected_h.delta_time), axis=0) 
             ref_pt     = np.concatenate( (ref_pt,D.corrected_h.ref_pt), axis=0) 
-            dHdt = np.concatenate( (dHdt, ( (D.corrected_h.h_corr[:,-1] - D.corrected_h.h_corr[:,0]) / (D.corrected_h.delta_time[:,-1] - D.corrected_h.delta_time[:,0]) ) * sec2year ), axis=0)
             x = np.concatenate( (x,D.x), axis=0)
             y = np.concatenate( (y,D.y), axis=0)
             dem_h = np.concatenate( (dem_h,D.ref_surf.dem_h), axis=0)
@@ -108,6 +114,21 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
         ipair.append(ipair[-1]+D.corrected_h.h_corr.shape[0])
 
     ddem = h_corr-dem_h[:,None]
+    # get dHdt for whatever cycles have some valid points, prefereably over the longest time range.
+    ccl = -1   # last cycle index
+    ccf = 0    # first cycle index
+    dHdt = np.full([len(h_corr[:,0]),], np.nan)
+    while np.all(np.isnan(h_corr[:,ccl])):
+        ccl -= 1
+    else:
+        while np.all(np.isnan(h_corr[:,ccf])):
+            ccf += 1
+        else:
+            if len(h_corr[0,ccf:ccl]) == 0:
+                pass
+            else:
+                dHdt = ( (h_corr[:,ccl] - h_corr[:,ccf]) / (delta_time[:,ccl] - delta_time[:,ccf]) ) * sec2year
+
     # get min, max values for y-axis
     dHdt05 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)],5)
     dHdt95 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)],95)
@@ -125,13 +146,15 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
         pass    
     
     # make plots
-    fig1, ax1 = plt.subplots(1,3,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
+    if len(de.y) >= len(de.x):    
+        fig1, ax1 = plt.subplots(1,3,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
+    else:
+        fig1, ax1 = plt.subplots(3,1,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
     if mosaic is not None:
         for ii in np.arange(3):
             ax1[ii].imshow(gz, extent=extent, cmap='gray', vmin=gz05, vmax=gz95)
-    if np.any(~np.isnan(h_corr[:,-1])):
-        h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,-1]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
-        ax1[0].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[-1])), fontdict={'fontsize':10});
+    h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
+    ax1[0].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[ccl])), fontdict={'fontsize':10});
     h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cm12, vmin=0-0.5, vmax=num_cycles+0.5)
     h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
     ax1[0].set_ylabel('y [km]')
@@ -142,9 +165,9 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
     fig1.colorbar(h2, ax=ax1[2]) 
     fig1.suptitle('{}'.format(os.path.basename(ATL11_file)))
     plt.subplots_adjust(bottom=0.15, top=0.9)
-    plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {} (left). Number of cycles with valid height data (center). Change in height over time, in meters/year, last cycle from the first (right). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[-1])),wrap=True)
+    plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
     fig1.savefig('test_data/{0}_Figure1_h_corrLast_Valids_dHdt_overDEM.png'.format(ATL11_file_str),format='png')
-
+    
     fig2,ax2 = plt.subplots()
     hist, bin_edges = np.histogram(np.count_nonzero(~np.isnan(h_corr),axis=1), bins=np.arange((num_cycles)+2))
     valid_dict = {}
@@ -167,11 +190,11 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
     elif num_cycles >= 10:
         fig5,ax5 = plt.subplots(3,4,sharex=True,sharey=True)
     for ii, ax in enumerate(ax5.reshape(-1)):
-        ax.hist(ddem[:,ii],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[np.int(cycles[ii])])  
+        ax.hist(ddem[:,ii],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[np.int(D.corrected_h.cycle_number[ii])])  
         if ii == 0:
-            ax.set_title('height-DEM: Cycle {}'.format(np.int(cycles[ii])), fontdict={'fontsize':10})
+            ax.set_title('height-DEM: Cycle {}'.format(np.int(D.corrected_h.cycle_number[ii])), fontdict={'fontsize':10})
         else:
-            ax.set_title('Cycle {}'.format(np.int(cycles[ii])), fontdict={'fontsize':10})
+            ax.set_title('Cycle {}'.format(np.int(D.corrected_h.cycle_number[ii])), fontdict={'fontsize':10})
     plt.figtext(0.1,0.01,'Figure 5. Histogram of corrected_h/h_corr heights minus DEM, in meters. One historgram per cycle, all beam pairs.',wrap=True)
     plt.subplots_adjust(bottom=0.15)
     fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
@@ -185,6 +208,7 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
             cycle_dict = {}
             for cc in np.arange(start_cycle, end_cycle+1):
                 cycle_dict.update( {np.int(cc):colorslist[np.int(cc)]} )
+            print(cycle_dict)
             fig3.subplots_adjust(bottom=0.15)
             plt.figtext(0.1,0.01,'Figure 3. Histogram of number of valid height values from each pair: 1,2,3 left to right. Color coded by cycle number.',wrap=True)
 
@@ -192,7 +216,12 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
         for ii, cc in enumerate(np.arange(start_cycle, end_cycle+1)):
             which_cycles = np.concatenate( (which_cycles,(np.int(cc)*np.ones(np.count_nonzero(~np.isnan(h_corr[ipair[pr]:ipair[pr+1]-1,ii]))).ravel())), axis=0)
         hist, bin_edges = np.histogram(which_cycles, bins=np.arange(start_cycle, end_cycle+2))
-        ax3[pr].bar(bin_edges[0:-1],hist, color=[cycle_dict[r] for r in D.corrected_h.cycle_number[:]])
+        print(np.unique(which_cycles))
+        print('line 210',bin_edges)
+        print(D.corrected_h.cycle_number[:])
+        print([cycle_dict[np.int(r)] for r in D.corrected_h.cycle_number[:]])
+        #exit(-1)
+        ax3[pr].bar(D.corrected_h.cycle_number[:], hist, color=[cycle_dict[np.int(r)] for r in D.corrected_h.cycle_number[:]])
         ax3[pr].set_xlim((D.corrected_h.cycle_number[0]-0.5, D.corrected_h.cycle_number[-1]+0.5))
         if pair == 3:
             ax3[1].set_title('Number of valid heights from each pair', fontdict={'fontsize':10})
@@ -224,13 +253,13 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
         if pair == 1:
             fig6, ax6 = plt.subplots()
             fig6.subplots_adjust(bottom=0.15)
-            plt.figtext(0.1,0.01,'Figure 6. Change in height over time, dH/dt, in meters/year. dH/dt is the last cycle minus the first cycle in the file. Color coded by beam pair: 1 (red), 2 (green), 3 (blue). Plotted against reference point.',wrap=True)
+            plt.figtext(0.1,0.01,'Figure 6. Change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} minus cycle {1} in the file. Color coded by beam pair: 1 (red), 2 (green), 3 (blue). Plotted against reference point.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
         if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
             ax6.plot(ref_pt[ipair[pr]:ipair[pr+1]-1],dHdt[ipair[pr]:ipair[pr+1]-1], '.', markersize=1, color=cmpr[pr] )
         if pair == 3:
             ax6.set_ylim([dHdt05,dHdt95])
             ax6.grid(linestyle='--',linewidth=0.3)
-            ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(end_cycle, start_cycle), fontdict={'fontsize':10})
+            ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])), fontdict={'fontsize':10})
             ax6.set_ylabel('meters/year')
             fig6.suptitle('{}'.format(os.path.basename(ATL11_file)))
             fig6.savefig('test_data/{0}_Figure6_dHdt.png'.format(ATL11_file_str),format='png')
@@ -238,9 +267,10 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
         if pair == 1:
             fig7,ax7 = plt.subplots(1,3,sharex=True,sharey=True)
             fig7.subplots_adjust(bottom=0.15)
-            plt.figtext(0.1,0.01,'Figure 7. Histograms of change in height over time, dH/dt, in meters/year. dH/dt is the last cycle minus the first cycle in the file. One histogram per beam pair: 1 (red), 2 (green), 3 (blue).',wrap=True)
-        ax7[pr].hist(dHdt[ipair[pr]:ipair[pr+1]-1], bins=np.arange(np.floor(dHdt05*10)/10,np.ceil(dHdt95*10)/10+0.1,0.1), color=cmpr[pr])  
-        ax7[1].set_title('Change in height histograms: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[-1]),np.int(D.corrected_h.cycle_number[0])), fontdict={'fontsize':10})
+            plt.figtext(0.1,0.01,'Figure 7. Histograms of change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} minus cycle {1} in the file. One histogram per beam pair: 1 (red), 2 (green), 3 (blue).'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
+        ax7[pr].hist(dHdt[ipair[pr]:ipair[pr+1]-1], bins=np.arange(np.floor(dHdt05*10)/10,np.ceil(dHdt95*10)/10+0.1,0.1), color=cmpr[pr])
+        ax7[pr].grid(linestyle='--')
+        ax7[1].set_title('Change in height histograms: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[0])), fontdict={'fontsize':10})
         fig7.suptitle('{}'.format(os.path.basename(ATL11_file)))
         if pair == 3:
             fig7.savefig('test_data/{0}_Figure7_dHdt_hist.png'.format(ATL11_file_str),format='png')
@@ -250,7 +280,7 @@ def ATL11_test_plot(ATL11_file, hemisphere=1, mosaic=None):
             fig8.subplots_adjust(bottom=0.15)
             plt.figtext(0.1,0.01,'Figure 8. Top row: Heights from crossing track data, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus crossing track heights. Color coded by cycle number. Plotted against reference point.',wrap=True)
         if isinstance(xo_h_corr, np.ndarray): 
-            for ii, cyc in enumerate(cycles):
+            for ii, cyc in enumerate(D.corrected_h.cycle_number):
                 cc=np.flatnonzero((xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc) & (xo_atl06_quality_summary[ipairxo[pr]:ipairxo[pr+1]-1]==0)) 
                 ax8[0,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],'x',color=colorslist[np.int(cyc)], markersize=1, label='cycle {:d}'.format(np.int(cyc)));
                 ax8[0,pr].grid(linestyle='--')
