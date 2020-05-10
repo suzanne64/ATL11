@@ -37,7 +37,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
 #    plt.figtext(0.1,0.01,'This is the color scale for cycle numbers and can be used to make you feel good about the rainbow. Bring on the rainbow ponies!', wrap=True)
 #    plt.show()
 #    exit(-1)
-#    cm12 = ListedColormap(colorslist[0:num_cycles+1])
     cmpr = ['red','green','blue']
     buf = 1e4
     sec2year = 60*60*24*365.25
@@ -54,7 +53,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
             end_cycle=D.corrected_h.cycle_number[-1]
             num_cycles=len(D.corrected_h.cycle_number)
             cm12 = ListedColormap(colorslist[0:num_cycles+1])
-#            cycles = np.arange(start_cycle,end_cycle+1)
 
         if hemisphere==1:
             D.get_xy(EPSG=3413)
@@ -130,8 +128,12 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
                 dHdt = ( (h_corr[:,ccl] - h_corr[:,ccf]) / (delta_time[:,ccl] - delta_time[:,ccf]) ) * sec2year
 
     # get min, max values for y-axis
-    dHdt05 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)],5)
-    dHdt95 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)],95)
+    if np.any(~np.isnan(dHdt)):
+        dHdt05 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)],5)
+        dHdt95 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)],95)
+    else:
+        dHdt05 = np.nan
+        dHdt95 = np.nan
     h05 = stats.scoreatpercentile(h_corr[~np.isnan(h_corr)].ravel(),5)
     h95 = stats.scoreatpercentile(h_corr[~np.isnan(h_corr)].ravel(),95)
     ddem05 = stats.scoreatpercentile(ddem[~np.isnan(ddem)].ravel(),5)
@@ -156,17 +158,23 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
     h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
     ax1[0].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[ccl])), fontdict={'fontsize':10});
     h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cm12, vmin=0-0.5, vmax=num_cycles+0.5)
-    h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
-    ax1[0].set_ylabel('y [km]')
+    if np.any(~np.isnan(dHdt)):
+        h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
+        ax1[2].set_title('dH/dt, m/yr', fontdict={'fontsize':10});
+        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
+    else:
+        h2 = ax1[2].scatter(x/1000, y/1000, c=h_corr[:,ccf]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
+        ax1[2].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[ccf])), fontdict={'fontsize':10});
+        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Height data, in km, from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
+        
+    ax1[0].set_ylabel('y [km]', fontdict={'fontsize':10})
     ax1[1].set_title('Number of Valid Heights', fontdict={'fontsize':10});
-    ax1[2].set_title('dH/dt, m/yr', fontdict={'fontsize':10});
     fig1.colorbar(h0, ax=ax1[0]) 
     fig1.colorbar(h1, ticks=np.arange(num_cycles+1), ax=ax1[1]) 
     fig1.colorbar(h2, ax=ax1[2]) 
     fig1.suptitle('{}'.format(os.path.basename(ATL11_file)))
     plt.subplots_adjust(bottom=0.15, top=0.9)
-    plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
-    fig1.savefig('test_data/{0}_Figure1_h_corrLast_Valids_dHdt_overDEM.png'.format(ATL11_file_str),format='png')
+    fig1.savefig('{0}/{1}_Figure1_h_corrLast_Valids_dHdt_overDEM.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
     
     fig2,ax2 = plt.subplots()
     hist, bin_edges = np.histogram(np.count_nonzero(~np.isnan(h_corr),axis=1), bins=np.arange((num_cycles)+2))
@@ -177,7 +185,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
     ax2.set_xticks(bin_edges[:-1])
     fig2.suptitle('{}'.format(os.path.basename(ATL11_file)))
     plt.figtext(0.1,0.01,'Figure 2. Histogram of number of cycles with valid height data, all beam pairs.',wrap=True)
-    fig2.savefig('test_data/{0}_Figure2_validRepeats_hist.png'.format(ATL11_file_str),format='png')
+    fig2.savefig('{0}/{1}_Figure2_validRepeats_hist.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
   
     if num_cycles <= 3:  
         fig5,ax5 = plt.subplots(num_cycles,1,sharex=True,sharey=True)
@@ -198,8 +206,8 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
     plt.figtext(0.1,0.01,'Figure 5. Histogram of corrected_h/h_corr heights minus DEM, in meters. One historgram per cycle, all beam pairs.',wrap=True)
     plt.subplots_adjust(bottom=0.15)
     fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
-    fig5.savefig('test_data/{0}_Figure5_h_corr-DEM_hist.png'.format(ATL11_file_str),format='png')
- 
+    fig5.savefig('{0}/{1}_Figure5_h_corr-DEM_hist.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
+
     for pr in np.arange(3):
         pair=pr+1
         
@@ -226,7 +234,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         if pair == 3:
             ax3[1].set_title('Number of valid heights from each pair', fontdict={'fontsize':10})
             fig3.suptitle('{}'.format(os.path.basename(ATL11_file)))
-            fig3.savefig('test_data/{0}_Figure3_validRepeatsCycle_hist.png'.format(ATL11_file_str),format='png')
+            fig3.savefig('{0}/{1}_Figure3_validRepeatsCycle_hist.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
                  
         if pair == 1:
             fig4, ax4 = plt.subplots(2,3,sharex=True,sharey='row')
@@ -248,7 +256,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         ax4[1,0].set_ylabel('meters')
         plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
         if pair == 3:
-            fig4.savefig('test_data/{0}_Figure4_h_corr-DEM.png'.format(ATL11_file_str),format='png')
+            fig4.savefig('{0}/{1}_Figure4_h_corr-DEM.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
 
         if pair == 1:
             fig6, ax6 = plt.subplots()
@@ -257,23 +265,27 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
             ax6.plot(ref_pt[ipair[pr]:ipair[pr+1]-1],dHdt[ipair[pr]:ipair[pr+1]-1], '.', markersize=1, color=cmpr[pr] )
         if pair == 3:
-            ax6.set_ylim([dHdt05,dHdt95])
+            if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
+                ax6.set_ylim([dHdt05,dHdt95])
+            else:
+                ax6.set_ylim([-1,1])
             ax6.grid(linestyle='--',linewidth=0.3)
             ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])), fontdict={'fontsize':10})
             ax6.set_ylabel('meters/year')
             fig6.suptitle('{}'.format(os.path.basename(ATL11_file)))
-            fig6.savefig('test_data/{0}_Figure6_dHdt.png'.format(ATL11_file_str),format='png')
+            fig6.savefig('{0}/{1}_Figure6_dHdt.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
             
         if pair == 1:
             fig7,ax7 = plt.subplots(1,3,sharex=True,sharey=True)
             fig7.subplots_adjust(bottom=0.15)
             plt.figtext(0.1,0.01,'Figure 7. Histograms of change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} minus cycle {1} in the file. One histogram per beam pair: 1 (red), 2 (green), 3 (blue).'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
-        ax7[pr].hist(dHdt[ipair[pr]:ipair[pr+1]-1], bins=np.arange(np.floor(dHdt05*10)/10,np.ceil(dHdt95*10)/10+0.1,0.1), color=cmpr[pr])
+        if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
+            ax7[pr].hist(dHdt[ipair[pr]:ipair[pr+1]-1], bins=np.arange(np.floor(dHdt05*10)/10,np.ceil(dHdt95*10)/10+0.1,0.1), color=cmpr[pr])
         ax7[pr].grid(linestyle='--')
         ax7[1].set_title('Change in height histograms: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[0])), fontdict={'fontsize':10})
         fig7.suptitle('{}'.format(os.path.basename(ATL11_file)))
         if pair == 3:
-            fig7.savefig('test_data/{0}_Figure7_dHdt_hist.png'.format(ATL11_file_str),format='png')
+            fig7.savefig('{0}/{1}_Figure7_dHdt_hist.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
 
         if pair==1:
             fig8, ax8 = plt.subplots(2, 3, sharey='row', sharex=True)
@@ -298,15 +310,15 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
             ax8[0,0].text(0.2,0.5,'No cross over data in this file')
         if pair == 3:
             plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
-            fig8.savefig('test_data/{0}_Figure8_h_corr-CrossOver.png'.format(ATL11_file_str),format='png')
+            fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
     
     pdf = FPDF()
-    for ii, name in enumerate(sorted(glob.glob('test_data/{}_*.png'.format(ATL11_file_str)))):
+    for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(os.path.dirname(ATL11_file),ATL11_file_str)))):
         print(name)
         pdf.add_page('L')
         pdf.set_xy(0,0)
         pdf.image(name) #,x=imx[ii],y=imy[ii])
-    pdf.output('test_data/{}.pdf'.format(ATL11_file_str),'F')
+    pdf.output('{0}/{1}.pdf'.format(os.path.dirname(ATL11_file),ATL11_file_str),'F')
     
     plt.show()
 #
