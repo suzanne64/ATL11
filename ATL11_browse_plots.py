@@ -6,12 +6,10 @@ Created on Fri Jan 24 10:45:47 2020
 @author: ben05
 """
 import ATL11
-#import cartopy.ccrs as ccrs
 import numpy as np
-from scipy.interpolate import interp2d, griddata
 from scipy import stats
 import matplotlib.pyplot as plt
-import matplotlib
+import matplotlib as mpl
 import sys, os, h5py, glob
 import pointCollection as pc
 from PointDatabase.mapData import mapData
@@ -30,7 +28,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
 #    num_=end_cycle-start_cycle+1
 #    cycles = np.arange(start_cycle,end_cycle+1)
 
-    cm = matplotlib.cm.get_cmap('magma')
+    cm = mpl.cm.get_cmap('magma')
     colorslist = ['black','darkred','red','darkorange','gold','yellowgreen','green','darkturquoise','steelblue','blue','purple','orchid','deeppink']
 #    fig22,ax22=plt.subplots()
 #    ax22.bar(np.arange(len(colorslist)),np.ones(len(colorslist),),color=colorslist)
@@ -52,7 +50,9 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
             start_cycle=D.corrected_h.cycle_number[0]
             end_cycle=D.corrected_h.cycle_number[-1]
             num_cycles=len(D.corrected_h.cycle_number)
-            cm12 = ListedColormap(colorslist[0:num_cycles+1])
+            print(start_cycle, end_cycle, num_cycles)
+            cmCount = ListedColormap(colorslist[0:num_cycles+1])
+            cmCycles = ListedColormap(colorslist[np.int(start_cycle):np.int(end_cycle)+1])
 
         if hemisphere==1:
             D.get_xy(EPSG=3413)
@@ -61,25 +61,18 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         else:
             D.get_xy(EPSG=3031)
             #projection = ccrs.Stereographic(central_longitude=+0.0, central_latitude=-90.0, true_scale_latitude=-71.0)        
-
-        if pair == 2:
-            bounds = [ [np.min(D.x)-buf, np.max(D.x)+buf],[np.min(D.y)-buf, np.max(D.y)+buf] ]
-            if mosaic is not None:
-                de = pc.grid.data().from_geotif(mosaic, bounds=bounds)
-                extent = [ext/1000 for ext in de.extent]
-                gz = np.gradient(de.z)[0]
-                gz05 = stats.scoreatpercentile(gz, 5)
-                gz95 = stats.scoreatpercentile(gz, 95)                
         
         if pair == 1:
             h_corr     = D.corrected_h.h_corr
             delta_time = D.corrected_h.delta_time
             ref_pt     = D.corrected_h.ref_pt
+            lat        = D.corrected_h.latitude
+            lon        = D.corrected_h.longitude
             x = D.x
             y = D.y
             dem_h      = D.ref_surf.dem_h
             try:
-                ref, xo, delta = D.get_xovers()
+                ref, xo, delta = D.get_xovers()  # ! cross over data can come from any cycle (not only cycles in corrected_h )
                 ref_h_corr      = ref.h_corr
                 xo_h_corr       = xo.h_corr
                 xo_ref_pt       = xo.ref_pt
@@ -94,6 +87,8 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
             h_corr     = np.concatenate( (h_corr,D.corrected_h.h_corr), axis=0) 
             delta_time = np.concatenate( (delta_time,D.corrected_h.delta_time), axis=0) 
             ref_pt     = np.concatenate( (ref_pt,D.corrected_h.ref_pt), axis=0) 
+            lat        = np.concatenate( (lat,D.corrected_h.latitude), axis=0) 
+            lon        = np.concatenate( (lon,D.corrected_h.longitude), axis=0) 
             x = np.concatenate( (x,D.x), axis=0)
             y = np.concatenate( (y,D.y), axis=0)
             dem_h = np.concatenate( (dem_h,D.ref_surf.dem_h), axis=0)
@@ -111,6 +106,22 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
 
         ipair.append(ipair[-1]+D.corrected_h.h_corr.shape[0])
 
+    bounds = [ [np.min(x)-buf, np.max(x)+buf],[np.min(y)-buf, np.max(y)+buf] ]
+    if mosaic is not None:
+        de = pc.grid.data().from_geotif(mosaic, bounds=bounds)
+        extent = [ext/1000 for ext in de.extent]
+        gz = np.gradient(de.z)[0]
+        gz05 = stats.scoreatpercentile(gz, 5)
+        gz95 = stats.scoreatpercentile(gz, 95)                
+
+    fig0, ax0 = plt.subplots(1,2)
+    ax0[0].plot(lon,lat,'.')
+    ax0[0].set_title('lon/lat')
+    ax0[1].plot(x,y,'.')
+    ax0[1].set_title('D.x / D.y, EPSG=3413')
+    fig0.savefig('{0}/{1}_iceland.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
+    plt.show()
+    exit(-1)
     ddem = h_corr-dem_h[:,None]
     # get dHdt for whatever cycles have some valid points, prefereably over the longest time range.
     ccl = -1   # last cycle index
@@ -157,7 +168,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
             ax1[ii].imshow(gz, extent=extent, cmap='gray', vmin=gz05, vmax=gz95)
     h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
     ax1[0].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[ccl])), fontdict={'fontsize':10});
-    h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cm12, vmin=0-0.5, vmax=num_cycles+0.5)
+    h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cmCount, vmin=0-0.5, vmax=num_cycles+0.5)
     if np.any(~np.isnan(dHdt)):
         h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
         ax1[2].set_title('dH/dt, m/yr', fontdict={'fontsize':10});
@@ -224,11 +235,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         for ii, cc in enumerate(np.arange(start_cycle, end_cycle+1)):
             which_cycles = np.concatenate( (which_cycles,(np.int(cc)*np.ones(np.count_nonzero(~np.isnan(h_corr[ipair[pr]:ipair[pr+1]-1,ii]))).ravel())), axis=0)
         hist, bin_edges = np.histogram(which_cycles, bins=np.arange(start_cycle, end_cycle+2))
-        print(np.unique(which_cycles))
-        print('line 210',bin_edges)
-        print(D.corrected_h.cycle_number[:])
-        print([cycle_dict[np.int(r)] for r in D.corrected_h.cycle_number[:]])
-        #exit(-1)
         ax3[pr].bar(D.corrected_h.cycle_number[:], hist, color=[cycle_dict[np.int(r)] for r in D.corrected_h.cycle_number[:]])
         ax3[pr].set_xlim((D.corrected_h.cycle_number[0]-0.5, D.corrected_h.cycle_number[-1]+0.5))
         if pair == 3:
@@ -245,7 +251,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
             labels.append('cycle {:d}'.format(np.int(cyc)))
             ax4[0,pr].plot(ref_pt[ipair[pr]:ipair[pr+1]-1],h_corr[ipair[pr]:ipair[pr+1]-1,ii], color=colorslist[np.int(cyc)], linewidth=0.5)                
             ax4[1,pr].plot(ref_pt[ipair[pr]:ipair[pr+1]-1],ddem[ipair[pr]:ipair[pr+1]-1,ii], '.', markersize=0.5, color=colorslist[np.int(cyc)], linewidth=0.5)
-        ax4[0,0].legend(labels)
         ax4[0,1].set_title('corrected_h/h_corr', fontdict={'fontsize':10});
         ax4[0,pr].grid(linestyle='--')
         ax4[1,1].set_title('corrected_h/h_corr minus DEM', fontdict={'fontsize':10});
@@ -256,6 +261,16 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         ax4[1,0].set_ylabel('meters')
         plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
         if pair == 3:
+            fig4.subplots_adjust(right=0.8)
+            cbar_ax = fig4.add_axes([0.85, 0.15, 0.02, 0.72])
+            cmap = plt.get_cmap(cmCycles,num_cycles+1)
+            norm = mpl.colors.Normalize(vmin=start_cycle, vmax=end_cycle)
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
+            deltac=(end_cycle-start_cycle)/(num_cycles)
+            cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
+            cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
+            cbar.set_label('Cycle Number')
             fig4.savefig('{0}/{1}_Figure4_h_corr-DEM.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
 
         if pair == 1:
@@ -293,7 +308,9 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
             plt.figtext(0.1,0.01,'Figure 8. Top row: Heights from crossing track data, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus crossing track heights. Color coded by cycle number. Plotted against reference point.',wrap=True)
         if isinstance(xo_h_corr, np.ndarray): 
             for ii, cyc in enumerate(D.corrected_h.cycle_number):
-                cc=np.flatnonzero((xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc) & (xo_atl06_quality_summary[ipairxo[pr]:ipairxo[pr+1]-1]==0)) 
+                print('line 303',cyc)
+                cc=np.flatnonzero((xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc) & (xo_atl06_quality_summary[ipairxo[pr]:ipairxo[pr+1]-1]==0))
+                print(xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1][cc])
                 ax8[0,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],'x',color=colorslist[np.int(cyc)], markersize=1, label='cycle {:d}'.format(np.int(cyc)));
                 ax8[0,pr].grid(linestyle='--')
                 ax8[1,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],ref_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc]-xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc], '.', color=colorslist[np.int(cyc)], markersize=1, label=None);
@@ -301,7 +318,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
     
             ax8[0,0].set_ylim((h05, h95))
             ax8[0,0].set_ylabel('meters')
-            ax8[0,0].legend()
             ax8[0,1].set_title('crossing_track_data/h_corr', fontdict={'fontsize':10})
             ax8[1,0].set_ylabel('meters')
             ax8[1,0].set_ylim((dxo05,dxo95))
@@ -309,6 +325,16 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         else:
             ax8[0,0].text(0.2,0.5,'No cross over data in this file')
         if pair == 3:
+            fig8.subplots_adjust(right=0.8)
+            cbar_ax = fig8.add_axes([0.85, 0.15, 0.02, 0.72])
+            cmap = plt.get_cmap(cmCycles,num_cycles+1)
+            norm = mpl.colors.Normalize(vmin=start_cycle, vmax=end_cycle)
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
+            deltac=(end_cycle-start_cycle)/(num_cycles)
+            cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
+            cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
+            cbar.set_label('Cycle Number')
             plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
             fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
     
