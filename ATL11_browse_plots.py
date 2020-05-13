@@ -15,7 +15,8 @@ import pointCollection as pc
 from PointDatabase.mapData import mapData
 from matplotlib.colors import ListedColormap
 from fpdf import FPDF
-#import cartopy.ccrs as ccrs
+import cartopy.crs as ccrs
+import osgeo.gdal
 
 def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
     print('File to plot',os.path.basename(ATL11_file))
@@ -57,10 +58,10 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         if hemisphere==1:
             D.get_xy(EPSG=3413)
             # set cartopy projection as EPSG 3413
-            #projection = ccrs.Stereographic(central_longitude=-45.0, central_latitude=+90.0, true_scale_latitude=+70.0)        
+            projection = ccrs.Stereographic(central_longitude=-45.0, central_latitude=+90.0, true_scale_latitude=+70.0)        
         else:
             D.get_xy(EPSG=3031)
-            #projection = ccrs.Stereographic(central_longitude=+0.0, central_latitude=-90.0, true_scale_latitude=-71.0)        
+            projection = ccrs.Stereographic(central_longitude=+0.0, central_latitude=-90.0, true_scale_latitude=-71.0)        
         
         if pair == 1:
             h_corr     = D.corrected_h.h_corr
@@ -114,14 +115,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
         gz05 = stats.scoreatpercentile(gz, 5)
         gz95 = stats.scoreatpercentile(gz, 95)                
 
-    fig0, ax0 = plt.subplots(1,2)
-    ax0[0].plot(lon,lat,'.')
-    ax0[0].set_title('lon/lat')
-    ax0[1].plot(x,y,'.')
-    ax0[1].set_title('D.x / D.y, EPSG=3413')
-    fig0.savefig('{0}/{1}_iceland.png'.format(os.path.dirname(ATL11_file),ATL11_file_str),format='png')
-    plt.show()
-    exit(-1)
     ddem = h_corr-dem_h[:,None]
     # get dHdt for whatever cycles have some valid points, prefereably over the longest time range.
     ccl = -1   # last cycle index
@@ -308,9 +301,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None):
             plt.figtext(0.1,0.01,'Figure 8. Top row: Heights from crossing track data, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus crossing track heights. Color coded by cycle number. Plotted against reference point.',wrap=True)
         if isinstance(xo_h_corr, np.ndarray): 
             for ii, cyc in enumerate(D.corrected_h.cycle_number):
-                print('line 303',cyc)
                 cc=np.flatnonzero((xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc) & (xo_atl06_quality_summary[ipairxo[pr]:ipairxo[pr+1]-1]==0))
-                print(xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1][cc])
                 ax8[0,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],'x',color=colorslist[np.int(cyc)], markersize=1, label='cycle {:d}'.format(np.int(cyc)));
                 ax8[0,pr].grid(linestyle='--')
                 ax8[1,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],ref_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc]-xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc], '.', color=colorslist[np.int(cyc)], markersize=1, label=None);
