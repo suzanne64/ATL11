@@ -14,8 +14,8 @@ import sys, os, h5py, glob
 import pointCollection as pc
 from PointDatabase.mapData import mapData
 from matplotlib.colors import ListedColormap
-from fpdf import FPDF
-import cartopy.crs as ccrs
+#from fpdf import FPDF
+import cartopy. as ccrs
 import osgeo.gdal
 
 def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
@@ -151,6 +151,18 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
     except Exception as E:
         pass    
     
+#    print('line 154',np.mean(lon))    
+#    projection = ccrs.Stereographic(central_longitude=-20.0, central_latitude=+90.0, true_scale_latitude=+70.0)  
+#    fig0, ax0 = plt.subplots(1,1,subplot_kw={'projection': projection})
+#    ax0.imshow(gz, extent=extent, cmap='gray', vmin=gz05, vmax=gz95)
+##    h0 = ax0.scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
+#    sc = ax0.plot(lon,lat,'.', transform=ccrs.PlateCarree())
+##    ax0.set_extent((-25,-13,63,67),crs=ccrs.PlateCarree())
+##    #ax0.set_ylim([63, 67])
+##    #gl = ax0.gridlines(crs=ccrs.NorthPolarStereo()) #,draw_labels=True)
+##    ax0.coastlines()
+#    plt.show()
+#    exit(-1)
     # make plots
     if len(de.y) >= len(de.x):    
         fig1, ax1 = plt.subplots(1,3,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
@@ -328,13 +340,13 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
             plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
             fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
     
-    pdf = FPDF()
-    for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(out_path,ATL11_file_str)))):
-        print(name)
-        pdf.add_page('L')
-        pdf.set_xy(0,0)
-        pdf.image(name) #,x=imx[ii],y=imy[ii])
-    pdf.output('{0}/{1}.pdf'.format(out_path,ATL11_file_str),'F')
+#    pdf = FPDF()
+#    for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(out_path,ATL11_file_str)))):
+#        print(name)
+#        pdf.add_page('L')
+#        pdf.set_xy(0,0)
+#        pdf.image(name) #,x=imx[ii],y=imy[ii])
+#    pdf.output('{0}/{1}.pdf'.format(out_path,ATL11_file_str),'F')
     
     plt.show()
 #
