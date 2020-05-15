@@ -63,7 +63,7 @@ def default_ATL06_fields():
                                       'n_fit_photons', 'signal_selection_source',
                                       'snr_significance','w_surface_window_final'],
                     'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr',
-                                   'cloud_flg_atm','r_eff','tide_ocean'],
+                                   'cloud_flg_atm','r_eff','tide_ocean','dac'],
                     'orbit_info':['rgt','cycle_number'],
                     'dem':['dem_h'],
                     'derived':['valid','BP', 'LR', 'spot', 'n_pixels',

@@ -568,7 +568,7 @@ class point(ATL11.data):
             W_by_error=h_li_sigma[cycle==ref_cycle]**(-2)/np.sum(h_li_sigma[cycle==ref_cycle]**(-2))
 
             # weighted means:
-            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','h_rms_misfit'): #,'h_rms_misfit'):
+            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','dac','h_rms_misfit'): #,'h_rms_misfit'):
                 self.cycle_stats.__dict__[dataset][0,cc]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
             self.cycle_stats.h_mean[0,cc]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
 
