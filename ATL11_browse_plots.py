@@ -15,7 +15,7 @@ import pointCollection as pc
 from PointDatabase.mapData import mapData
 from matplotlib.colors import ListedColormap
 #from fpdf import FPDF
-import cartopy. as ccrs
+import cartopy.crs as ccrs
 import osgeo.gdal
 
 def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
