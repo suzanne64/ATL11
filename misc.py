@@ -30,6 +30,8 @@ class defaults:
         self.polar_radius=6356752.3 # derived, https://www.eoas.ubc.ca/~mjelline/Planetary%20class/14gravity1_2.pdf
         self.ATL06_field_dict=default_ATL06_fields()
         self.seg_number_skip=self.N_search
+        self.pair_yatc_ctr = {1:3200, 2:0, 3:-3200} # expected beam-pair center locations
+        self.pair_yatc_ctr_tol = 1000    # tolerance for y_atc center rejection
 
         # calculate the order for the polynomial degrees:  Sorted by degree, then by y degree, no sum of x and y degrees larger than max(degree_x, degree_y)
         degree_list_x, degree_list_y = np.meshgrid(np.arange(self.poly_max_degree_AT+1), np.arange(self.poly_max_degree_XT+1))
@@ -49,7 +51,7 @@ class defaults:
                                      'longitude','atl06_quality_summary','segment_id',\
                                      'x_atc', 'dh_fit_dx', 'rgt','cycle_number',\
                                      'BP', 'LR', 'spot','sigma_geo_xt','sigma_geo_at', \
-                                     'sigma_geo_h']
+                                     'sigma_geo_h','dac']
         
 
 def default_ATL06_fields():
@@ -63,7 +65,7 @@ def default_ATL06_fields():
                                       'n_fit_photons', 'signal_selection_source',
                                       'snr_significance','w_surface_window_final'],
                     'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr',
-                                   'cloud_flg_atm','r_eff','tide_ocean'],
+                                   'cloud_flg_atm','r_eff','tide_ocean', 'dac'],
                     'orbit_info':['rgt','cycle_number'],
                     'dem':['dem_h'],
                     'derived':['valid','BP', 'LR', 'spot', 'n_pixels',

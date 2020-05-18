@@ -49,6 +49,10 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=Fals
             pass
 
     D6=pc.ATL06.data(beam_pair=beam_pair).from_list(D6_list)
+
+    # index D6 to remove segments with large y_atc offsets:
+    D6.index(np.any(np.abs(D6.y_atc-params_11.pair_yatc_ctr[beam_pair])< params_11.pair_yatc_ctr_tol, axis=1))
+
     if D6.size == 0:
         return None
     # reorder data rows from D6 by cycle
