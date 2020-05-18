@@ -15,13 +15,13 @@ import numpy as np
 import h5py
 import time
 
-cycles=[3, 4, 5, 6]
+cycles=[3, 4, 5, 6, 7]
 n_skip=4
 field_dict={'corrected_h':['h_corr','h_corr_sigma', 'latitude','longitude','delta_time'], 'ref_surf':['quality_summary', 'dem_h']}
 t0=time.time()
 if True:
     MOG=pc.grid.data().from_geotif('/Volumes/ice1/ben/MOG/2005/mog_2005_1km.tif')
-    thedir='/Volumes/ice2/ben/scf/GL_11/U06'
+    thedir='/Volumes/ice2/ben/scf/GL_11/U07'
     files=glob.glob(thedir+'/ATL11*.h5')
     xydh=[]
     data_count=0
@@ -67,21 +67,31 @@ if True:
     D=pc.data(columns=len(cycles)).from_list(xydh)
 
 
-D.to_h5('/Volumes/ice2/ben/scf/GL_11/relU06_dump_every_4th.h5')
+D.to_h5('/Volumes/ice2/ben/scf/GL_11/relU07_dump_every_4th.h5')
 
 
 if False:
-    fig=plt.figure(); plt.clf()
-    for col in np.arange(3):
-        fig.add_subplot(1,3,col+1)
+    D3=D[np.arange(0, D.shape[0], 3)]
+
+    gimp_mask=pc.grid.data().from_geotif('/Volumes/ice1/ben/GimpMasks_v1.1/GimpIceMask_1km.tif').interp(D3.x[:,0], D3.y[:,0])
+    D3=D3[gimp_mask > 0.1]
+
+    fig=plt.figure(4); plt.clf()
+    xx=D3.x[:,0]
+    yy=D3.y[:,0]
+    hax=[]
+    for col in np.arange(4):
+        hax.append(fig.add_subplot(1,4,col+1))
         MOG.show(cmap='gray', vmin=14000, vmax=17000)
-        hl=plt.scatter(D.x[:, col], D.y[:,col], 2, marker='.', c=D.h_corr[:,col+1]-D.h_corr[:,col],
-                           vmin=-0.5, vmax=0.5, cmap='Spectral')
-        hb=plt.colorbar(shrink=0.75, extend='both')
+        dh=D3.h_corr[:,col+1]-D3.h_corr[:,col]
+        ind=np.argsort(np.abs(dh))
+        hl=plt.scatter(xx[ind], yy[ind], 1, marker='.', c=dh[ind], vmin=-0.5, vmax=0.5, cmap='Spectral')
+        #hb=plt.colorbar(shrink=0.75, extend='both')
         plt.gca().set_xticks([])
         plt.gca().set_yticks([])
-        hb.set_label(f'cycle {cycles[1]} minus cycle {cycles[0]}, m')
-    
+        hax[-1].set_title(f'c{cycles[col+1]} minus c{cycles[col]}, m')
+    fig.tight_layout()
+    fig.colorbar(hl, ax=hax, location='bottom', shrink=0.25)
 if False:
     plt.figure(1); xy0=plt.ginput()[0]; 
     ATL11_file=files[xydh.file_ind[np.argmin(np.abs(xydh.x+1j*xydh.y - (xy0[0]+1j*xy0[1])))].astype(int)]
