@@ -14,9 +14,11 @@ import sys, os, h5py, glob
 import pointCollection as pc
 from PointDatabase.mapData import mapData
 from matplotlib.colors import ListedColormap
-#from fpdf import FPDF
+from fpdf import FPDF
 import cartopy.crs as ccrs
 import osgeo.gdal
+import imageio
+
 
 def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
     print('File to plot',os.path.basename(ATL11_file))
@@ -73,7 +75,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
             y = D.y
             dem_h      = D.ref_surf.dem_h
             try:
-                ref, xo, delta = D.get_xovers()  # ! cross over data can come from any cycle (not only cycles in corrected_h )
+                ref, xo, delta = D.get_xovers()  
                 ref_h_corr      = ref.h_corr
                 xo_h_corr       = xo.h_corr
                 xo_ref_pt       = xo.ref_pt
@@ -151,18 +153,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
     except Exception as E:
         pass    
     
-#    print('line 154',np.mean(lon))    
-#    projection = ccrs.Stereographic(central_longitude=-20.0, central_latitude=+90.0, true_scale_latitude=+70.0)  
-#    fig0, ax0 = plt.subplots(1,1,subplot_kw={'projection': projection})
-#    ax0.imshow(gz, extent=extent, cmap='gray', vmin=gz05, vmax=gz95)
-##    h0 = ax0.scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
-#    sc = ax0.plot(lon,lat,'.', transform=ccrs.PlateCarree())
-##    ax0.set_extent((-25,-13,63,67),crs=ccrs.PlateCarree())
-##    #ax0.set_ylim([63, 67])
-##    #gl = ax0.gridlines(crs=ccrs.NorthPolarStereo()) #,draw_labels=True)
-##    ax0.coastlines()
-#    plt.show()
-#    exit(-1)
     # make plots
     if len(de.y) >= len(de.x):    
         fig1, ax1 = plt.subplots(1,3,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
@@ -190,7 +180,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
     fig1.colorbar(h2, ax=ax1[2]) 
     fig1.suptitle('{}'.format(os.path.basename(ATL11_file)))
     plt.subplots_adjust(bottom=0.15, top=0.9)
-    fig1.savefig('{0}/{1}_Figure1_h_corrLast_Valids_dHdt_overDEM.png'.format(out_path,ATL11_file_str),format='png')
+    fig1.savefig('{0}/{1}_Figure1_h_corr_NumValids_dHdtOverDEM.png'.format(out_path,ATL11_file_str),format='png')
     
     fig2,ax2 = plt.subplots()
     hist, bin_edges = np.histogram(np.count_nonzero(~np.isnan(h_corr),axis=1), bins=np.arange((num_cycles)+2))
@@ -275,7 +265,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
             cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
             cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
             cbar.set_label('Cycle Number')
-            fig4.savefig('{0}/{1}_Figure4_h_corr-DEM.png'.format(out_path,ATL11_file_str),format='png')
+            fig4.savefig('{0}/{1}_Figure4_h_corr_h_corr-DEM.png'.format(out_path,ATL11_file_str),format='png')
 
         if pair == 1:
             fig6, ax6 = plt.subplots()
@@ -292,6 +282,16 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
             ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])), fontdict={'fontsize':10})
             ax6.set_ylabel('meters/year')
             fig6.suptitle('{}'.format(os.path.basename(ATL11_file)))
+            fig6.subplots_adjust(right=0.8)
+            cbar_ax = fig6.add_axes([0.85, 0.15, 0.02, 0.72])
+            cmap = plt.get_cmap(ListedColormap(cmpr))
+            norm = mpl.colors.Normalize(vmin=1, vmax=3)
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
+            deltac=(3-1)/(3)
+            cbar = fig6.colorbar(sm, ticks=np.arange(1+deltac/2,3+deltac,deltac), cax=cbar_ax)
+            cbar.set_ticklabels(np.arange(1,3+1))
+            cbar.set_label('Beam Pair')
             fig6.savefig('{0}/{1}_Figure6_dHdt.png'.format(out_path,ATL11_file_str),format='png')
             
         if pair == 1:
@@ -339,14 +339,34 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
             cbar.set_label('Cycle Number')
             plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
             fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
+
+    # put images into browse file            
+    ATL11_file_brw='{}_BRW.h5'.format(ATL11_file_str)
+    if os.path.isfile(ATL11_file_brw):
+        os.remove(ATL11_file_brw)
     
-#    pdf = FPDF()
-#    for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(out_path,ATL11_file_str)))):
-#        print(name)
-#        pdf.add_page('L')
-#        pdf.set_xy(0,0)
-#        pdf.image(name) #,x=imx[ii],y=imy[ii])
-#    pdf.output('{0}/{1}.pdf'.format(out_path,ATL11_file_str),'F')
+    with h5py.File(ATL11_file_brw,'w') as hf:
+        for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(out_path,ATL11_file_str)))):
+            img = imageio.imread(name, pilmode='RGB') 
+    
+            namestr = os.path.splitext(name)[0]
+            namestr = os.path.basename(namestr).split('Figure')[-1]
+            dset = hf.create_dataset('images/Figure'+namestr, img.shape, data=img.data, \
+                                     chunks=img.shape, compression='gzip',compression_opts=6)
+            dset.attrs['CLASS'] = np.string_('IMAGE')
+            dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
+            dset.attrs['IMAGE_SUBCLASS'] = np.string_('IMAGE_TRUECOLOR')
+            dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
+            
+    hf.close()        
+            
+    pdf = FPDF()
+    for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(out_path,ATL11_file_str)))):
+        print(name)
+        pdf.add_page('L')
+        pdf.set_xy(0,0)
+        pdf.image(name)
+    pdf.output('{0}/{1}.pdf'.format(out_path,ATL11_file_str),'F')
     
     plt.show()
 #
