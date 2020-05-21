@@ -15,7 +15,6 @@ import sys, os, h5py, glob
 import pointCollection as pc
 from PointDatabase.mapData import mapData
 from matplotlib.colors import ListedColormap
-#from fpdf import FPDF
 import cartopy.crs as ccrs
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import cartopy.io.img_tiles as cimgt
@@ -331,7 +330,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
         fig1.colorbar(h2, ax=ax1[2]) 
         fig1.suptitle('{}'.format(os.path.basename(ATL11_file)))
         plt.subplots_adjust(bottom=0.15, top=0.9)
-        fig1.savefig('{0}/{1}_Figure1_h_corr_NumValids_dHdtOverDEM.png'.format(out_path,ATL11_file_str),format='png')
+        #fig1.savefig('{0}/{1}_Figure1_h_corr_NumValids_dHdtOverDEM.png'.format(out_path,ATL11_file_str),format='png')
         fig1.savefig('{0}/{1}_BRW_default1.png'.format(out_path,ATL11_file_str),format='png')
         pdf.savefig(fig1)
         
@@ -344,7 +343,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
         ax2.set_xticks(bin_edges[:-1])
         fig2.suptitle('{}'.format(os.path.basename(ATL11_file)))
         plt.figtext(0.1,0.01,'Figure 2. Histogram of number of cycles with valid height data, all beam pairs.',wrap=True)
-        fig2.savefig('{0}/{1}_Figure2_validRepeats_hist.png'.format(out_path,ATL11_file_str),format='png')
+        #fig2.savefig('{0}/{1}_Figure2_validRepeats_hist.png'.format(out_path,ATL11_file_str),format='png')
         pdf.savefig(fig2)
       
         if num_cycles <= 3:  
@@ -366,7 +365,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
         plt.figtext(0.1,0.01,'Figure 5. Histogram of corrected_h/h_corr heights minus DEM, in meters. One historgram per cycle, all beam pairs.',wrap=True)
         plt.subplots_adjust(bottom=0.15)
         fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
-        fig5.savefig('{0}/{1}_Figure5_h_corr-DEM_hist.png'.format(out_path,ATL11_file_str),format='png')
+        #fig5.savefig('{0}/{1}_Figure5_h_corr-DEM_hist.png'.format(out_path,ATL11_file_str),format='png')
     
         for pr in np.arange(3):
             pair=pr+1
@@ -390,7 +389,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
                 #ax3[1].set_title('Number of valid heights from each pair', fontdict={'fontsize':10})
                 ax3[1].set_xlabel('cycle number', fontdict={'fontsize':10})
                 fig3.suptitle('{}'.format(os.path.basename(ATL11_file)))
-                fig3.savefig('{0}/{1}_Figure3_validRepeatsCycle_hist.png'.format(out_path,ATL11_file_str),format='png')
+                #fig3.savefig('{0}/{1}_Figure3_validRepeatsCycle_hist.png'.format(out_path,ATL11_file_str),format='png')
                 fig3.savefig('{0}/{1}_BRW_default2.png'.format(out_path,ATL11_file_str),format='png')
                 pdf.savefig(fig3)
                      
@@ -423,7 +422,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
                 cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
                 cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
                 cbar.set_label('Cycle Number')
-                fig4.savefig('{0}/{1}_Figure4_h_corr_h_corr-DEM.png'.format(out_path,ATL11_file_str),format='png')
+                #fig4.savefig('{0}/{1}_Figure4_h_corr_h_corr-DEM.png'.format(out_path,ATL11_file_str),format='png')
                 pdf.savefig(fig4)
                 pdf.savefig(fig5)
     
@@ -452,7 +451,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
                 cbar = fig6.colorbar(sm, ticks=np.arange(1+deltac/2,3+deltac,deltac), cax=cbar_ax)
                 cbar.set_ticklabels(np.arange(1,3+1))
                 cbar.set_label('Beam Pair')
-                fig6.savefig('{0}/{1}_Figure6_dHdt.png'.format(out_path,ATL11_file_str),format='png')
+                #fig6.savefig('{0}/{1}_Figure6_dHdt.png'.format(out_path,ATL11_file_str),format='png')
                 pdf.savefig(fig6)
                 
             if pair == 1:
@@ -465,8 +464,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
             ax7[1].set_title('Change in height histograms: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[0])), fontdict={'fontsize':10})
             fig7.suptitle('{}'.format(os.path.basename(ATL11_file)))
             if pair == 3:
-                fig7.savefig('{0}/{1}_Figure7_dHdt_hist.png'.format(out_path,ATL11_file_str),format='png')
-                fig7.savefig('{0}/{1}_Figure7_dHdt_hist.pdf'.format(out_path,ATL11_file_str),format='pdf')
+                #fig7.savefig('{0}/{1}_Figure7_dHdt_hist.png'.format(out_path,ATL11_file_str),format='png')
                 pdf.savefig(fig7)
     
             if pair==1:
@@ -501,8 +499,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
                 cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
                 cbar.set_label('Cycle Number')
                 plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
-                fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
-                fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.pdf'.format(out_path,ATL11_file_str),format='pdf')
+                #fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
                 pdf.savefig(fig8)
 
 #    # put images into browse file            
