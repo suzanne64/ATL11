@@ -10,12 +10,15 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.backends.backend_pdf import PdfPages
 import sys, os, h5py, glob
 import pointCollection as pc
 from PointDatabase.mapData import mapData
 from matplotlib.colors import ListedColormap
-from fpdf import FPDF
+#from fpdf import FPDF
 import cartopy.crs as ccrs
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+import cartopy.io.img_tiles as cimgt
 import osgeo.gdal
 import imageio
 
@@ -110,8 +113,10 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
         ipair.append(ipair[-1]+D.corrected_h.h_corr.shape[0])
 
     bounds = [ [np.min(x)-buf, np.max(x)+buf],[np.min(y)-buf, np.max(y)+buf] ]
+    print('bounds', bounds)
     if mosaic is not None:
         de = pc.grid.data().from_geotif(mosaic, bounds=bounds)
+        print(de.extent)
         extent = [ext/1000 for ext in de.extent]
         gz = np.gradient(de.z)[0]
         gz05 = stats.scoreatpercentile(gz, 5)
@@ -151,223 +156,375 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None):
             dxo05 = stats.scoreatpercentile(ref_h_corr[goodxo]-xo_h_corr[goodxo],5)
             dxo95 = stats.scoreatpercentile(ref_h_corr[goodxo]-xo_h_corr[goodxo],95)
     except Exception as E:
-        pass    
+        pass 
     
-    # make plots
-    if len(de.y) >= len(de.x):    
-        fig1, ax1 = plt.subplots(1,3,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
-    else:
-        fig1, ax1 = plt.subplots(3,1,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
-    if mosaic is not None:
-        for ii in np.arange(3):
-            ax1[ii].imshow(gz, extent=extent, cmap='gray', vmin=gz05, vmax=gz95)
-    h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
-    ax1[0].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[ccl])), fontdict={'fontsize':10});
-    h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cmCount, vmin=0-0.5, vmax=num_cycles+0.5)
-    if np.any(~np.isnan(dHdt)):
-        h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
-        ax1[2].set_title('dH/dt, m/yr', fontdict={'fontsize':10});
-        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
-    else:
-        h2 = ax1[2].scatter(x/1000, y/1000, c=h_corr[:,ccf]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
-        ax1[2].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[ccf])), fontdict={'fontsize':10});
-        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Height data, in km, from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
-        
-    ax1[0].set_ylabel('y [km]', fontdict={'fontsize':10})
-    ax1[1].set_title('Number of Valid Heights', fontdict={'fontsize':10});
-    fig1.colorbar(h0, ax=ax1[0]) 
-    fig1.colorbar(h1, ticks=np.arange(num_cycles+1), ax=ax1[1]) 
-    fig1.colorbar(h2, ax=ax1[2]) 
-    fig1.suptitle('{}'.format(os.path.basename(ATL11_file)))
-    plt.subplots_adjust(bottom=0.15, top=0.9)
-    fig1.savefig('{0}/{1}_Figure1_h_corr_NumValids_dHdtOverDEM.png'.format(out_path,ATL11_file_str),format='png')
+#    projection = ccrs.Stereographic(central_longitude=-45.0, central_latitude=+90.0, true_scale_latitude=+70.0)  
+#    print('ext list',[ext for ext in de.extent])      
+#    fig1, ax1 = plt.subplots(figsize=(10,10), subplot_kw=dict(projection=projection))
+#    print('what')
+#    ax1.imshow(de.z,extent=[ext for ext in de.extent],transform=ccrs.PlateCarree())
+#    #ax1.scatter(lon,lat,c=h_corr[:,0],s=1, transform=ccrs.PlateCarree())
+#    print('the')
+#    #ax1 = plt.subplot(2,1,1,projection=ccrs.PlateCarree())
+#    ax1.coastlines('50m')
+#    print('f')
+##    ax1.set_xlim([np.min(x)-buf,np.max(x)+buf])          
+#    ax1.set_extent([-25., -13., 63., 67.], crs=ccrs.PlateCarree())
+#    #ax1.set_ylim
+##    ax1.set_ylim([np.min(y)-buf,np.max(y)+buf])          #[-25., -13., 63., 67.], crs=ccrs.PlateCarree())
+#    plt.show()
+#    exit(-1)
+
+#    ax1 = plt.axes(projection=ccrs.PlateCarree())
+#    h0 = ax1.imshow(gz,extent=extent,transform=ccrs.PlateCarree())
+#    ax1.colorbar(h0)
+#    plt.plot(lon,lat,'.',transform=ccrs.PlateCarree())
+#    ax1.coastlines()
+#    plt.show()
+#    exit(-1)
+#    xlimits = np.array([ 800000, 1600000])
+#    ylimits = np.array([-2800000,-2100000])
+#    
+#    #def plot_image_mosaic(ax,xlimits,ylimits):
+#        #-- read image mosaic using splat operator for lists
+#    ds = osgeo.gdal.Open('/Volumes/insar7/ben/ArcticDEM/mosaics/arcticdem_mosaic_100m_v3.0.tif')
+#        #-- get dimensions
+#    xsize = ds.RasterXSize
+#    ysize = ds.RasterYSize
+#    print(xsize,ysize)
+#    #-- get geotiff info
+#    info_geotiff = ds.GetGeoTransform() # xmin, xinc, ?, ymax, ?, yinc 
+#    print('info',info_geotiff)
+#    #-- calculate image extents
+#    xmin = info_geotiff[0]
+#    ymax = info_geotiff[3]
+#    xmax = xmin + (xsize-1)*info_geotiff[1]
+#    ymin = ymax + (ysize-1)*info_geotiff[5]
+#    print(xmin,xmax)
+#    print(ymin,ymax)
+#    #-- reduce input image with GDAL
+#    #-- Specify offset and rows and columns to read
+#    xoffset = np.int((xlimits[0] - xmin)/info_geotiff[1])
+#    yoffset = np.int((ymax - ylimits[1])/np.abs(info_geotiff[5]))
+#    print('offsets',xoffset,yoffset)
+#    xcount = np.int((xlimits[1] - xlimits[0])/info_geotiff[1]) + 1
+#    ycount = np.int((ylimits[1] - ylimits[0])/np.abs(info_geotiff[5])) + 1
+#    print('counts',xcount, ycount)
+#    #-- reduce to xlimit and ylimit
+#    mosaic = ds.ReadAsArray(xoffset, yoffset, xcount, ycount)
+#    print('shape mosaic',mosaic.shape)
+#    #-- reduced x and y limits of image
+#    xmin_reduced=xmin + xoffset*info_geotiff[1]
+#    xmax_reduced=xmin + xoffset*info_geotiff[1] + (xcount-1)*info_geotiff[1]
+#    ymax_reduced=ymax + yoffset*info_geotiff[5]
+#    ymin_reduced=ymax + yoffset*info_geotiff[5] + (ycount-1)*info_geotiff[5]
+#    extents = (xmin_reduced,xmax_reduced,ymin_reduced,ymax_reduced)
+#    print('reduced extents',xmin_reduced,xmax_reduced)
+#    print('reduced extents',ymin_reduced,ymax_reduced)
+#    #-- dataset range
+#    #vmin,vmax = (14000,16386)
+#    #-- create masked array of background image
+#    indy,indx = np.nonzero(mosaic == 0)
+#    mask = np.zeros_like(mosaic, dtype=np.bool)
+#    mask[indy,indx] = True
+#    mosaic = np.ma.array(mosaic, mask=mask, fill_value=-9999)
+#    #-- close the dataset
+#    ds = None
+#    fig0,ax0 = plt.subplots()
+#    h0 = ax0.imshow(mosaic,cmap='gray',extent=extents, vmin=-50, vmax=2100)
+#    fig0.colorbar(h0)
+##    plt.show()
+##    exit(-1)
+#    
+#    
+#    
+#    
+#
+#    #-- create color maps with invalid points
+#    image_cmap = mpl.cm.gist_gray
+#    image_cmap.set_bad(alpha=0.0)
+#    #-- plot Mosaic Image of Antarctica
+#    #    transform = ccrs.Stereographic(central_longitude=0.0,
+#    #        central_latitude=-90,true_scale_latitude=-71.0)
+#    # trying imagesc of iceland
+#    transform = ccrs.Stereographic(central_longitude=-45.0,
+#        central_latitude=90,true_scale_latitude=70.0)
+#    fig, ax = plt.subplots(subplot_kw=dict(projection=transform))
+#    mim = ax.imshow(mosaic,  #interpolation='nearest', 
+#        cmap=image_cmap, zorder=0, vmin=-50, vmax=2100, origin='lower',
+#        transform=ccrs.PlateCarree(), extent=extents)  #vmin = 0, vmax = vmax, extent=extents, origin='upper', 
+##    x = np.arange(xmin_reduced,xmax_reduced,100000)
+##    y = np.linspace(ymin_reduced,ymax_reduced,len(x))
+##    lat = np.arange(63,68,0.1)
+##    lon = np.linspace(-25,-13,len(lat))
+#    #ax.gridlines(draw_labels=True)
+##    ax.coastlines('50m')
+##    ax.add_feature(cf.BORDERS)
+#    #ax.plot(x,y,'r.')
+#    fig.colorbar(mim)
+#    
+##    request = cimgt.StamenTerrain()
+##    crg = request.crs
+##    fig0, ax0 = plt.subplots(figsize=(10,10), subplot_kw=dict(projection=projection))
+##    
+##    gl = ax0.gridlines(draw_labels=True)
+##    #gl.xlabels_top = gl.ylabels_right = True
+##    gl.xformatter = LONGITUDE_FORMATTER
+##    gl.yformatter = LATITUDE_FORMATTER
+##    
+##    lonmin, lonmax = -25, -13
+##    latmin, latmax = 63, 67
+##
+##    LL = crg.transform_point(lonmin,latmin, ccrs. Geodetic())
+##    UR = crg.transform_point(lonmax,latmax, ccrs. Geodetic())
+##    EW = UR[0] - LL[0]
+##    SN = UR[1] - LL[1]
+##    side = max(EW,SN)
+##    mid_x, mid_y = LL[0]+EW/2.0, LL[1]+SN/2.0  # center location
+##    
+##    extent = [mid_x-side/2.0, mid_x+side/2.0, mid_y-side/2.0, mid_y+side/2.0]
+##    
+##    ax0.set_extent(extent, crs=crg)
+##    ax0.add_image(request, 8)
+##    
+##    # add a marker at center of map
+##    plt.plot(mid_x, mid_y, marker='o', color='red', markersize=10, \
+##             alpha=0.7, transform=crg)
+#    
+#        
+#    plt.show()
+#    exit(-1)
+#    ax1 = plt.axes(projection=ccrs.PlateCarree())
+#    h0 = ax1.imshow(gz,extent=extent,transform=ccrs.PlateCarree())
+#    ax1.colorbar(h0)
+#    plt.plot(lon,lat,'.',transform=ccrs.PlateCarree())
+#    ax1.coastlines()
+#    ax2.set_xlim([])
+#    plt.show()
+#    exit(-1)
     
-    fig2,ax2 = plt.subplots()
-    hist, bin_edges = np.histogram(np.count_nonzero(~np.isnan(h_corr),axis=1), bins=np.arange((num_cycles)+2))
-    valid_dict = {}
-    for kk in np.arange(np.max(bin_edges)):
-        valid_dict.update( {bin_edges[kk]: colorslist[kk]} )
-    ax2.bar(bin_edges[:-1],hist,color=[valid_dict[r] for r in np.arange(np.max(bin_edges))])
-    ax2.set_xticks(bin_edges[:-1])
-    fig2.suptitle('{}'.format(os.path.basename(ATL11_file)))
-    plt.figtext(0.1,0.01,'Figure 2. Histogram of number of cycles with valid height data, all beam pairs.',wrap=True)
-    fig2.savefig('{0}/{1}_Figure2_validRepeats_hist.png'.format(out_path,ATL11_file_str),format='png')
-  
-    if num_cycles <= 3:  
-        fig5,ax5 = plt.subplots(num_cycles,1,sharex=True,sharey=True)
-    elif num_cycles == 4:
-        fig5,ax5 = plt.subplots(2,2,sharex=True,sharey=True)
-    elif num_cycles >= 5 or num_cycles <= 6:
-        fig5,ax5 = plt.subplots(3,2,sharex=True,sharey=True)
-    elif num_cycles >= 7 or num_cycles <= 9:
-        fig5,ax5 = plt.subplots(3,3,sharex=True,sharey=True)
-    elif num_cycles >= 10:
-        fig5,ax5 = plt.subplots(3,4,sharex=True,sharey=True)
-    for ii, ax in enumerate(ax5.reshape(-1)):
-        ax.hist(ddem[:,ii],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[np.int(D.corrected_h.cycle_number[ii])])  
-        if ii == 0:
-            ax.set_title('height-DEM: Cycle {}'.format(np.int(D.corrected_h.cycle_number[ii])), fontdict={'fontsize':10})
+    # make plots, saving them all to one .pdf file
+    with PdfPages('{0}/{1}.pdf'.format(out_path,ATL11_file_str)) as pdf:
+        if len(de.y) >= len(de.x):    
+            fig1, ax1 = plt.subplots(1,3,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
         else:
-            ax.set_title('Cycle {}'.format(np.int(D.corrected_h.cycle_number[ii])), fontdict={'fontsize':10})
-    plt.figtext(0.1,0.01,'Figure 5. Histogram of corrected_h/h_corr heights minus DEM, in meters. One historgram per cycle, all beam pairs.',wrap=True)
-    plt.subplots_adjust(bottom=0.15)
-    fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
-    fig5.savefig('{0}/{1}_Figure5_h_corr-DEM_hist.png'.format(out_path,ATL11_file_str),format='png')
-
-    for pr in np.arange(3):
-        pair=pr+1
+            fig1, ax1 = plt.subplots(3,1,sharex=True,sharey=True) #, subplot_kw=dict(projection=projection))
+        if mosaic is not None:
+            for ii in np.arange(3):
+                ax1[ii].imshow(gz, extent=extent, cmap='gray', vmin=gz05, vmax=gz95)
+        h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
+        ax1[0].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[ccl])), fontdict={'fontsize':10});
+        h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cmCount, vmin=0-0.5, vmax=num_cycles+0.5)
+        if np.any(~np.isnan(dHdt)):
+            h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
+            ax1[2].set_title('dH/dt, m/yr', fontdict={'fontsize':10});
+            plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
+        else:
+            h2 = ax1[2].scatter(x/1000, y/1000, c=h_corr[:,ccf]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)  #norm=normh_corr, 
+            ax1[2].set_title('Heights, Cycle {}, km'.format(np.int(D.corrected_h.cycle_number[ccf])), fontdict={'fontsize':10});
+            plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Height data, in km, from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
+            
+        ax1[0].set_ylabel('y [km]', fontdict={'fontsize':10})
+        ax1[1].set_title('Number of Valid Heights', fontdict={'fontsize':10});
+        fig1.colorbar(h0, ax=ax1[0]) 
+        fig1.colorbar(h1, ticks=np.arange(num_cycles+1), ax=ax1[1]) 
+        fig1.colorbar(h2, ax=ax1[2]) 
+        fig1.suptitle('{}'.format(os.path.basename(ATL11_file)))
+        plt.subplots_adjust(bottom=0.15, top=0.9)
+        fig1.savefig('{0}/{1}_Figure1_h_corr_NumValids_dHdtOverDEM.png'.format(out_path,ATL11_file_str),format='png')
+        fig1.savefig('{0}/{1}_BRW_default1.png'.format(out_path,ATL11_file_str),format='png')
+        pdf.savefig(fig1)
         
-        if pair == 1:
-            fig3,ax3 = plt.subplots(1,3,sharex=True,sharey=True)                
-            cycle_dict = {}
-            for cc in np.arange(start_cycle, end_cycle+1):
-                cycle_dict.update( {np.int(cc):colorslist[np.int(cc)]} )
-            fig3.subplots_adjust(bottom=0.15)
-            plt.figtext(0.1,0.01,'Figure 3. Histogram of number of valid height values from each pair: 1,2,3 left to right. Color coded by cycle number.',wrap=True)
-
-        which_cycles = np.array([])
-        for ii, cc in enumerate(np.arange(start_cycle, end_cycle+1)):
-            which_cycles = np.concatenate( (which_cycles,(np.int(cc)*np.ones(np.count_nonzero(~np.isnan(h_corr[ipair[pr]:ipair[pr+1]-1,ii]))).ravel())), axis=0)
-        hist, bin_edges = np.histogram(which_cycles, bins=np.arange(start_cycle, end_cycle+2))
-        ax3[pr].bar(D.corrected_h.cycle_number[:], hist, color=[cycle_dict[np.int(r)] for r in D.corrected_h.cycle_number[:]])
-        ax3[pr].set_xlim((D.corrected_h.cycle_number[0]-0.5, D.corrected_h.cycle_number[-1]+0.5))
-        if pair == 3:
-            ax3[1].set_title('Number of valid heights from each pair', fontdict={'fontsize':10})
-            fig3.suptitle('{}'.format(os.path.basename(ATL11_file)))
-            fig3.savefig('{0}/{1}_Figure3_validRepeatsCycle_hist.png'.format(out_path,ATL11_file_str),format='png')
-                 
-        if pair == 1:
-            fig4, ax4 = plt.subplots(2,3,sharex=True,sharey='row')
-            fig4.subplots_adjust(bottom=0.15)
-            plt.figtext(0.1,0.01,'Figure 4. Top row: Heights, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus DEM. Color coded by cycle number. Plotted again reference point.',wrap=True)
-            labels=[]
-        for ii, cyc in enumerate(np.arange(start_cycle, end_cycle+1)):
-            labels.append('cycle {:d}'.format(np.int(cyc)))
-            ax4[0,pr].plot(ref_pt[ipair[pr]:ipair[pr+1]-1],h_corr[ipair[pr]:ipair[pr+1]-1,ii], color=colorslist[np.int(cyc)], linewidth=0.5)                
-            ax4[1,pr].plot(ref_pt[ipair[pr]:ipair[pr+1]-1],ddem[ipair[pr]:ipair[pr+1]-1,ii], '.', markersize=0.5, color=colorslist[np.int(cyc)], linewidth=0.5)
-        ax4[0,1].set_title('corrected_h/h_corr', fontdict={'fontsize':10});
-        ax4[0,pr].grid(linestyle='--')
-        ax4[1,1].set_title('corrected_h/h_corr minus DEM', fontdict={'fontsize':10});
-        ax4[1,pr].grid(linestyle='--')
-        ax4[0,0].set_ylim((h05,h95))
-        ax4[0,0].set_ylabel('meters')
-        ax4[1,0].set_ylim((ddem05,ddem95))
-        ax4[1,0].set_ylabel('meters')
-        plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
-        if pair == 3:
-            fig4.subplots_adjust(right=0.8)
-            cbar_ax = fig4.add_axes([0.85, 0.15, 0.02, 0.72])
-            cmap = plt.get_cmap(cmCycles,num_cycles+1)
-            norm = mpl.colors.Normalize(vmin=start_cycle, vmax=end_cycle)
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])
-            deltac=(end_cycle-start_cycle)/(num_cycles)
-            cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
-            cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
-            cbar.set_label('Cycle Number')
-            fig4.savefig('{0}/{1}_Figure4_h_corr_h_corr-DEM.png'.format(out_path,ATL11_file_str),format='png')
-
-        if pair == 1:
-            fig6, ax6 = plt.subplots()
-            fig6.subplots_adjust(bottom=0.15)
-            plt.figtext(0.1,0.01,'Figure 6. Change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} minus cycle {1} in the file. Color coded by beam pair: 1 (red), 2 (green), 3 (blue). Plotted against reference point.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
-        if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
-            ax6.plot(ref_pt[ipair[pr]:ipair[pr+1]-1],dHdt[ipair[pr]:ipair[pr+1]-1], '.', markersize=1, color=cmpr[pr] )
-        if pair == 3:
-            if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
-                ax6.set_ylim([dHdt05,dHdt95])
+        fig2,ax2 = plt.subplots()
+        hist, bin_edges = np.histogram(np.count_nonzero(~np.isnan(h_corr),axis=1), bins=np.arange((num_cycles)+2))
+        valid_dict = {}
+        for kk in np.arange(np.max(bin_edges)):
+            valid_dict.update( {bin_edges[kk]: colorslist[kk]} )
+        ax2.bar(bin_edges[:-1],hist,color=[valid_dict[r] for r in np.arange(np.max(bin_edges))])
+        ax2.set_xticks(bin_edges[:-1])
+        fig2.suptitle('{}'.format(os.path.basename(ATL11_file)))
+        plt.figtext(0.1,0.01,'Figure 2. Histogram of number of cycles with valid height data, all beam pairs.',wrap=True)
+        fig2.savefig('{0}/{1}_Figure2_validRepeats_hist.png'.format(out_path,ATL11_file_str),format='png')
+        pdf.savefig(fig2)
+      
+        if num_cycles <= 3:  
+            fig5,ax5 = plt.subplots(num_cycles,1,sharex=True,sharey=True)
+        elif num_cycles == 4:
+            fig5,ax5 = plt.subplots(2,2,sharex=True,sharey=True)
+        elif num_cycles >= 5 or num_cycles <= 6:
+            fig5,ax5 = plt.subplots(3,2,sharex=True,sharey=True)
+        elif num_cycles >= 7 or num_cycles <= 9:
+            fig5,ax5 = plt.subplots(3,3,sharex=True,sharey=True)
+        elif num_cycles >= 10:
+            fig5,ax5 = plt.subplots(3,4,sharex=True,sharey=True)
+        for ii, ax in enumerate(ax5.reshape(-1)):
+            ax.hist(ddem[:,ii],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[np.int(D.corrected_h.cycle_number[ii])])  
+            if ii == 0:
+                ax.set_title('height-DEM: Cycle {}'.format(np.int(D.corrected_h.cycle_number[ii])), fontdict={'fontsize':10})
             else:
-                ax6.set_ylim([-1,1])
-            ax6.grid(linestyle='--',linewidth=0.3)
-            ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])), fontdict={'fontsize':10})
-            ax6.set_ylabel('meters/year')
-            fig6.suptitle('{}'.format(os.path.basename(ATL11_file)))
-            fig6.subplots_adjust(right=0.8)
-            cbar_ax = fig6.add_axes([0.85, 0.15, 0.02, 0.72])
-            cmap = plt.get_cmap(ListedColormap(cmpr))
-            norm = mpl.colors.Normalize(vmin=1, vmax=3)
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])
-            deltac=(3-1)/(3)
-            cbar = fig6.colorbar(sm, ticks=np.arange(1+deltac/2,3+deltac,deltac), cax=cbar_ax)
-            cbar.set_ticklabels(np.arange(1,3+1))
-            cbar.set_label('Beam Pair')
-            fig6.savefig('{0}/{1}_Figure6_dHdt.png'.format(out_path,ATL11_file_str),format='png')
-            
-        if pair == 1:
-            fig7,ax7 = plt.subplots(1,3,sharex=True,sharey=True)
-            fig7.subplots_adjust(bottom=0.15)
-            plt.figtext(0.1,0.01,'Figure 7. Histograms of change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} minus cycle {1} in the file. One histogram per beam pair: 1 (red), 2 (green), 3 (blue).'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
-        if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
-            ax7[pr].hist(dHdt[ipair[pr]:ipair[pr+1]-1], bins=np.arange(np.floor(dHdt05*10)/10,np.ceil(dHdt95*10)/10+0.1,0.1), color=cmpr[pr])
-        ax7[pr].grid(linestyle='--')
-        ax7[1].set_title('Change in height histograms: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[0])), fontdict={'fontsize':10})
-        fig7.suptitle('{}'.format(os.path.basename(ATL11_file)))
-        if pair == 3:
-            fig7.savefig('{0}/{1}_Figure7_dHdt_hist.png'.format(out_path,ATL11_file_str),format='png')
-
-        if pair==1:
-            fig8, ax8 = plt.subplots(2, 3, sharey='row', sharex=True)
-            fig8.subplots_adjust(bottom=0.15)
-            plt.figtext(0.1,0.01,'Figure 8. Top row: Heights from crossing track data, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus crossing track heights. Color coded by cycle number. Plotted against reference point.',wrap=True)
-        if isinstance(xo_h_corr, np.ndarray): 
-            for ii, cyc in enumerate(D.corrected_h.cycle_number):
-                cc=np.flatnonzero((xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc) & (xo_atl06_quality_summary[ipairxo[pr]:ipairxo[pr+1]-1]==0))
-                ax8[0,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],'x',color=colorslist[np.int(cyc)], markersize=1, label='cycle {:d}'.format(np.int(cyc)));
-                ax8[0,pr].grid(linestyle='--')
-                ax8[1,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],ref_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc]-xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc], '.', color=colorslist[np.int(cyc)], markersize=1, label=None);
-                ax8[1,pr].grid(linestyle='--')
+                ax.set_title('Cycle {}'.format(np.int(D.corrected_h.cycle_number[ii])), fontdict={'fontsize':10})
+        plt.figtext(0.1,0.01,'Figure 5. Histogram of corrected_h/h_corr heights minus DEM, in meters. One historgram per cycle, all beam pairs.',wrap=True)
+        plt.subplots_adjust(bottom=0.15)
+        fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
+        fig5.savefig('{0}/{1}_Figure5_h_corr-DEM_hist.png'.format(out_path,ATL11_file_str),format='png')
     
-            ax8[0,0].set_ylim((h05, h95))
-            ax8[0,0].set_ylabel('meters')
-            ax8[0,1].set_title('crossing_track_data/h_corr', fontdict={'fontsize':10})
-            ax8[1,0].set_ylabel('meters')
-            ax8[1,0].set_ylim((dxo05,dxo95))
-            ax8[1,1].set_title('corrected_h/h_corr minus crossing_track_data/h_corr', fontdict={'fontsize':10})
-        else:
-            ax8[0,0].text(0.2,0.5,'No cross over data in this file')
-        if pair == 3:
-            fig8.subplots_adjust(right=0.8)
-            cbar_ax = fig8.add_axes([0.85, 0.15, 0.02, 0.72])
-            cmap = plt.get_cmap(cmCycles,num_cycles+1)
-            norm = mpl.colors.Normalize(vmin=start_cycle, vmax=end_cycle)
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])
-            deltac=(end_cycle-start_cycle)/(num_cycles)
-            cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
-            cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
-            cbar.set_label('Cycle Number')
+        for pr in np.arange(3):
+            pair=pr+1
+            
+            if pair == 1:
+                fig3,ax3 = plt.subplots(1,3,sharex=True,sharey=True)                
+                cycle_dict = {}
+                for cc in np.arange(start_cycle, end_cycle+1):
+                    cycle_dict.update( {np.int(cc):colorslist[np.int(cc)]} )
+                fig3.subplots_adjust(bottom=0.15)
+                plt.figtext(0.1,0.01,'Figure 3. Number of valid height values from each beam pair.',wrap=True)
+    
+            which_cycles = np.array([])
+            for ii, cc in enumerate(np.arange(start_cycle, end_cycle+1)):
+                which_cycles = np.concatenate( (which_cycles,(np.int(cc)*np.ones(np.count_nonzero(~np.isnan(h_corr[ipair[pr]:ipair[pr+1]-1,ii]))).ravel())), axis=0)
+            hist, bin_edges = np.histogram(which_cycles, bins=np.arange(start_cycle, end_cycle+2))
+            ax3[pr].bar(D.corrected_h.cycle_number[:], hist, color=[cycle_dict[np.int(r)] for r in D.corrected_h.cycle_number[:]])
+            ax3[pr].set_xlim((D.corrected_h.cycle_number[0]-0.5, D.corrected_h.cycle_number[-1]+0.5))
+            ax3[pr].set_title('Beam Pair {}'.format(pair))
+            if pair == 3:
+                #ax3[1].set_title('Number of valid heights from each pair', fontdict={'fontsize':10})
+                ax3[1].set_xlabel('cycle number', fontdict={'fontsize':10})
+                fig3.suptitle('{}'.format(os.path.basename(ATL11_file)))
+                fig3.savefig('{0}/{1}_Figure3_validRepeatsCycle_hist.png'.format(out_path,ATL11_file_str),format='png')
+                fig3.savefig('{0}/{1}_BRW_default2.png'.format(out_path,ATL11_file_str),format='png')
+                pdf.savefig(fig3)
+                     
+            if pair == 1:
+                fig4, ax4 = plt.subplots(2,3,sharex=True,sharey='row')
+                fig4.subplots_adjust(bottom=0.15)
+                plt.figtext(0.1,0.01,'Figure 4. Top row: Heights, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus DEM. Color coded by cycle number. Plotted again reference point.',wrap=True)
+                labels=[]
+            for ii, cyc in enumerate(np.arange(start_cycle, end_cycle+1)):
+                labels.append('cycle {:d}'.format(np.int(cyc)))
+                ax4[0,pr].plot(ref_pt[ipair[pr]:ipair[pr+1]-1],h_corr[ipair[pr]:ipair[pr+1]-1,ii], color=colorslist[np.int(cyc)], linewidth=0.5)                
+                ax4[1,pr].plot(ref_pt[ipair[pr]:ipair[pr+1]-1],ddem[ipair[pr]:ipair[pr+1]-1,ii], '.', markersize=0.5, color=colorslist[np.int(cyc)], linewidth=0.5)
+            ax4[0,1].set_title('corrected_h/h_corr', fontdict={'fontsize':10});
+            ax4[0,pr].grid(linestyle='--')
+            ax4[1,1].set_title('corrected_h/h_corr minus DEM', fontdict={'fontsize':10});
+            ax4[1,pr].grid(linestyle='--')
+            ax4[0,0].set_ylim((h05,h95))
+            ax4[0,0].set_ylabel('meters')
+            ax4[1,0].set_ylim((ddem05,ddem95))
+            ax4[1,0].set_ylabel('meters')
             plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
-            fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
+            if pair == 3:
+                fig4.subplots_adjust(right=0.8)
+                cbar_ax = fig4.add_axes([0.85, 0.15, 0.02, 0.72])
+                cmap = plt.get_cmap(cmCycles,num_cycles+1)
+                norm = mpl.colors.Normalize(vmin=start_cycle, vmax=end_cycle)
+                sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+                sm.set_array([])
+                deltac=(end_cycle-start_cycle)/(num_cycles)
+                cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
+                cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
+                cbar.set_label('Cycle Number')
+                fig4.savefig('{0}/{1}_Figure4_h_corr_h_corr-DEM.png'.format(out_path,ATL11_file_str),format='png')
+                pdf.savefig(fig4)
+                pdf.savefig(fig5)
+    
+            if pair == 1:
+                fig6, ax6 = plt.subplots()
+                fig6.subplots_adjust(bottom=0.15)
+                plt.figtext(0.1,0.01,'Figure 6. Change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} minus cycle {1} in the file. Color coded by beam pair: 1 (red), 2 (green), 3 (blue). Plotted against reference point.'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
+            if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
+                ax6.plot(ref_pt[ipair[pr]:ipair[pr+1]-1],dHdt[ipair[pr]:ipair[pr+1]-1], '.', markersize=1, color=cmpr[pr] )
+            if pair == 3:
+                if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
+                    ax6.set_ylim([dHdt05,dHdt95])
+                else:
+                    ax6.set_ylim([-1,1])
+                ax6.grid(linestyle='--',linewidth=0.3)
+                ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])), fontdict={'fontsize':10})
+                ax6.set_ylabel('meters/year')
+                fig6.suptitle('{}'.format(os.path.basename(ATL11_file)))
+                fig6.subplots_adjust(right=0.8)
+                cbar_ax = fig6.add_axes([0.85, 0.15, 0.02, 0.72])
+                cmap = plt.get_cmap(ListedColormap(cmpr))
+                norm = mpl.colors.Normalize(vmin=1, vmax=3)
+                sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+                sm.set_array([])
+                deltac=(3-1)/(3)
+                cbar = fig6.colorbar(sm, ticks=np.arange(1+deltac/2,3+deltac,deltac), cax=cbar_ax)
+                cbar.set_ticklabels(np.arange(1,3+1))
+                cbar.set_label('Beam Pair')
+                fig6.savefig('{0}/{1}_Figure6_dHdt.png'.format(out_path,ATL11_file_str),format='png')
+                pdf.savefig(fig6)
+                
+            if pair == 1:
+                fig7,ax7 = plt.subplots(1,3,sharex=True,sharey=True)
+                fig7.subplots_adjust(bottom=0.15)
+                plt.figtext(0.1,0.01,'Figure 7. Histograms of change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} minus cycle {1} in the file. One histogram per beam pair: 1 (red), 2 (green), 3 (blue).'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[ccf])),wrap=True)
+            if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
+                ax7[pr].hist(dHdt[ipair[pr]:ipair[pr+1]-1], bins=np.arange(np.floor(dHdt05*10)/10,np.ceil(dHdt95*10)/10+0.1,0.1), color=cmpr[pr])
+            ax7[pr].grid(linestyle='--')
+            ax7[1].set_title('Change in height histograms: cycle {0} minus cycle {1}'.format(np.int(D.corrected_h.cycle_number[ccl]),np.int(D.corrected_h.cycle_number[0])), fontdict={'fontsize':10})
+            fig7.suptitle('{}'.format(os.path.basename(ATL11_file)))
+            if pair == 3:
+                fig7.savefig('{0}/{1}_Figure7_dHdt_hist.png'.format(out_path,ATL11_file_str),format='png')
+                fig7.savefig('{0}/{1}_Figure7_dHdt_hist.pdf'.format(out_path,ATL11_file_str),format='pdf')
+                pdf.savefig(fig7)
+    
+            if pair==1:
+                fig8, ax8 = plt.subplots(2, 3, sharey='row', sharex=True)
+                fig8.subplots_adjust(bottom=0.15)
+                plt.figtext(0.1,0.01,'Figure 8. Top row: Heights from crossing track data, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus crossing track heights. Color coded by cycle number. Plotted against reference point.',wrap=True)
+            if isinstance(xo_h_corr, np.ndarray): 
+                for ii, cyc in enumerate(D.corrected_h.cycle_number):
+                    cc=np.flatnonzero((xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc) & (xo_atl06_quality_summary[ipairxo[pr]:ipairxo[pr+1]-1]==0))
+                    ax8[0,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],'x',color=colorslist[np.int(cyc)], markersize=1, label='cycle {:d}'.format(np.int(cyc)));
+                    ax8[0,pr].grid(linestyle='--')
+                    ax8[1,pr].plot(xo_ref_pt[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc],ref_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc]-xo_h_corr[ipairxo[pr]:ipairxo[pr+1]-1][xo_cycle_number[ipairxo[pr]:ipairxo[pr+1]-1]==cyc], '.', color=colorslist[np.int(cyc)], markersize=1, label=None);
+                    ax8[1,pr].grid(linestyle='--')
+        
+                ax8[0,0].set_ylim((h05, h95))
+                ax8[0,0].set_ylabel('meters')
+                ax8[0,1].set_title('crossing_track_data/h_corr', fontdict={'fontsize':10})
+                ax8[1,0].set_ylabel('meters')
+                ax8[1,0].set_ylim((dxo05,dxo95))
+                ax8[1,1].set_title('corrected_h/h_corr minus crossing_track_data/h_corr', fontdict={'fontsize':10})
+            else:
+                ax8[0,0].text(0.2,0.5,'No cross over data in this file')
+            if pair == 3:
+                fig8.subplots_adjust(right=0.8)
+                cbar_ax = fig8.add_axes([0.85, 0.15, 0.02, 0.72])
+                cmap = plt.get_cmap(cmCycles,num_cycles+1)
+                norm = mpl.colors.Normalize(vmin=start_cycle, vmax=end_cycle)
+                sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+                sm.set_array([])
+                deltac=(end_cycle-start_cycle)/(num_cycles)
+                cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
+                cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
+                cbar.set_label('Cycle Number')
+                plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
+                fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
+                fig8.savefig('{0}/{1}_Figure8_h_corr-CrossOver.pdf'.format(out_path,ATL11_file_str),format='pdf')
+                pdf.savefig(fig8)
 
-    # put images into browse file            
-    ATL11_file_brw='{}_BRW.h5'.format(ATL11_file_str)
-    if os.path.isfile(ATL11_file_brw):
-        os.remove(ATL11_file_brw)
-    
-    with h5py.File(ATL11_file_brw,'w') as hf:
-        for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(out_path,ATL11_file_str)))):
-            img = imageio.imread(name, pilmode='RGB') 
-    
-            namestr = os.path.splitext(name)[0]
-            namestr = os.path.basename(namestr).split('Figure')[-1]
-            dset = hf.create_dataset('images/Figure'+namestr, img.shape, data=img.data, \
-                                     chunks=img.shape, compression='gzip',compression_opts=6)
-            dset.attrs['CLASS'] = np.string_('IMAGE')
-            dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
-            dset.attrs['IMAGE_SUBCLASS'] = np.string_('IMAGE_TRUECOLOR')
-            dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
-            
-    hf.close()        
-            
-    pdf = FPDF()
-    for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(out_path,ATL11_file_str)))):
-        print(name)
-        pdf.add_page('L')
-        pdf.set_xy(0,0)
-        pdf.image(name)
-    pdf.output('{0}/{1}.pdf'.format(out_path,ATL11_file_str),'F')
-    
+#    # put images into browse file            
+#    ATL11_file_brw='{}_BRW.h5'.format(ATL11_file_str)
+#    if os.path.isfile(ATL11_file_brw):
+#        os.remove(ATL11_file_brw)
+#    
+#    with h5py.File(ATL11_file_brw,'w') as hf:
+#        for ii, name in enumerate(sorted(glob.glob('{0}/{1}_*.png'.format(out_path,ATL11_file_str)))):
+#            img = imageio.imread(name, pilmode='RGB') 
+#    
+#            namestr = os.path.splitext(name)[0]
+#            namestr = os.path.basename(namestr).split('Figure')[-1]
+#            dset = hf.create_dataset('images/Figure'+namestr, img.shape, data=img.data, \
+#                                     chunks=img.shape, compression='gzip',compression_opts=6)
+#            dset.attrs['CLASS'] = np.string_('IMAGE')
+#            dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
+#            dset.attrs['IMAGE_SUBCLASS'] = np.string_('IMAGE_TRUECOLOR')
+#            dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
+#            
+#    hf.close()        
+        
     plt.show()
 #
     
