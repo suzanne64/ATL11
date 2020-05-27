@@ -37,6 +37,7 @@ cycle_stats,atl06_summary_zero_count,counts,"N_pts, N_cycles",int8,"""Number of 
 cycle_stats,h_rms_misfit,meters,"N_pts, N_cycles",Float64,"""Weighted-average RMS misfit between PE heights and along-track land-ice segment fit"""
 cycle_stats,r_eff,1,"N_pts, N_cycles",Float64,"""Weighted-average effective, uncorrected reflectance for each pass."""
 cycle_stats,tide_ocean,meters,"N_pts, N_cycles",Float64,"""Weighted-average ocean tide for each pass"""
+cycle_stats,dac,meters,"N_pts, N_cycles",Float64,"""Weighted-average dynamic atmosphere correction for each pass"""
 cycle_stats,cloud_flg_atm,1,"N_pts, N_cycles",int8,"""Minimum cloud flag from ATL06: Flag indicates confidence that clouds with OT > 0.2 are present in the lower 3 km of the atmosphere based on ATL09"""
 cycle_stats,cloud_flg_asr,1,"N_pts, N_cycles",int8,"""Minimum apparent-surface-reflectance -based cloud flag from ATL06: Flag indicates confidence that clouds with OT > 0.2 are present in the lower 3 km of the atmosphere based on ATL09"""
 cycle_stats,bsnow_h,meters,"N_pts, N_cycles",Float64,"""Weighted-average  blowing snow layer height for each cycle"""

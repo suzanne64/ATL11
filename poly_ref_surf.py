@@ -37,36 +37,43 @@ class poly_ref_surf(object):
         self.model_cov_matrix=None
         self.xy_scale=xy_scale
         self.skip_constant=skip_constant
-        
-    def fit_matrix(self, x, y):
-        G=np.zeros([x.size, self.exp_x.size])  # size is the ravel of shape, here G is len(x) * 3
+        self.valid=None
+        self.fit_matrix=None
+
+    def build_fit_matrix(self, x, y):
+        self.fit_matrix=np.zeros([x.size, self.exp_x.size])  # size is the ravel of shape, here G is len(x) * 3
         for col, ee in enumerate(zip(self.exp_x, self.exp_y)):
-            G[:,col]=((x.ravel()-self.x0)/self.xy_scale)**ee[0] * ((y.ravel()-self.y0)/self.xy_scale)**ee[1]
-        return G
-    
-    def z(self, x0, y0, mask=None):
+            self.fit_matrix[:,col]=((x.ravel()-self.x0)/self.xy_scale)**ee[0] * ((y.ravel()-self.y0)/self.xy_scale)**ee[1]
+        return self
+
+    def z(self, x=None, y=None, mask=None):
         # evaluate the poltnomial at [x0, y0]
         if mask is None:
             mask=np.ones_like(self.poly_vals)
-        G=self.fit_matrix(x0, y0)
-        z=np.dot(G, self.poly_vals*mask)
-        z.shape=x0.shape
+        if x is not None and y is not None:
+            self.build_fit_matrix(x, y)
+        z=np.dot(self.fit_matrix, self.poly_vals*mask)
+        if x is not None:
+            z.shape=x.shape
         return z
     
-    def fit(self, xd, yd, zd, sigma_d=None, max_iterations=1, min_sigma=0):
+    def fit(self, zd, xd=None, yd=None, sigma_d=None, mask=None, max_iterations=1, min_sigma=0):
 
         # asign poly_vals and cov_matrix with a linear fit to zd at points xd, yd
         # build the design matrix:
-        G=self.fit_matrix(xd, yd)
+        if self.fit_matrix is None:
+            self.build_fit_matrix(xd, yd)
+        G=self.fit_matrix
         #initialize outputs
         m=np.zeros(G.shape[1])+np.NaN
         residual=np.zeros_like(xd)+np.NaN
         rows=np.ones_like(xd, dtype=bool)
         # build a sparse covariance matrix
         if sigma_d is None:
-            sigma_d=np.ones_like(xd.ravel())
+            sigma_d=np.ones_like(zd.ravel())
         chi2r=len(zd)*2
-        mask=np.ones_like(zd.ravel(), dtype=bool)
+        if mask is None:
+            mask=np.ones_like(zd.ravel(), dtype=bool)
         sigma_inv=1./sigma_d.ravel()
         sigma_inv.shape=[len(sigma_inv), 1]
         

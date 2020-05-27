@@ -41,8 +41,6 @@ class point(ATL11.data):
         self.beam_pair=beam_pair
         self.ref_pt=ref_pt
         self.track_azimuth=track_azimuth
-        self.mx_poly_fit=None
-        self.my_poly_fit=None
         self.ref_surf_slope_x=np.NaN
         self.ref_surf_slope_y=np.NaN
         self.calc_slope_change=False
@@ -143,34 +141,35 @@ class point(ATL11.data):
 
         # 3c: Calculate the formal error in the y slope estimates
         y_slope_sigma=np.sqrt(np.sum(D6.h_li_sigma[pairs_valid_for_y_fit,:]**2, axis=1))/np.transpose(np.diff(D6.y_atc[pairs_valid_for_y_fit,:], axis=1)).ravel() #same shape as y_slope*
-        my_regression_tol=np.maximum(0.01, 3*np.median(y_slope_sigma))
 
+        # calculate the unchanging part of y_slope_tol
+        min_my_regression_tol=np.maximum(0.01, 3*np.median(y_slope_sigma))
+
+        # setup the polynomial fit
+        my_poly_fit=ATL11.poly_ref_surf(degree_xy=(my_regression_x_degree, my_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
+        my_poly_fit.build_fit_matrix(pair_data.x, pair_data.y)
         for iteration in range(2):
             # 3d: regression of across-track slope against pair_data.x and pair_data.y
-            self.my_poly_fit=ATL11.poly_ref_surf(degree_xy=(my_regression_x_degree, my_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
             y_slope_model, y_slope_resid,  y_slope_chi2r, y_slope_valid_flag=\
-            self.my_poly_fit.fit(pair_data.x[pairs_valid_for_y_fit], pair_data.y[pairs_valid_for_y_fit], D6.dh_fit_dy[pairs_valid_for_y_fit,0], max_iterations=1, min_sigma=my_regression_tol)
-
-            # update what is valid based on regression flag
-            self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=y_slope_valid_flag       #re-establish pairs_valid for y fit
-            # re-establish pairs_valid_for_y_fit
-            pairs_valid_for_y_fit= self.valid_pairs.data.ravel() & self.valid_pairs.y_slope.ravel() 
+                my_poly_fit.fit(pair_data.dh_dy, max_iterations=1, mask=pairs_valid_for_y_fit,  min_sigma=min_my_regression_tol)
 
             # 3e: calculate across-track slope threshold
-            if y_slope_resid.size>1:
-                y_slope_threshold=np.maximum(my_regression_tol,3.*ATL11.RDE(y_slope_resid))
+            if y_slope_valid_flag.sum()>1:
+                y_slope_threshold = np.maximum(min_my_regression_tol,3.*ATL11.RDE(y_slope_resid[y_slope_valid_flag]))
             else:
-                y_slope_threshold=my_regression_tol
+                y_slope_threshold=min_my_regression_tol
             if ~pairs_valid_for_y_fit.any():
                 pairs_valid_for_y_fit=np.zeros_like(pairs_valid_for_y_fit, dtype=bool)
                 break
             # 3f: select for across-track residuals within threshold
-            self.valid_pairs.y_slope[np.where(pairs_valid_for_y_fit),0]=np.abs(y_slope_resid)<=y_slope_threshold
+            pairs_valid_for_y_fit = (np.abs(y_slope_resid)<=y_slope_threshold)
             # re-establish pairs_valid_for_y_fit
-            pairs_valid_for_y_fit= self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel() & self.valid_pairs.y_slope.ravel()
-
+            pairs_valid_for_y_fit_last=pairs_valid_for_y_fit
+            pairs_valid_for_y_fit &= self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel()
+            if np.all(pairs_valid_for_y_fit == pairs_valid_for_y_fit_last):
+                break
         # 3g. Use y slope model to evaluate all pairs
-        self.valid_pairs.y_slope=np.abs(self.my_poly_fit.z(pair_data.x, pair_data.y).ravel() - pair_data.dh_dy.ravel()) < y_slope_threshold
+        self.valid_pairs.y_slope=(np.abs(my_poly_fit.z().ravel() - pair_data.dh_dy.ravel()) < y_slope_threshold)[:, np.newaxis]
 
         #4a. define pairs_valid_for_x_fit
         pairs_valid_for_x_fit= self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel()
@@ -193,39 +192,41 @@ class point(ATL11.data):
         #4c: Calculate along-track slope regression tolerance
         mx_regression_tol=np.maximum(0.01, 3*np.median(D6.dh_fit_dx_sigma[pairs_valid_for_x_fit,:].flatten()))
         x_slope_threshold=0
-        for iteration in range(2):
-            # 4d: regression of along-track slope against x_pair and y_pair
-            self.mx_poly_fit=ATL11.poly_ref_surf(degree_xy=(mx_regression_x_degree, mx_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
-            
-            if np.sum(pairs_valid_for_x_fit)>0:
-                x_slope_model, x_slope_resid,  x_slope_chi2r, x_slope_valid_flag=self.mx_poly_fit.fit(D6.x_atc[pairs_valid_for_x_fit,:].ravel(), D6.y_atc[pairs_valid_for_x_fit,:].ravel(), D6.dh_fit_dx[pairs_valid_for_x_fit,:].ravel(), max_iterations=1, min_sigma=mx_regression_tol)
-                # update what is valid based on regression flag
-                x_slope_valid_flag.shape=[np.sum(pairs_valid_for_x_fit),2]
-                self.valid_segs.x_slope[np.where(pairs_valid_for_x_fit),:]=x_slope_valid_flag
-                self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1)
+        mx_poly_fit=ATL11.poly_ref_surf(degree_xy=(mx_regression_x_degree, mx_regression_y_degree), xy0=(self.x_atc_ctr, self.y_polyfit_ctr))
+        mx_poly_fit.build_fit_matrix(D6.x_atc.ravel(), D6.y_atc.ravel())
 
-                # re-establish pairs_valid_for_x_fit
-                pairs_valid_for_x_fit= self.valid_pairs.data.ravel() & self.valid_pairs.x_slope.ravel()  # include ysearch here?
+        n_pairs=pair_data.x.size
+        for iteration in range(2):
+            segs_valid_for_x_fit = np.tile(pairs_valid_for_x_fit[:,np.newaxis], [1,2])
+
+            # 4d: regression of along-track slope against x_pair and y_pair
+            if np.sum(pairs_valid_for_x_fit)>0:
+                x_slope_model, x_slope_resid,  x_slope_chi2r, _=\
+                    mx_poly_fit.fit(D6.dh_fit_dx.ravel(),\
+                    mask=segs_valid_for_x_fit.ravel(), max_iterations=1,\
+                    min_sigma=mx_regression_tol)
 
                 # 4e: calculate along-track slope threshold
                 if x_slope_resid.size > 1.:
-                    x_slope_threshold = np.maximum(mx_regression_tol,3*ATL11.RDE(x_slope_resid))
+                    x_slope_threshold = np.maximum(mx_regression_tol,\
+                            3*ATL11.RDE(x_slope_resid[segs_valid_for_x_fit.ravel()]))
                 else:
                     x_slope_threshold=mx_regression_tol
 
                 # 4f: select for along-track residuals within threshold
-                x_slope_resid.shape=[np.sum(pairs_valid_for_x_fit),2]
-                self.valid_segs.x_slope[np.where(pairs_valid_for_x_fit),:]=np.transpose(np.tile(np.all(np.abs(x_slope_resid)<=x_slope_threshold,axis=1),(2,1)))
-                self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1)
+                x_slope_resid.shape=[n_pairs,2]
+                self.valid_pairs.x_slope = np.all(x_slope_resid < x_slope_threshold, axis=1)
+                pairs_valid_for_x_fit_last=pairs_valid_for_x_fit
                 pairs_valid_for_x_fit = self.valid_pairs.data.ravel() & self.valid_pairs.ysearch.ravel() & self.valid_pairs.x_slope.ravel()
-
+                if np.all(pairs_valid_for_x_fit == pairs_valid_for_x_fit_last):
+                    break
                 if np.sum(pairs_valid_for_x_fit)==0:
                     self.status['no_valid_pairs_for_x_fit']=1
             else:
                 self.status['no_valid_pairs_for_x_fit']=1
 
         # 4g. Use x slope model to evaluate all segments
-        self.valid_segs.x_slope=np.abs(self.mx_poly_fit.z(D6.x_atc, D6.y_atc)- D6.dh_fit_dx) < x_slope_threshold #, max_iterations=2, min_sigma=mx_regression_tol)
+        self.valid_segs.x_slope=np.abs(mx_poly_fit.z().reshape([n_pairs,2])- D6.dh_fit_dx) < x_slope_threshold #, max_iterations=2, min_sigma=mx_regression_tol)
         self.valid_pairs.x_slope=np.all(self.valid_segs.x_slope, axis=1)
 
         # 5: define selected pairs
@@ -394,7 +395,9 @@ class point(ATL11.data):
         self.degree_list_y = degree_y[self.poly_mask]
 
         # 3b. define polynomial matrix
-        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
+        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y),\
+                                       xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale)\
+                                        .build_fit_matrix(x_atc, y_atc).fit_matrix
 
         # 3c. define slope-change matrix
         # TOC is a table-of-contents dict identifying the meaning of the columns of G_surf_zp_original
@@ -466,8 +469,8 @@ class point(ATL11.data):
 
             # 3j. Calculate the fitting tolerance,
             r_tol = np.max([1, 3*ATL11.RDE(r_fit/h_li_sigma[selected_segs])])
-            # reduce chi-squared value
-            misfit_chi2 = np.dot(np.dot(np.transpose(r_fit), C_di.toarray()),r_fit)
+            # calculate chi-squared value
+            misfit_chi2 = np.dot(np.dot(np.transpose(r_fit), C_di),r_fit)
 
             # calculate P value
             n_cols=np.sum(fit_columns)
@@ -565,7 +568,7 @@ class point(ATL11.data):
             W_by_error=h_li_sigma[cycle==ref_cycle]**(-2)/np.sum(h_li_sigma[cycle==ref_cycle]**(-2))
 
             # weighted means:
-            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','h_rms_misfit'): #,'h_rms_misfit'):
+            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','dac','h_rms_misfit'): #,'h_rms_misfit'):
                 self.cycle_stats.__dict__[dataset][0,cc]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
             self.cycle_stats.h_mean[0,cc]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
 
@@ -677,7 +680,9 @@ class point(ATL11.data):
         poly_mask=np.isfinite(self.ref_surf.poly_coeffs).ravel() 
         x_degree=self.params_11.poly_exponent['x'][poly_mask]
         y_degree=self.params_11.poly_exponent['y'][poly_mask]
-        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(x_degree, y_degree), xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale).fit_matrix(x_atc, y_atc)
+        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(x_degree, y_degree),\
+                xy0=(self.x_atc_ctr, self.y_atc_ctr), \
+                xy_scale=self.params_11.xy_scale).build_fit_matrix(x_atc, y_atc).fit_matrix
         if self.calc_slope_change and (delta_time is not None):
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
@@ -814,7 +819,9 @@ class point(ATL11.data):
         # convert these coordinates in to along-track coordinates
         dx, dy=self.local_atc_coords(dE, dN)
 
-        S_poly=ATL11.poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y), xy0=(0, 0), xy_scale=self.params_11.xy_scale).fit_matrix(dx.ravel(), dy.ravel())
+        S_poly=ATL11.poly_ref_surf(exp_xy=(self.degree_list_x, self.degree_list_y),\
+            xy0=(0, 0), xy_scale=self.params_11.xy_scale)\
+            .build_fit_matrix(dx.ravel(), dy.ravel()).fit_matrix
         surf_model=np.transpose(self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)])
         # pull out the surface-only parts
         S_poly=S_poly[:, self.surf_mask]
@@ -887,12 +894,16 @@ def gen_inv(self,G,sigma):
     #  G_g: Generalized inverse of G
 
     # 3g. Generate data-covariance matrix
-    C_d=sparse.diags(sigma**2)
-    C_di=sparse.diags(1/sigma**2)
-    G_sq=np.dot(np.dot(np.transpose(G),C_di.toarray()),G)
+    #C_d=sparse.diags(sigma**2)
+    #C_di=sparse.diags(1/sigma**2)
+    #G_sq=np.dot(np.dot(np.transpose(G),C_di.toarray()),G)
 
     # calculate the generalized inverse of G
-    G_g=np.linalg.solve(G_sq, np.dot(np.transpose(G), C_di.toarray()))
+    #G_g=np.linalg.solve(G_sq, np.dot(np.transpose(G), C_di.toarray()))
+    C_d=np.diag(sigma**2, k=0)
+    C_di=np.diag(sigma**-2, k=0)
+    G_sq=np.dot(np.dot(np.transpose(G),C_di),G)
+    G_g=np.linalg.solve(G_sq, np.dot(np.transpose(G), C_di))
     return C_d, C_di, G_g
 
 def remap_TOC(TOC, fit_columns, ref_surf_cycles, first_cycle):

@@ -7,7 +7,7 @@ cycle_dir=$2
 [ -d tiles ] || mkdir tiles
 
 [ -d $cycle_dir/index ] || mkdir $cycle_dir/index
-workers_started = 0
+workers_started=0
 if [ -f $cycle_dir/index/GeoIndex.h5 ] ; then
     echo "$cycle_dir/index exists, skipping"
 else
@@ -17,14 +17,13 @@ else
     for file in $cycle_dir/*ATL06*.h5; do
 	this_file_index=$cycle_dir/index/`basename $file`
 	[ -f $this_file_index ] && continue
-	echo $file
 	echo "index_glob.py -t ATL06 -H $hemisphere --index_file $this_file_index -g $file --dir_root `pwd`/$dir/" >> file_queue.txt
     done
 
     pboss.py -s file_queue.txt -j 8 -w -p
     workers_started=8
     echo "Making a collective ATL06 index for $cycle_dir"
-    index_glob.py --dir_root=`pwd`/$cycle_dir/index/ -t h5_geoindex -H $hemisphere --index_file $cycle_dir/index/GeoIndex.h5 -g "`pwd`/$cycle_dir/index/*ATL06*.h5" -v --Relative
+    index_glob.py --dir_root=`pwd`/$cycle_dir/index/ -t h5_geoindex -H $hemisphere --index_file $cycle_dir/index/GeoIndex.h5 -g "`pwd`/$cycle_dir/index/*ATL06*.h5" --Relative
 
 fi
     
@@ -43,7 +42,7 @@ fi
 
 echo "indexing tiles for $cycle_dir"
 pushd $cycle_tile_dir
-index_glob.py -H $hemisphere -t indexed_h5 --index_file GeoIndex.h5 -g "E*.h5" --dir_root `pwd` -v 
+index_glob.py -H $hemisphere -t indexed_h5 --index_file GeoIndex.h5 -g "E*.h5" --dir_root `pwd` 
 popd
 
 
