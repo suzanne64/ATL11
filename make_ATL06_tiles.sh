@@ -19,9 +19,11 @@ else
 	[ -f $this_file_index ] && continue
 	echo "index_glob.py -t ATL06 -H $hemisphere --index_file $this_file_index -g $file --dir_root `pwd`/$dir/" >> file_queue.txt
     done
-
-    pboss.py -s file_queue.txt -j 8 -w -p
-    workers_started=8
+    if [ -z "$(ls -Ad par_run/comms/worker* 2> /dev/null)" ]  ; then
+       pboss.py -s file_queue.txt -r -j 8 -w -p
+    else
+       	pboss.py -s file_queue.txt -r -w -p
+    fi
     echo "Making a collective ATL06 index for $cycle_dir"
     index_glob.py --dir_root=`pwd`/$cycle_dir/index/ -t h5_geoindex -H $hemisphere --index_file $cycle_dir/index/GeoIndex.h5 -g "`pwd`/$cycle_dir/index/*ATL06*.h5" --Relative
 
@@ -34,10 +36,11 @@ echo "making a queue of indexing commands for $cycle_dir"
 make_tiles.py -H $hemisphere -i $cycle_dir/index/GeoIndex.h5 -W 100000 -t ATL06 -o $cycle_tile_dir -q tile_queue.txt -j ATL06_field_dict.json
 # run the queue
 echo "running the queue for $cycle_dir"
-if $workers_started == 0; then
-    pboss.py -s tile_queue.txt -r -w -j 8
+
+if [ -z "$(ls -Ad par_run/comms/worker* 2> /dev/null)" ]  ; then
+    pboss.py -s tile_queue.txt -r -j 8 -w -p
 else
-    pboss.py -s tile_queue.txt -r -w 
+    pboss.py -s tile_queue.txt -r -w -p
 fi
 
 echo "indexing tiles for $cycle_dir"
