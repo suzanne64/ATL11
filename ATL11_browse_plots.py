@@ -380,13 +380,17 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             fig8.savefig('{0}/{1}_Figure8_h_corr_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
 
     if pdf:    #save them all to one .pdf file
+        print('what')
         figs = list(map(plt.figure, plt.get_fignums()))
         with PdfPages('{0}/{1}.pdf'.format(out_path,ATL11_file_str)) as pdff:
+            print('the')
             for fig in figs:
+                print('f')
                 pdff.savefig(fig)
+                print('girl')
 
     # put images into browse file            
-    ATL11_file_brw='{}_BRW.h5'.format(ATL11_file_str)
+    ATL11_file_brw='{}/{}_BRW.h5'.format(out_path,ATL11_file_str)
     if os.path.isfile(ATL11_file_brw):
         os.remove(ATL11_file_brw)
     
