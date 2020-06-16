@@ -141,8 +141,8 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
 
     # get min, max values for y-axis
     if np.any(~np.isnan(dHdt)):
-        dHdt05 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)],5)
-        dHdt95 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)],95)
+        dHdt05 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)].ravel(),5)
+        dHdt95 = stats.scoreatpercentile(dHdt[~np.isnan(dHdt)].ravel(),95)
     else:
         dHdt05 = np.nan
         dHdt95 = np.nan
@@ -380,14 +380,10 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             fig8.savefig('{0}/{1}_Figure8_h_corr_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
 
     if pdf:    #save them all to one .pdf file
-        print('what')
         figs = list(map(plt.figure, plt.get_fignums()))
         with PdfPages('{0}/{1}.pdf'.format(out_path,ATL11_file_str)) as pdff:
-            print('the')
             for fig in figs:
-                print('f')
                 pdff.savefig(fig)
-                print('girl')
 
     # put images into browse file            
     ATL11_file_brw='{}/{}_BRW.h5'.format(out_path,ATL11_file_str)
@@ -400,7 +396,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     
             namestr = os.path.splitext(name)[0]
             namestr = os.path.basename(namestr).split('BRW_')[-1]
-            print(ii,namestr)
             dset = hf.create_dataset('default/'+namestr, img.shape, data=img.data, \
                                      chunks=img.shape, compression='gzip',compression_opts=6)
             dset.attrs['CLASS'] = np.string_('IMAGE')
@@ -413,7 +408,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         
                 namestr = os.path.splitext(name)[0]
                 namestr = os.path.basename(namestr).split('Figure')[-1]
-                print(ii,namestr,namestr[2:])
                 dset = hf.create_dataset(namestr[2:], img.shape, data=img.data, \
                                          chunks=img.shape, compression='gzip',compression_opts=6)
                 dset.attrs['CLASS'] = np.string_('IMAGE')
@@ -424,7 +418,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             g.copy('ancillary_data',hf)
         
     for name in sorted(glob.glob('{0}/{1}_Figure*.png'.format(out_path,ATL11_file_str))):
-        print('removing',name)
         if os.path.isfile(name): os.remove(name)
     
 #    plt.show()
