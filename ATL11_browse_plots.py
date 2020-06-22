@@ -138,7 +138,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         h05 = stats.scoreatpercentile(h_corr[~np.isnan(h_corr)].ravel(),5)
         h95 = stats.scoreatpercentile(h_corr[~np.isnan(h_corr)].ravel(),95)
     else:
-        fhlog.write('{}: No valid height data, no h_corr\n, no browse plots written'.format(ATL11_file_str))
+        fhlog.write('{}: No valid height data, no h_corr, no browse plots written\n'.format(ATL11_file_str))
         exit(-1)
         
     xctr = (np.nanmax(x) - np.nanmin(x))/2 + np.nanmin(x)
