@@ -79,6 +79,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         pair = pr+1
         D = ATL11.data().from_file(ATL11_file, pair=pair, field_dict=None)            
         if D.no_pair:
+            print('you should write no pair')
             fhlog.write('{}: No beam pair {} data\n'.format(ATL11_file_str,pair))
 
         if hemisphere==1:
@@ -174,6 +175,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         dHdt05=np.nan
         dHdt95=np.nan
         fhlog.write('{}: No dH/dt data\n'.format(ATL11_file_str))
+        print('line 179 no data')
 
     if np.any(~np.isnan(xo_h_corr)): 
         goodxo = np.logical_and(~np.isnan(ref_h_corr), ~np.isnan(xo_h_corr))
@@ -262,7 +264,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
                 ax.set_title('height-DEM: Cycle {}'.format(np.int(cycle_number[ii])), fontdict={'fontsize':10})
             else:
                 ax.set_title('Cycle {}'.format(np.int(cycle_number[ii])), fontdict={'fontsize':10})
-    plt.figtext(0.1,0.01,'Figure 5. Histograms of corrected_h/h_corr heights minus DEM heights, in meters. One historgram per cycle, all beam pairs. X-axis limits are the scores at 5% and 95%.',wrap=True)
+    plt.figtext(0.1,0.01,'Figure 5. Histograms of heights minus DEM heights, in meters. One histogram per cycle, all beam pairs. X-axis limits are the scores at 5% and 95%.',wrap=True)
     plt.subplots_adjust(bottom=0.15)
     fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
     fig5.savefig('{0}/{1}_Figure5_h_corr-DEM_hist.png'.format(out_path,ATL11_file_str),format='png')
