@@ -208,7 +208,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         cbar.set_ticks([],update_ticks=True)
         ax1[2].legend(['No Data'], loc='best') 
     if hemisphere==1:
-        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km. Maps are plotted in a polar-stereographic projection with a central longitude of 45E and a standard latitude of 70N.'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])),wrap=True)
+        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km. Maps are plotted in a polar-stereographic projection with a central longitude of 45W and a standard latitude of 70N.'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])),wrap=True)
     elif hemisphere==-1:
         plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km. Maps are plotted in a polar-stereographic projection with a central longitude of 0E and a standard latitude of 71S.'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])),wrap=True)
     ax1[0].set_ylabel('y [km]', fontdict={'fontsize':10})
@@ -262,7 +262,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
                 ax.set_title('height-DEM: Cycle {}'.format(np.int(cycle_number[ii])), fontdict={'fontsize':10})
             else:
                 ax.set_title('Cycle {}'.format(np.int(cycle_number[ii])), fontdict={'fontsize':10})
-    plt.figtext(0.1,0.01,'Figure 5. Histogram of corrected_h/h_corr heights minus DEM, in meters. One historgram per cycle, all beam pairs. X-axis limits are the scores at 5% and 95%.',wrap=True)
+    plt.figtext(0.1,0.01,'Figure 5. Histograms of corrected_h/h_corr heights minus DEM heights, in meters. One historgram per cycle, all beam pairs. X-axis limits are the scores at 5% and 95%.',wrap=True)
     plt.subplots_adjust(bottom=0.15)
     fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
     fig5.savefig('{0}/{1}_Figure5_h_corr-DEM_hist.png'.format(out_path,ATL11_file_str),format='png')
@@ -404,7 +404,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
             cbar.set_label('Cycle Number')
             plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
-            fig8.savefig('{0}/{1}_Figure8_h_corr_h_corr-CrossOver.png'.format(out_path,ATL11_file_str),format='png')
+            fig8.savefig('{0}/{1}_Figure8_h_corr_CrossOver.png'.format(out_path,ATL11_file_str),format='png')
 #    plt.show()
 
     if pdf:    #save them all to one .pdf file
