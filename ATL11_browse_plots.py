@@ -331,10 +331,9 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             labels6=[]
         ax6.plot(ref_pt[ipair[pr]:ipair[pr+1]-1]/1000,dHdt[ipair[pr]:ipair[pr+1]-1], '.', markersize=1, color=cmpr[pr] )
         if np.any(~np.isnan(dHdt[ipair[pr]:ipair[pr+1]-1])):
-            labels6.append('Pair {}'.format(pr))
             ax6.set_ylim([dHdt05,dHdt95])
         else:
-            labels6.append('No Data')
+            labels6.append('No Data Pair {}'.format(pair))
         if pair == 3:
             ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])), fontdict={'fontsize':10})
             ax6.legend(labels6, loc='best')
