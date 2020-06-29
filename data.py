@@ -553,7 +553,7 @@ class data(object):
             #if P11.ref_surf.complex_surface_flag:
             #    P11.select_ATL06_pairs(D6_sub, pair_data, complex_surface_flag=True)
                     
-            if P11.ref_surf.quality_summary > 0:
+            if P11.ref_surf.fit_quality > 0:
                 #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
@@ -568,7 +568,7 @@ class data(object):
             if np.sum(P11.valid_pairs.all) < 2:  
                 continue
             
-            if P11.ref_surf.quality_summary > 0:
+            if P11.ref_surf.fit_quality > 0:
                 #P11_list.append(P11)
                 if verbose:
                     print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
