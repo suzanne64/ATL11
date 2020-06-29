@@ -13,6 +13,7 @@ from osgeo import osr
 import inspect
 import pointCollection as pc
 from ATL11.ATL06_pair import ATL06_pair
+from ATL11.h5util import create_attribute
 import time
 
 class data(object):
@@ -302,24 +303,28 @@ class data(object):
                     dset.dims[0].label = 'ref_pt'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-                            dset.attrs[attr.encode('ASCII')] = field_attrs['ref_pt'][attr].encode('ASCII')
+# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['ref_pt'][attr].encode('ASCII')
+                            create_attribute(dset.id, attr, [], field_attrs['ref_pt'][attr])
                 if 'N_cycles' in udims:
                     dset = grp.create_dataset('cycle_number'.encode('ASCII'),data=getattr(getattr(self,group),'cycle_number')) 
                     dset.dims[0].label = 'cycle_number'.encode('ASCII')                   
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-                            dset.attrs[attr.encode('ASCII')] = field_attrs['cycle_number'][attr].encode('ASCII')
+# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['cycle_number'][attr].encode('ASCII')
+                            create_attribute(dset.id, attr, [], field_attrs['cycle_number'][attr])
                 if 'N_coeffs' in udims:
                     dset = grp.create_dataset('poly_exponent_x'.encode('ASCII'),data=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)) 
                     dset.dims[0].label = 'poly_exponent_x'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_x'][attr].encode('ASCII')
+# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_x'][attr].encode('ASCII')
+                            create_attribute(dset.id, attr, [], field_attrs['poly_exponent_x'][attr])
                     dset = grp.create_dataset('poly_exponent_y'.encode('ASCII'),data=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)) 
                     dset.dims[0].label = 'poly_exponent_y'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_y'][attr].encode('ASCII')
+# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_y'][attr].encode('ASCII')
+                            create_attribute(dset.id, attr, [], field_attrs['poly_exponent_y'][attr])
                             
                 if 'ref_surf' in group:
                     grp.attrs['poly_exponent_x'.encode('ASCII')]=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
@@ -360,7 +365,8 @@ class data(object):
                                     
                             for attr in attr_names:
                                 if 'dimensions' not in attr:
-                                    dset.attrs[attr.encode('ASCII')] = str(field_attrs[field][attr]).encode('ASCII')
+# bpj                                    dset.attrs[attr.encode('ASCII')] = str(field_attrs[field][attr]).encode('ASCII')
+                                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
                             if field_attrs[field]['datatype'].startswith('int'):
                                 dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
                             elif field_attrs[field]['datatype'].startswith('Float'):
