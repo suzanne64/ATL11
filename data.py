@@ -143,10 +143,12 @@ class data(object):
         read ATL11 data for a pair track from a file
         '''
         self.filename=filename
+        self.no_pair = 0
         #index_range=slice(index_range[0], index_range[1]);
         pt='pt%d' % pair
         with h5py.File(filename,'r') as FH:
             if pt not in FH:
+                self.no_pair = 1
                 return self
             # if the field dict is not specified, read it
             if field_dict is None:
@@ -410,6 +412,7 @@ class data(object):
         xo={'ref':{},'crossing':{},'both':{}}
         n_cycles=self.corrected_h.h_corr.shape[1]
         zz=np.zeros(n_cycles)
+
         for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle_number','x_atc','y_atc']:
             xo['ref'][field]=[]
             xo['crossing'][field]=[]
@@ -440,7 +443,7 @@ class data(object):
             if hasattr(self, 'x'):
                 for field in ['x','y']:      
                     xo['ref'][field] += [getattr(self, field)[i0]+zz]
-                        
+                
         xo['crossing']['latitude']=xo['ref']['latitude']
         xo['crossing']['longitude']=xo['ref']['longitude']
         xo['crossing']['x_atc']=xo['ref']['x_atc']
