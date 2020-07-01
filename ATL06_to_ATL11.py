@@ -38,7 +38,7 @@ def main(argv):
     parser.add_argument('--directory','-d', default=os.getcwd(), help="directory in which to search for ATL06 files")
     parser.add_argument('--pair','-p', type=int, default=None, help="pair number to process (default is all three)")
     parser.add_argument('--Release','-R', type=int, default=2, help="Release number")
-    parser.add_argument('--Version','-V', type=str, default='001')
+    parser.add_argument('--Version','-V', type=int, default=1, help="Version number")
     parser.add_argument('--cycles', '-c', type=int, nargs=2, default=[3, 4], help="first and last cycles")
     parser.add_argument('--GI_file_glob','-G', type=str, default=None, help="Glob (wildcard) string used to match geoindex files for crossing tracks")
     parser.add_argument('--out_dir','-o', default=None, required=True, help="Output directory")
@@ -53,7 +53,7 @@ def main(argv):
     args=parser.parse_args()
 
     # output file format is ATL11_RgtSubprod_c1c2_rel_vVer.h5
-    out_file="%s/ATL11_%04d%02d_%02d%02d_%02d_v%s.h5" %( \
+    out_file="%s/ATL11_%04d%02d_%02d%02d_%03d_%02d.h5" %( \
             args.out_dir,args.rgt, args.subproduct, args.cycles[0], \
             args.cycles[1], args.Release, args.Version)
     if os.path.isfile(out_file):
