@@ -34,6 +34,7 @@ cycle_tile_dir=tiles/$cycle_dir
 echo "making a queue of indexing commands for $cycle_dir"
 # make a queue of tiles
 make_tiles.py -H $hemisphere -i $cycle_dir/index/GeoIndex.h5 -W 100000 -t ATL06 -o $cycle_tile_dir -q tile_queue.txt -j ATL06_field_dict.json
+
 # run the queue
 echo "running the queue for $cycle_dir"
 

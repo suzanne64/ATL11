@@ -55,7 +55,7 @@ class point(ATL11.data):
         self.status=dict()
         self.ref_surf.x_atc=x_atc_ctr
         self.ref_surf.rgt_azimuth=track_azimuth
-        self.ref_surf.quality_summary=0
+        self.ref_surf.fit_quality=0
         self.ref_surf.complex_surface_flag=False
 
     def from_data(self, D11, ind):
@@ -100,8 +100,6 @@ class point(ATL11.data):
 
         if self.ref_surf.N_cycle_avail<1:
             self.status['No_cycles_available']=True
-            if self.ref_surf.quality_summary==0:
-                self.ref_surf.quality_summary=1
             return
 
         # 1b: Select segs by height error
@@ -114,8 +112,6 @@ class point(ATL11.data):
         self.valid_pairs.data= np.all( self.valid_segs.data, axis=1)
         if not np.any(self.valid_pairs.data):
             self.status['No_valid_pairs_after_height_error_check']=True
-            if self.ref_surf.quality_summary==0:
-                self.ref_surf.quality_summary=2
             return
         # 2a. see ATL06_pair.py
         # 2b. Calculate the y center of the slope regression
@@ -234,13 +230,9 @@ class point(ATL11.data):
 
         if np.sum(self.valid_pairs.all)==0:
             self.status['No_valid_pairs_after_slope_editing']=True
-            if self.ref_surf.quality_summary==0:
-                self.ref_surf.quality_summary=3
 
         if np.unique(D6.segment_id[self.valid_pairs.all]).shape[0]==1:
             self.status['Only_one_valid_pair_in_x_direction']=True
-            if self.ref_surf.quality_summary==0:
-                self.ref_surf.quality_summary=4
         return
 
     def select_y_center(self, D6, pair_data):  #5.1.3
@@ -436,8 +428,6 @@ class point(ATL11.data):
                   G_surf_zp_original, selected_segs, deg_wt_sum, TOC)
             if G.shape[1]==0:
                 self.status['inversion failed']=True
-                if self.ref_surf.quality_summary==0:
-                    self.ref_surf.quality_summary=5
                 return
 
             # 3g, 3h. generate the data-covariance matrix, its inverse, and
@@ -446,15 +436,11 @@ class point(ATL11.data):
                 C_d, C_di, G_g = gen_inv(self,G,h_li_sigma[selected_segs])
             except:
                 self.status['inversion failed']=True
-                if self.ref_surf.quality_summary==0:
-                    self.ref_surf.quality_summary=5
                 return
             # check if any rows of G_g are all-zero (this is in 3h)
             # if so, set the error and return
             if np.any(np.all(G_g==0, axis=1)):
                 self.status['inversion failed']=True
-                if self.ref_surf.quality_summary==0:
-                    self.ref_surf.quality_summary=5
                 return
 
             # inititalize the combined surface and cycle-height model, m_surf_zp
@@ -493,8 +479,6 @@ class point(ATL11.data):
            
             if not np.any(selected_segs):
                 self.status['inversion failed']=True
-                if self.ref_surf.quality_summary==0:
-                    self.ref_surf.quality_summary=5
                 return
 
             if P>0.025:
@@ -599,8 +583,7 @@ class point(ATL11.data):
         self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)]=m_surf_zp_sigma[TOC['poly']]
         if np.any(self.ref_surf.poly_coeffs_sigma > 2):
             self.status['Polynomial_coefficients_with_high_error']=True
-            if self.ref_surf.quality_summary==0:
-                self.ref_surf.quality_summary=6
+            self.ref_surf.fit_quality += 1
 
         if self.calc_slope_change:
             self.ref_surf.slope_change_rate_x_sigma=m_surf_zp_sigma[TOC['slope_change'][0]]
@@ -657,8 +640,7 @@ class point(ATL11.data):
         self.ref_surf.curvature=np.sqrt(rr)
         if np.any((self.ref_surf.n_slope>0.2,self.ref_surf.e_slope>0.2)):
             self.status['Surface_fit_slope_high']=1
-            if self.ref_surf.quality_summary==0:
-                self.ref_surf.quality_summary=7
+            self.ref_surf.fit_quality += 2
 
         # perform the same fit in [xg,yg] to calculate the y slope for the unselected segments
         G_xy=np.transpose(np.vstack(( (xg.ravel()),(yg.ravel()), np.ones_like(xg.ravel()))))
