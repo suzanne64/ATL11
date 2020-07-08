@@ -589,7 +589,7 @@ class data(object):
             if 'inversion failed' in P11.status:
                 #P11_list.append(P11)
                 if verbose:
-                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.quality_summary, ref_pt))
+                    print("surf_fit_quality=%d at ref pt=%d" % (P11.ref_surf.fit_quality, ref_pt))
                 continue
             # get the slope and curvature parameters
             P11.characterize_ref_surf()
