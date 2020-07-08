@@ -139,9 +139,7 @@ def filemeta(outfile,infiles):
     # copy METADATA group from ATL11 template. Make lineage/cycle_array conatining each ATL06 file, where the ATL06 filenames
     if os.path.isfile(outfile):
         g = h5py.File(outfile,'r+')
-        print('len(infiles)',len(infiles))
         for ii,infile in enumerate(sorted(infiles)):
-            print('ii,infile:',ii,infile)
             m = h5py.File(os.path.dirname(os.path.realpath(__file__))+'/atl11_metadata_template.h5','r')
             if ii==0:
               if 'METADATA' in list(g['/'].keys()):
@@ -175,7 +173,6 @@ def filemeta(outfile,infiles):
                            continue
                        if key=='time_coverage_start':
                            val = f.attrs[key].decode()
-                           print(key,val)
                            create_attribute(g.id, key, [], val)
                            continue
                        if key=='time_coverage_end' or key=='time_coverage_duration':
@@ -183,12 +180,10 @@ def filemeta(outfile,infiles):
                        if dsname in f.attrs:
                            if isinstance(keyval,float):
                              val = f.attrs[key]
-                             print('key,val:',key,val)
                              g.attrs[key]=val
                            else:
 #                             val = f.attrs[key].astype('U13')
                              val = f.attrs[key].decode()
-                             print('key,val:',key,val)
                              create_attribute(g.id, key, [], val)
                     del g['METADATA/Extent']
                     f.copy('METADATA/Extent',g['METADATA'])
@@ -223,12 +218,10 @@ def filemeta(outfile,infiles):
                     if key=='time_coverage_end':
                        val = f.attrs[key].decode()
                        create_attribute(g.id, key, [], val)
-                       print('key,val:',key,val)
                        continue
                     if key=='time_coverage_duration':
                        end_delta_time = f['ancillary_data/end_delta_time'][0]
                        val = float(end_delta_time) - float(start_delta_time)
-                       print('key,val:',key,val)
                        g.attrs[key] = val
 #                           create_attribute(g.id, key, [], np.string(val))
                   
