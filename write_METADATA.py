@@ -139,8 +139,9 @@ def filemeta(outfile,infiles):
     # copy METADATA group from ATL11 template. Make lineage/cycle_array conatining each ATL06 file, where the ATL06 filenames
     if os.path.isfile(outfile):
         g = h5py.File(outfile,'r+')
+        print('len(infiles)',len(infiles))
         for ii,infile in enumerate(sorted(infiles)):
-            print('infile:',infile)
+            print('ii,infile:',ii,infile)
             m = h5py.File(os.path.dirname(os.path.realpath(__file__))+'/atl11_metadata_template.h5','r')
             if ii==0:
               if 'METADATA' in list(g['/'].keys()):
@@ -158,6 +159,7 @@ def filemeta(outfile,infiles):
                 val=' '.join(sys.argv)
                 create_attribute(g['METADATA/ProcessStep/PGE'].id, 'runTimeParameters', [], val)
                 if ii==0:
+                    start_delta_time = f['ancillary_data/start_delta_time'][0]
                     for key, keyval in root_info.items():
                        dsname=key
                        if key=='date_created' or key=='history':
@@ -170,6 +172,13 @@ def filemeta(outfile,infiles):
                            val=version()
                            create_attribute(g.id, key, [], val)
                            create_attribute(g['METADATA/ProcessStep/PGE'].id, 'softwareVersion', [], val)
+                           continue
+                       if key=='time_coverage_start':
+                           val = f.attrs[key].decode()
+                           print(key,val)
+                           create_attribute(g.id, key, [], val)
+                           continue
+                       if key=='time_coverage_end' or key=='time_coverage_duration':
                            continue
                        if dsname in f.attrs:
                            if isinstance(keyval,float):
@@ -202,10 +211,30 @@ def filemeta(outfile,infiles):
 #                           else:
 #                               orbit_info[key] = f[dsname][0]
 
-
-
                 m.close()
                 f.close()
+
+
+            if ii==len(infiles)-1:
+              if os.path.isfile(infile):
+                f = h5py.File(infile,'r')
+                for key, keyval in root_info.items():
+                    dsname=key
+                    if key=='time_coverage_end':
+                       val = f.attrs[key].decode()
+                       create_attribute(g.id, key, [], val)
+                       print('key,val:',key,val)
+                       continue
+                    if key=='time_coverage_duration':
+                       end_delta_time = f['ancillary_data/end_delta_time'][0]
+                       val = float(end_delta_time) - float(start_delta_time)
+                       print('key,val:',key,val)
+                       g.attrs[key] = val
+#                           create_attribute(g.id, key, [], np.string(val))
+                  
+                m.close()
+                f.close()
+
         g.close()
         return()
 
