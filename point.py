@@ -820,6 +820,7 @@ class point(ATL11.data):
             # select the smallest-error segment from each orbit  and pair
             these=np.where(orb_pair==orb_pair_i)[0]
             best=these[np.argmin(z_xover_sigma[these])]
+
             ss_atc_diff=0
             for di in [-1, 1]:
                 this=np.flatnonzero((Dsub.LR[these]==Dsub.LR[best]) & [Dsub.segment_id[these]==Dsub.segment_id[best]+di])
@@ -828,6 +829,10 @@ class point(ATL11.data):
             if ss_atc_diff==0:
                 ss_atc_diff=[np.NaN]
 
+            # if the along-trac RSS is too large, do not report a value
+            if np.sqrt(ss_atc_diff[0]) > 10:
+                continue
+            
             sigma_systematic = np.sqrt((ref_surf_slope_mag**2 * (Dsub.sigma_geo_xt**2+\
                                                          Dsub.sigma_geo_at**2)) +\
                                                          Dsub.sigma_geo_r**2)
