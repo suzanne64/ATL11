@@ -90,8 +90,8 @@ def write_METADATA(outfile,infiles):
 #            version.append(str(digits[2]).encode('ASCII'))
         for pt in g.keys():
             if pt.startswith('pt'):
-                sgeoseg = np.min([sgeoseg,np.min(g[pt]['corrected_h']['ref_pt'][:])])
-                egeoseg = np.max([egeoseg,np.max(g[pt]['corrected_h']['ref_pt'][:])])
+                sgeoseg = np.min([sgeoseg,np.min(g[pt]['ref_pt'][:])])
+                egeoseg = np.max([egeoseg,np.max(g[pt]['ref_pt'][:])])
 
         gf.attrs['description'] = 'ICESat-2 ATLAS Land Ice'
 #

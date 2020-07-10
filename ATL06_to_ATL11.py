@@ -95,11 +95,11 @@ def main(argv):
         if D11 is None:
             print("ATL06_to_ATL11: Not enough good data to calculate an ATL11, nothing written")
             return()
-        # fill cycle_number list in cycle_stats and corrected_h
+        # fill cycle_number list in cycle_stats and ROOT
         setattr(D11.cycle_stats,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
-        setattr(D11.corrected_h,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
+        setattr(D11.ROOT,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         # add dimensions to D11
-        D11.N_pts, D11.N_cycles = D11.corrected_h.h_corr.shape
+        D11.N_pts, D11.N_cycles = D11.ROOT.h_corr.shape
         if isinstance(D11.crossing_track_data.h_corr, np.ndarray):
             D11.Nxo = D11.crossing_track_data.h_corr.shape[0]
         
@@ -108,27 +108,6 @@ def main(argv):
 
     out_file = write_METADATA.write_METADATA(out_file,files)
 
-#    # copy METADATA group from ATL06. Make lineage/ group for each ATL06 file, where the ATL06 filenames and their unique metadata are saved.
-#    if os.path.isfile(out_file):        
-#        g = h5py.File(out_file,'r+')
-#        for ii,infile in enumerate(sorted(files)):
-#            if os.path.isfile(infile):
-#                f = h5py.File(infile,'r')         
-#                if ii==0:
-#                    # get all METADATA groups except Lineage, which we set to zero
-#                    f.copy('METADATA',g)
-#                    if 'Lineage' in list(g['METADATA'].keys()):
-#                        del g['METADATA']['Lineage']
-#                    g['METADATA'].create_group('Lineage'.encode('ASCII'))
-#                # make ATL06 file group for each cycle
-#                gf = g['METADATA']['Lineage'].create_group('ATL06-{:02d}'.format(ii+1).encode('ASCII'))
-#                gf.attrs['fileName'] = os.path.basename(infile.encode('ASCII'))
-##                # fill ATL06 file group with unique ATL06 file metadata
-##                for fgrp in list(f['METADATA']['Lineage']):
-##                    f.copy('METADATA/Lineage/{}'.format(fgrp), g['METADATA']['Lineage']['ATL06-{:02d}'.format(ii+1)])
-#
-#                f.close()
-#        g.close()
     print("ATL06_to_ATL11: done with "+out_file)
         
     if args.test_plot:
