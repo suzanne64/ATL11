@@ -540,7 +540,7 @@ class point(ATL11.data):
         # write out the zp
         zp_nan_mask=np.ones_like(TOC_out['zp'], dtype=float)
         zp_nan_mask[m_surf_zp_sigma[TOC_out['zp']]>15]=np.NaN
-        self.corrected_h.h_corr[0,TOC_out['cycle_ind']]=m_surf_zp[TOC_out['zp']]*zp_nan_mask
+        self.ROOT.h_corr[0,TOC_out['cycle_ind']]=m_surf_zp[TOC_out['zp']]*zp_nan_mask
        
         # get the square of h_corr_sigma_systematic, equation 12
         sigma_systematic_squared=((D6.dh_fit_dx * D6.sigma_geo_at)**2 + \
@@ -561,15 +561,15 @@ class point(ATL11.data):
                 mean_dataset=dataset #+'_mean';
                 self.cycle_stats.__dict__[mean_dataset][0,cc] = np.sqrt(np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs]**2))
             # other parameters:
-            self.corrected_h.delta_time[0,cc]       = np.mean(D6.delta_time.ravel()[cycle_segs])
+            self.ROOT.delta_time[0,cc]       = np.mean(D6.delta_time.ravel()[cycle_segs])
             self.cycle_stats.seg_count[0, cc]       = cycle_segs.size
             self.cycle_stats.cloud_flg_asr[0,cc]    = np.min(D6.cloud_flg_asr.ravel()[cycle_segs])
             self.cycle_stats.cloud_flg_atm[0,cc]    = np.min(D6.cloud_flg_atm.ravel()[cycle_segs])
             self.cycle_stats.bsnow_conf[0,cc]       = np.max(D6.bsnow_conf.ravel()[cycle_segs])
             self.cycle_stats.min_snr_significance[0,cc] = np.min(D6.snr_significance.ravel()[cycle_segs])
             self.cycle_stats.min_signal_selection_source[0,cc] = np.min(D6.signal_selection_source.ravel()[cycle_segs])
-            if np.isfinite(self.corrected_h.h_corr[0,cc]):
-                self.corrected_h.h_corr_sigma_systematic[0,cc] = np.sqrt(np.sum(W_by_error*sigma_systematic_squared[cycle_segs] ))
+            if np.isfinite(self.ROOT.h_corr[0,cc]):
+                self.ROOT.h_corr_sigma_systematic[0,cc] = np.sqrt(np.sum(W_by_error*sigma_systematic_squared[cycle_segs] ))
 
         self.ref_surf.N_cycle_used = np.count_nonzero(self.ref_surf_cycles)
 
@@ -593,7 +593,7 @@ class point(ATL11.data):
             self.ref_surf.slope_change_rate_y_sigma= np.nan
 
         # write out the errors in h_corr
-        self.corrected_h.h_corr_sigma[0,TOC_out['cycle_ind']]=m_surf_zp_sigma[TOC_out['zp']]*zp_nan_mask
+        self.ROOT.h_corr_sigma[0,TOC_out['cycle_ind']]=m_surf_zp_sigma[TOC_out['zp']]*zp_nan_mask
 
         if self.DOPLOT is not None and "3D time plot" in self.DOPLOT:
             x_atc = D6.x_atc[self.selected_segments]
@@ -755,11 +755,11 @@ class point(ATL11.data):
                 self.cycle_stats.__dict__[dataset][0,cc]=getattr(D6, dataset).ravel()[best_seg_ind]
             if z_kc_sigma[cycle==non_ref_cycle][best_seg] < 15:
                 # edit out errors larger than 15 m                
-                self.corrected_h.h_corr[0,cc]      =z_kc[cycle==non_ref_cycle][best_seg]
-                self.corrected_h.h_corr_sigma[0,cc]= z_kc_sigma[cycle==non_ref_cycle][best_seg]
-                self.corrected_h.h_corr_sigma_systematic[0,cc] = \
+                self.ROOT.h_corr[0,cc]      =z_kc[cycle==non_ref_cycle][best_seg]
+                self.ROOT.h_corr_sigma[0,cc]= z_kc_sigma[cycle==non_ref_cycle][best_seg]
+                self.ROOT.h_corr_sigma_systematic[0,cc] = \
                     np.sqrt(term1.ravel()[best_seg] + term2.ravel()[best_seg]  + term3.ravel()[best_seg])
-            self.corrected_h.delta_time[0,cc]        =D6.delta_time.ravel()[best_seg_ind]
+            self.ROOT.delta_time[0,cc]        =D6.delta_time.ravel()[best_seg_ind]
             self.cycle_stats.h_mean[0, cc]         =D6.h_li.ravel()[best_seg_ind]
             self.cycle_stats.min_signal_selection_source[0, cc] = D6.signal_selection_source.ravel()[best_seg_ind]
             self.cycle_stats.min_snr_significance[0, cc] = D6.snr_significance.ravel()[best_seg_ind]
@@ -845,8 +845,8 @@ class point(ATL11.data):
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
             self.crossing_track_data.ref_pt.append([self.ref_pt])
-            self.crossing_track_data.latitude.append([self.corrected_h.latitude])
-            self.crossing_track_data.longitude.append([self.corrected_h.longitude])
+            self.crossing_track_data.latitude.append([self.ROOT.latitude])
+            self.crossing_track_data.longitude.append([self.ROOT.longitude])
             self.crossing_track_data.along_track_rss.append([np.sqrt(ss_atc_diff[0])])
             self.crossing_track_data.h_corr_sigma_systematic.append([sigma_systematic[best]])
         return
@@ -855,8 +855,8 @@ class point(ATL11.data):
         WGS84a=6378137.0
         WGS84b=6356752.31424
         d2r=np.pi/180
-        lat0=self.corrected_h.latitude
-        lon0=self.corrected_h.longitude
+        lat0=self.ROOT.latitude
+        lon0=self.ROOT.longitude
         Re=WGS84a**2/np.sqrt((WGS84a*np.cos(d2r*lat0))**2+(WGS84b*np.sin(d2r*lat0))**2)
         dE=Re*d2r*(np.mod(lon-lon0+180.,360.)-180.)*np.cos(d2r*lat0)
         dN=Re*d2r*(lat-lat0)
