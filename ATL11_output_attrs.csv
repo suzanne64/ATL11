@@ -20,7 +20,6 @@ ref_surf,poly_coeffs,1,"N_pts, N_coeffs",Float64,"""polynomial coefficients (up 
 ref_surf,poly_coeffs_sigma,1,"N_pts, N_coeffs",Float64,"""formal errors for the polynomial coefficients""","""polynomial coefficients error""","""derived, ATL11 algorithm"""
 ref_surf,poly_exponent_x,counts,N_coeffs,int8,"""exponents for the x factors in the surface polynomial""","""polynomial x exponents""","""derived, ATL11 algorithm"""
 ref_surf,poly_exponent_y,counts,N_coeffs,int8,"""exponents for the y factors in the surface polynomial""","""polynomial y exponents""","""derived, ATL11 algorithm"""
-ref_surf,ref_pt,counts,N_pts,int32,"""Ref point number, counted from the equator crossing along the RGT.""","""reference point number, segment_id""","""ATL06"""
 ref_surf,x_atc,meters,N_pts,Float64,"""Along-track coordinate of the reference point, measured along the RGT from its first equator crossing.""","""Along track distance""","""ATL06"""
 ref_surf,y_atc,meters,N_pts,Float64,"""Across-track coordinate of the reference point, measured along the RGT from its first equator crossing.""","""Across track distance""","""ATL06"""
 ref_surf,rgt_azimuth,degrees,N_pts,Float64,"""Reference track azimuth, in degrees east of local north""","""RGT azimuth""","""ATL06"""

@@ -251,15 +251,15 @@ class data(object):
         #   fileout: filename of hdf5 filename to write
         # Optional input:
         #   parms_11: ATL11.defaults structure
-        group_name='/pt%d' % self.beam_pair
-        group_name=group_name.encode('ASCII')
+        beam_pair_name='/pt%d' % self.beam_pair
+        beam_pair_name=beam_pair_name.encode('ASCII')
         if os.path.isfile(fileout):
             f = h5py.File(fileout.encode('ASCII'),'r+')
-            if group_name in f:
-                del f[group_name]
+            if beam_pair_name in f:
+                del f[beam_pair_name]
         else:
             f = h5py.File(fileout.encode('ASCII'),'w')
-        g=f.create_group(group_name)
+        g=f.create_group(beam_pair_name)
 
         # set the output pair and track attributes
         g.attrs['beam_pair'.encode('ASCII')]=self.beam_pair
@@ -269,7 +269,7 @@ class data(object):
         # put default parameters as top level attributes
         if params_11 is None:
             params_11=ATL11.defaults()
-            
+# PRINT HERE, params_11            
         # write each variable in params_11 as an attribute
         for param, val in  vars(params_11).items():
             if not isinstance(val,(dict,type(None))):
@@ -283,7 +283,7 @@ class data(object):
                 except Exception as e:
                     print("write_to_file:could not automatically set parameter: %s error = %s" % (param,str(e)))
                     continue
-
+                
         # put groups, fields and associated attributes from .csv file
         with open(os.path.dirname(inspect.getfile(ATL11.data))+'/ATL11_output_attrs.csv','r') as attrfile:
             reader=list(csv.DictReader(attrfile))
@@ -291,6 +291,7 @@ class data(object):
         attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']
 
         for group in group_names:
+            print('line 294',group)
             if hasattr(getattr(self,group),'list_of_fields'):
                 
                 grp = g.create_group(group.encode('ASCII'))
@@ -302,6 +303,7 @@ class data(object):
                 udims = list(set(unique_dims))
                 # make datasets for dimension scales ~
                 if 'N_pts' in udims or 'Nxo' in udims:
+                    print(group,'in N_pts')
                     this_ref_pt=getattr(getattr(self,group),'ref_pt')
                     if len(this_ref_pt) > 0:
                         dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=this_ref_pt.astype(int))
@@ -340,10 +342,12 @@ class data(object):
                     g.attrs['N_poly_coeffs'.encode('ASCII')]=int(self.N_coeffs)
                                         
                 list_vars=getattr(self,group).list_of_fields
+                # only ROOT in the future >
                 if 'cycle_stats' in group or 'ROOT' in group:
                     list_vars.append('cycle_number')
                 if list_vars is not None:
                     for field in list_vars:
+                        print('line 349',group,field)
                         dimensions = field_attrs[field]['dimensions'].split(',')
                         if ('ref_pt' not in field and 'cycle_number' not in field) or ('cycle_number' in field and 'crossing_track_data' in group):
                             data = getattr(getattr(self,group),field)
@@ -356,7 +360,11 @@ class data(object):
                                 data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
                                 fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
                                 
-                            dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue) #,dtype=dt)                            
+                            if 'ROOT' in group:
+                                dset = g.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue)
+                                print('ROOT')
+                            else:
+                                dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue) #,dtype=dt)                            
                             for ii,dim in enumerate(dimensions):
                                 dim=dim.strip()
                                 if 'N_pts' in dim or 'Nxo' in dim: 

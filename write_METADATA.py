@@ -28,14 +28,6 @@ def write_METADATA(outfile,infiles):
         gf = g.create_group('METADATA/Lineage/ATL06')
         fname = []
         sname = []
-#        scycle = np.array([13],dtype='int32')
-#        ecycle = np.array([0],dtype='int32')
-#        srgt = np.array([1400],dtype='int32')
-#        ergt = np.array([0],dtype='int32')
-#        sregion = np.array([15],dtype='int32')
-#        eregion = np.array([0],dtype='int32')
-#        sgeoseg = np.array([10e6],dtype='int32')
-#        egeoseg = np.array([0],dtype='int32')
         scycle = []
         ecycle = []
         srgt = []
@@ -50,29 +42,8 @@ def write_METADATA(outfile,infiles):
         version = []
         for ii,infile in enumerate(sorted(infiles)):
             fname.append(os.path.basename(infile).encode('ASCII'))
-#
-# bpj: parsing by underscore doesn't work without "processed_"
-#
-#            sname.append('_'.join(os.path.basename(infile).split('_',2)[:2]).encode('ASCII'))
-#            digits =infile.split('ATL06_')[1].split('_')
-#            if scycle > np.int32(digits[1][4:6]):
-#                scycle = np.int32(digits[1][4:6])
-#            if ecycle < np.int32(digits[1][4:6]):
-#                ecycle = np.int32(digits[1][4:6])
-#            if srgt > np.int32(digits[1][:4]):
-#                srgt = np.int32(digits[1][:4])
-#            if ergt < np.int32(digits[1][:4]):
-#                ergt = np.int32(digits[1][:4])
-#            if sregion > np.int32(digits[1][6:8]):
-#                sregion = np.int32(digits[1][6:8])
-#            if eregion < np.int32(digits[1][6:8]):
-#                eregion = np.int32(digits[1][6:8])
             if os.path.isfile(infile):
                 f = h5py.File(infile,'r')
-#                sorbit.append(f['METADATA']['Lineage']['ATL03'].attrs['start_orbit'])
-#                eorbit.append(f['METADATA']['Lineage']['ATL03'].attrs['end_orbit'])
-#                uuid.append(f['METADATA']['Lineage']['ATL03'].attrs['uuid'])
-#
 # Read the datasets from ATL06 ancillary_data, where available
 # All fields must be arrays, not just min/max, even if just repeats
 #
