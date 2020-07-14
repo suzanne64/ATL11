@@ -153,41 +153,57 @@ class data(object):
             # if the field dict is not specified, read it
             if field_dict is None:
                 field_dict={}
-                for group in FH[pt].keys():
-                    #print('group line 149',group)
-                    field_dict[group]=[]
-                    for field in FH[pt][group].keys():
-                        #print('line 153',group, field)
-                        field_dict[group].append(field)
-
-            # Suzanne, rework this using dim scales.
+                field_dict['ROOT']=[]
+                for key,val in FH[pt].items():
+                    if isinstance(val, h5py.Group):
+                        field_dict[key]=[]
+                        for field in FH[pt][key].keys():
+                            field_dict[key].append(field)
+                    if isinstance(val, h5py.Dataset):
+                        field_dict['ROOT'].append(key)
+            
             N_pts=FH[pt]['h_corr'][index_range[0]:index_range[-1],:].shape[0]
+            N_cycles=FH[pt]['cycle_number'].shape[0]
             cycles=[FH[pt].attrs['first_cycle'], FH[pt].attrs['last_cycle']]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs)
-            
-            for in_group in (field_dict):
-                # the root group is represented as "ROOT"
-                if in_group is None:
-                    out_group=in_group
-                else:
-                    out_group='ROOT'
-                if in_group != 'crossing_track_data':
-                    for field in field_dict[group]:
-                        try:
-                            this_field = np.array(FH[pt][in_group][field]).astype('float')
-                            # check for invalids replace with nans
-                            if invalid_to_nan:
-                                this_field[this_field==FH[pt][in_group][field].fillvalue.astype('float')] = np.nan
-                            if len(this_field.shape) > 1:
-                                setattr(getattr(self, out_group), field, this_field[index_range[0]:index_range[1],:])
-                            else:
-                                if 'cycle_number' in field and (out_group=='ROOT' or out_group=='cycle_stats'):
-                                    setattr(getattr(self, out_group), field, this_field[:])
+
+            for group in (field_dict):
+#                if in_group is None:
+#                    out_group=in_group
+#                else:
+#                    out_group='ROOT'
+                if group != 'crossing_track_data':
+                    if group == 'ROOT':
+                        for field in field_dict[group]:
+                            try:
+                                this_field = np.array(FH[pt][field]).astype('float')
+                                # check for invalids replace with nans
+                                if invalid_to_nan:
+                                    this_field[this_field==FH[pt][field].fillvalue.astype('float')] = np.nan
+                                if len(this_field.shape) > 1:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
                                 else:
-                                    setattr(getattr(self, out_group), field, this_field[index_range[0]:index_range[1]])
-                        except KeyError:
-                            print("ATL11 file %s: missing %s/%s" % (filename, out_group, field))
+                                    if 'cycle_number' in field: # and (out_group=='ROOT' or out_group=='cycle_stats'):
+                                        setattr(getattr(self, group), field, this_field[:])
+                                    else:
+                                        setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
+                            except KeyError:
+                                print("ATL11 file %s: missing %s/%s" % (filename, out_group, field))
+                           
+                    else:
+                        for field in field_dict[group]:
+                            try:
+                                this_field = np.array(FH[pt][group][field]).astype('float')
+                                # check for invalids replace with nans
+                                if invalid_to_nan:
+                                    this_field[this_field==FH[pt][group][field].fillvalue.astype('float')] = np.nan
+                                if len(this_field.shape) > 1:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
+                                else:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
+                            except KeyError:
+                                print("ATL11 file %s: missing %s/%s" % (filename, group, field))
                 else:
                     # get the indices for the crossing_track_data group:
                     if self.ROOT.ref_pt.size <1:
@@ -213,7 +229,8 @@ class data(object):
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf']['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf']['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
-            self.cycle_number=np.array(FH[pt]['/cycle_number'])
+#            self.cycle_number=np.array(FH[pt]['/cycle_number'])
+            self.cycle_number=np.array(FH[pt]['cycle_number'])
         return self
 
     def get_xy(self, proj4_string=None, EPSG=None):

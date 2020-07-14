@@ -102,27 +102,13 @@ def main(argv):
         setattr(D11.ROOT,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         # add dimensions to D11
         D11.N_pts, D11.N_cycles = D11.ROOT.h_corr.shape
-        print(D11.ROOT.cycle_number)
-#        print(D11.cycle_stats.cycle_number)
-#        exit(-1)
-#        fig,ax=plt.subplots()
-#        plt.plot(D11.ref_surf.x_atc-D11.cycle_stats.x_atc[:,0],'b')
-#        plt.plot(D11.ref_surf.x_atc-D11.cycle_stats.x_atc[:,1],'r.')
-#        plt.plot(D11.ref_surf.x_atc-D11.cycle_stats.x_atc[:,2],'ko')
-#        plt.plot(D11.ref_surf.x_atc-D11.cycle_stats.x_atc[:,3],'gx')
-#        plt.plot(D11.ref_surf.y_atc-D11.cycle_stats.y_atc[:,0],'b')
-#        plt.plot(D11.ref_surf.y_atc-D11.cycle_stats.y_atc[:,1],'r.')
-#        plt.plot(D11.ref_surf.y_atc-D11.cycle_stats.y_atc[:,2],'ko')
-#        plt.plot(D11.ref_surf.y_atc-D11.cycle_stats.y_atc[:,3],'gx')
-#        plt.show()
         
         if isinstance(D11.crossing_track_data.h_corr, np.ndarray):
             D11.Nxo = D11.crossing_track_data.h_corr.shape[0]
         
         if D11 is not None:
             D11.write_to_file(out_file)
-            print('line 124')
-    print('line 125')
+
     out_file = write_METADATA.write_METADATA(out_file,files)
 
     print("ATL06_to_ATL11: done with "+out_file)
