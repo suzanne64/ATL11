@@ -229,7 +229,6 @@ class data(object):
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf']['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf']['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
-#            self.cycle_number=np.array(FH[pt]['/cycle_number'])
             self.cycle_number=np.array(FH[pt]['cycle_number'])
         return self
 
@@ -317,6 +316,13 @@ class data(object):
             data = getattr(getattr(self,'ROOT'),field)
             dset = g.create_dataset(field.encode('ASCII'),data=data) #,fillvalue=fillvalue)
             dset.dims[0].label = field
+            for attr in attr_names:
+                if 'dimensions' not in attr:
+                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
+            if field_attrs[field]['datatype'].startswith('int'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+            elif field_attrs[field]['datatype'].startswith('Float'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
 
         for field in [item for item in list_vars if (item != 'ref_pt') and (item != 'cycle_number')]:
             field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
@@ -341,6 +347,13 @@ class data(object):
                 if 'N_cycles' in dim:
                     dset.dims[ii].attach_scale(g['cycle_number'])
                     dset.dims[ii].label = 'cycle_number'
+            for attr in attr_names:
+                if 'dimensions' not in attr:
+                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
+            if field_attrs[field]['datatype'].startswith('int'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+            elif field_attrs[field]['datatype'].startswith('Float'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
 
         for group in [item for item in group_names if item != 'ROOT']:
             if hasattr(getattr(self,group),'list_of_fields'):
