@@ -69,7 +69,7 @@ class data(object):
             cycles=self.cycles
         if target is None:
             target=ATL11.data(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs, track_num=self.track_num, beam_pair=self.beam_pair)
-        xover_ind=np.in1d(self.crossing_track_data.ref_pt, self.corrected_h.ref_pt[ind])
+        xover_ind=np.in1d(self.crossing_track_data.ref_pt, self.ROOT.ref_pt[ind])
         for group in self.groups:
             setattr(target, group, getattr(self, group).index(ind, cycles=cycles, N_coeffs=N_coeffs, xover_ind=xover_ind))
         target.poly_exponent=self.poly_exponent.copy()
@@ -153,43 +153,64 @@ class data(object):
             # if the field dict is not specified, read it
             if field_dict is None:
                 field_dict={}
-                for group in FH[pt].keys():
-                    #print('group line 149',group)
-                    field_dict[group]=[]
-                    for field in FH[pt][group].keys():
-                        #print('line 153',group, field)
-                        field_dict[group].append(field)
-
-            # Suzanne, rework this using dim scales.
-            N_pts=FH[pt]['corrected_h']['h_corr'][index_range[0]:index_range[-1],:].shape[0]
+                field_dict['ROOT']=[]
+                for key,val in FH[pt].items():
+                    if isinstance(val, h5py.Group):
+                        field_dict[key]=[]
+                        for field in FH[pt][key].keys():
+                            field_dict[key].append(field)
+                    if isinstance(val, h5py.Dataset):
+                        field_dict['ROOT'].append(key)
+            
+            N_pts=FH[pt]['h_corr'][index_range[0]:index_range[-1],:].shape[0]
+            N_cycles=FH[pt]['cycle_number'].shape[0]
             cycles=[FH[pt].attrs['first_cycle'], FH[pt].attrs['last_cycle']]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs)
-            
-            for group in (field_dict):             
+
+            for group in (field_dict):
+#                if in_group is None:
+#                    out_group=in_group
+#                else:
+#                    out_group='ROOT'
                 if group != 'crossing_track_data':
-                    for field in field_dict[group]:
-                        try:
-                            this_field = np.array(FH[pt][group][field]).astype('float')
-                            # check for invalids replace with nans
-                            if invalid_to_nan:
-                                this_field[this_field==FH[pt][group][field].fillvalue.astype('float')] = np.nan
-                            if len(this_field.shape) > 1:
-                                setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
-                            else:
-                                if 'cycle_number' in field and ('corrected_h' in group or 'cycle_stats' in group):
-                                    setattr(getattr(self, group), field, this_field[:])
+                    if group == 'ROOT':
+                        for field in field_dict[group]:
+                            try:
+                                this_field = np.array(FH[pt][field]).astype('float')
+                                # check for invalids replace with nans
+                                if invalid_to_nan:
+                                    this_field[this_field==FH[pt][field].fillvalue.astype('float')] = np.nan
+                                if len(this_field.shape) > 1:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
+                                else:
+                                    if 'cycle_number' in field: # and (out_group=='ROOT' or out_group=='cycle_stats'):
+                                        setattr(getattr(self, group), field, this_field[:])
+                                    else:
+                                        setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
+                            except KeyError:
+                                print("ATL11 file %s: missing %s/%s" % (filename, out_group, field))
+                           
+                    else:
+                        for field in field_dict[group]:
+                            try:
+                                this_field = np.array(FH[pt][group][field]).astype('float')
+                                # check for invalids replace with nans
+                                if invalid_to_nan:
+                                    this_field[this_field==FH[pt][group][field].fillvalue.astype('float')] = np.nan
+                                if len(this_field.shape) > 1:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
                                 else:
                                     setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
-                        except KeyError:
-                            print("ATL11 file %s: missing %s/%s" % (filename, group, field))
+                            except KeyError:
+                                print("ATL11 file %s: missing %s/%s" % (filename, group, field))
                 else:
                     # get the indices for the crossing_track_data group:
-                    if self.corrected_h.ref_pt.size <1:
+                    if self.ROOT.ref_pt.size <1:
                         continue
                     xing_ref_pt = np.array(FH[pt]['crossing_track_data']['ref_pt'])
-                    xing_ind = np.flatnonzero( (xing_ref_pt >= self.corrected_h.ref_pt[0]) & \
-                                      (xing_ref_pt <= self.corrected_h.ref_pt[-1]) )
+                    xing_ind = np.flatnonzero( (xing_ref_pt >= self.ROOT.ref_pt[0]) & \
+                                      (xing_ref_pt <= self.ROOT.ref_pt[-1]) )
                     for field in field_dict['crossing_track_data']:
                         try:
                             this_field = np.array(FH[pt][group][field]).astype('float')
@@ -208,12 +229,12 @@ class data(object):
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf']['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf']['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
-            self.cycle_number=np.array(FH[pt]['corrected_h/cycle_number'])
+            self.cycle_number=np.array(FH[pt]['cycle_number'])
         return self
 
     def get_xy(self, proj4_string=None, EPSG=None):
-        lat=self.corrected_h.latitude
-        lon=self.corrected_h.longitude
+        lat=self.ROOT.latitude
+        lon=self.ROOT.longitude
         # method to get projected coordinates for the data.  Adds 'x' and 'y' fields to the structure
         out_srs=osr.SpatialReference()
         if proj4_string is None and EPSG is not None:
@@ -246,15 +267,15 @@ class data(object):
         #   fileout: filename of hdf5 filename to write
         # Optional input:
         #   parms_11: ATL11.defaults structure
-        group_name='/pt%d' % self.beam_pair
-        group_name=group_name.encode('ASCII')
+        beam_pair_name='/pt%d' % self.beam_pair
+        beam_pair_name=beam_pair_name.encode('ASCII')
         if os.path.isfile(fileout):
             f = h5py.File(fileout.encode('ASCII'),'r+')
-            if group_name in f:
-                del f[group_name]
+            if beam_pair_name in f:
+                del f[beam_pair_name]
         else:
             f = h5py.File(fileout.encode('ASCII'),'w')
-        g=f.create_group(group_name)
+        g=f.create_group(beam_pair_name)
 
         # set the output pair and track attributes
         g.attrs['beam_pair'.encode('ASCII')]=self.beam_pair
@@ -264,7 +285,7 @@ class data(object):
         # put default parameters as top level attributes
         if params_11 is None:
             params_11=ATL11.defaults()
-            
+        
         # write each variable in params_11 as an attribute
         for param, val in  vars(params_11).items():
             if not isinstance(val,(dict,type(None))):
@@ -278,16 +299,64 @@ class data(object):
                 except Exception as e:
                     print("write_to_file:could not automatically set parameter: %s error = %s" % (param,str(e)))
                     continue
-
+                
         # put groups, fields and associated attributes from .csv file
         with open(os.path.dirname(inspect.getfile(ATL11.data))+'/ATL11_output_attrs.csv','r') as attrfile:
             reader=list(csv.DictReader(attrfile))
         group_names=set([row['group'] for row in reader])
         attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']
+        
+        # start with 'ROOT' group
+        list_vars=getattr(self,'ROOT').list_of_fields
+        list_vars.append('cycle_number')        
+        # establish the two main dimension scales
+        for field in ['ref_pt','cycle_number']:
+            field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
+            dimensions = field_attrs[field]['dimensions'].split(',')
+            data = getattr(getattr(self,'ROOT'),field)
+            dset = g.create_dataset(field.encode('ASCII'),data=data) #,fillvalue=fillvalue)
+            dset.dims[0].label = field
+            for attr in attr_names:
+                if 'dimensions' not in attr:
+                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
+            if field_attrs[field]['datatype'].startswith('int'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+            elif field_attrs[field]['datatype'].startswith('Float'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
 
-        for group in group_names:
+        for field in [item for item in list_vars if (item != 'ref_pt') and (item != 'cycle_number')]:
+            field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
+            dimensions = field_attrs[field]['dimensions'].split(',')
+            data = getattr(getattr(self,'ROOT'),field)
+            # change nans to proper invalid, depending on datatype
+            if field_attrs[field]['datatype'].startswith('int'):
+                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
+                data = data.astype('int')  # don't change to int before substituting nans with invalid.
+                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+            elif field_attrs[field]['datatype'].startswith('Float'):
+                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
+                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+            dset = g.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue)
+            dset.dims[0].label = field
+            
+            for ii,dim in enumerate(dimensions):
+                dim=dim.strip()
+                if 'N_pts' in dim: 
+                    dset.dims[ii].attach_scale(g['ref_pt'])
+                    dset.dims[ii].label = 'ref_pt'
+                if 'N_cycles' in dim:
+                    dset.dims[ii].attach_scale(g['cycle_number'])
+                    dset.dims[ii].label = 'cycle_number'
+            for attr in attr_names:
+                if 'dimensions' not in attr:
+                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
+            if field_attrs[field]['datatype'].startswith('int'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+            elif field_attrs[field]['datatype'].startswith('Float'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+
+        for group in [item for item in group_names if item != 'ROOT']:
             if hasattr(getattr(self,group),'list_of_fields'):
-                
                 grp = g.create_group(group.encode('ASCII'))
 
                 field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if group in row['group']}
@@ -295,8 +364,8 @@ class data(object):
                 unique_dims = []
                 [unique_dims.append(dim.strip()) for field in field_attrs for dim in field_attrs[field]['dimensions'].split(',')]
                 udims = list(set(unique_dims))
-                # make datasets for dimension scales ~
-                if 'N_pts' in udims or 'Nxo' in udims:
+                
+                if 'Nxo' in udims:
                     this_ref_pt=getattr(getattr(self,group),'ref_pt')
                     if len(this_ref_pt) > 0:
                         dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=this_ref_pt.astype(int))
@@ -305,27 +374,18 @@ class data(object):
                     dset.dims[0].label = 'ref_pt'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['ref_pt'][attr].encode('ASCII')
                             create_attribute(dset.id, attr, [], field_attrs['ref_pt'][attr])
-                if 'N_cycles' in udims:
-                    dset = grp.create_dataset('cycle_number'.encode('ASCII'),data=getattr(getattr(self,group),'cycle_number')) 
-                    dset.dims[0].label = 'cycle_number'.encode('ASCII')                   
-                    for attr in attr_names:
-                        if 'dimensions' not in attr:
-# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['cycle_number'][attr].encode('ASCII')
-                            create_attribute(dset.id, attr, [], field_attrs['cycle_number'][attr])
+
                 if 'N_coeffs' in udims:
                     dset = grp.create_dataset('poly_exponent_x'.encode('ASCII'),data=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)) 
                     dset.dims[0].label = 'poly_exponent_x'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_x'][attr].encode('ASCII')
                             create_attribute(dset.id, attr, [], field_attrs['poly_exponent_x'][attr])
                     dset = grp.create_dataset('poly_exponent_y'.encode('ASCII'),data=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)) 
                     dset.dims[0].label = 'poly_exponent_y'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr:
-# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_y'][attr].encode('ASCII')
                             create_attribute(dset.id, attr, [], field_attrs['poly_exponent_y'][attr])
                             
                 if 'ref_surf' in group:
@@ -333,84 +393,55 @@ class data(object):
                     grp.attrs['poly_exponent_y'.encode('ASCII')]=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['slope_change_t0'.encode('ASCII')]=np.mean(self.slope_change_t0).astype('int')
                     g.attrs['N_poly_coeffs'.encode('ASCII')]=int(self.N_coeffs)
-                                        
+
                 list_vars=getattr(self,group).list_of_fields
-                if 'cycle_stats' in group or 'corrected_h' in group:
-                    list_vars.append('cycle_number')
+                if group == 'crossing_track_data':
+                    list_vars.remove('ref_pt')  # handled above
                 if list_vars is not None:
                     for field in list_vars:
                         dimensions = field_attrs[field]['dimensions'].split(',')
-                        if ('ref_pt' not in field and 'cycle_number' not in field) or ('cycle_number' in field and 'crossing_track_data' in group):
-                            data = getattr(getattr(self,group),field)
-                            # change nans to proper invalid, depending on datatype
-                            if field_attrs[field]['datatype'].startswith('int'):
-                                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
-                                data = data.astype('int')  # don't change to int before substituting nans with invalid.
-                                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
-                            elif field_attrs[field]['datatype'].startswith('Float'):
-                                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
-                                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                        data = getattr(getattr(self,group),field)
+                        # change nans to proper invalid, depending on datatype
+                        if field_attrs[field]['datatype'].startswith('int'):
+                            data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
+                            data = data.astype('int')  # don't change to int before substituting nans with invalid.
+                            fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                        elif field_attrs[field]['datatype'].startswith('Float'):
+                            data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
+                            fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
                                 
-                            dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue) #,dtype=dt)                            
-                            for ii,dim in enumerate(dimensions):
-                                dim=dim.strip()
-                                if 'N_pts' in dim or 'Nxo' in dim: 
-                                    dset.dims[ii].attach_scale(grp['ref_pt'])
-                                    dset.dims[ii].label = 'ref_pt'
-                                if 'N_cycles' in dim:
-                                    dset.dims[ii].attach_scale(grp['cycle_number'])
-                                    dset.dims[ii].label = 'cycle_number'
-                                if 'N_coeffs' in dim:
-                                    dset.dims[ii].attach_scale(grp['poly_exponent_x'])
-                                    dset.dims[ii].attach_scale(grp['poly_exponent_y'])
-                                    dset.dims[ii].label = '(poly_exponent_x, poly_exponent_y)'
-                                    
-                            for attr in attr_names:
-                                if 'dimensions' not in attr:
+                        dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue) #,dtype=dt)                            
+                        for ii,dim in enumerate(dimensions):
+                            dim=dim.strip()
+                            if 'N_pts' in dim: 
+                                dset.dims[ii].attach_scale(g['ref_pt'])
+                                dset.dims[ii].label = 'ref_pt'
+                            if 'N_cycles' in dim:
+                                dset.dims[ii].attach_scale(g['cycle_number'])
+                                dset.dims[ii].label = 'cycle_number'
+                            if 'N_coeffs' in dim:
+                                dset.dims[ii].attach_scale(grp['poly_exponent_x'])
+                                dset.dims[ii].attach_scale(grp['poly_exponent_y'])
+                                dset.dims[ii].label = '(poly_exponent_x, poly_exponent_y)'
+                            if 'Nxo' in dim: 
+                                dset.dims[ii].attach_scale(grp['ref_pt'])
+                                dset.dims[ii].label = 'ref_pt'
+                        for attr in attr_names:
+                            if 'dimensions' not in attr:
 # bpj                                    dset.attrs[attr.encode('ASCII')] = str(field_attrs[field][attr]).encode('ASCII')
-                                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
-                            if field_attrs[field]['datatype'].startswith('int'):
-                                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
-                            elif field_attrs[field]['datatype'].startswith('Float'):
-                                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
-        f.close()
+                                create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
+                        if field_attrs[field]['datatype'].startswith('int'):
+                            dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                        elif field_attrs[field]['datatype'].startswith('Float'):
+                            dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+        f.close()        
         return
 
-    def as_dict(self, field_dict=None):
-        out={}
-        if field_dict is None:
-            field_dict={'corrected_h':['latitude','longitude','delta_time',\
-                                       'h_corr','h_corr_sigma','h_corr_sigma_systematic'],\
-                        'derived':['cycle', 'rgt', 'n_cycles']}
-        h_shape=self.corrected_h.h_corr.shape
-        for group in field_dict:
-            if group=='derived':
-                continue
-            if group is None:
-                temp=self
-            else:
-                temp=getattr(self, group)
-            for field in field_dict[group]:
-                out[field]=getattr(temp,field)
-                if len(out[field].shape) == 1:
-                    out[field]=np.tile(out[field].reshape([out[field].shape[0], 1]), [1, h_shape[1]])
-        if 'derived' in field_dict:
-            if 'cycle' in field_dict['derived']:
-                cycles=np.arange(self.cycles[0], self.cycles[1]+1)
-                cycles=cycles.reshape([1, len(cycles)])
-                out['cycle']=np.tile(cycles, [h_shape[0], 1])
-            if 'rgt' in field_dict['derived']:
-                out['rgt']=np.zeros_like(self.corrected_h.h_corr)+self.attrs['ReferenceGroundTrack']
-            if 'n_cycles' in field_dict['derived']:
-                out['n_cycles']=np.tile(\
-                        np.sum(np.isfinite(self.corrected_h.h_corr), axis=1)\
-                        .reshape([h_shape[0],1]), [1, h_shape[1]])
-        return out
         
     def get_xovers(self,invalid_to_nan=True):
         rgt=self.attrs['ReferenceGroundTrack']
         xo={'ref':{},'crossing':{},'both':{}}
-        n_cycles=self.corrected_h.h_corr.shape[1]
+        n_cycles=self.ROOT.h_corr.shape[1]
         zz=np.zeros(n_cycles)
 
         for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle_number','x_atc','y_atc']:
@@ -424,22 +455,22 @@ class data(object):
                  xo['ref'][field]=[]
         
         for i1, ref_pt in enumerate(self.crossing_track_data.ref_pt):
-            i0=np.flatnonzero(self.corrected_h.ref_pt==ref_pt)[0]
+            i0=np.flatnonzero(self.ROOT.ref_pt==ref_pt)[0]
             # fill vectors
             for field in ['latitude','longitude']:
-                xo['ref'][field] += [getattr(self.corrected_h, field)[i0]+zz]
+                xo['ref'][field] += [getattr(self.ROOT, field)[i0]+zz]
             for field in ['x_atc','y_atc']:
                 xo['ref'][field] += [getattr(self.ref_surf, field)[i0]+zz]
-            xo['ref']['ref_pt'] += [self.corrected_h.ref_pt[i0]+zz]
+            xo['ref']['ref_pt'] += [self.ROOT.ref_pt[i0]+zz]
             xo['ref']['rgt'] += [rgt+zz]
             for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary', 'cycle_number']:#,'along_track_min_dh' ]:
                 xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]+zz]
                     
             # fill vectors for each cycle
             for field in ['delta_time', 'h_corr','h_corr_sigma','h_corr_sigma_systematic']:  # vars that are N_pts x N_cycles
-                xo['ref'][field] += [getattr(self.corrected_h, field)[i0,:]]
+                xo['ref'][field] += [getattr(self.ROOT, field)[i0,:]]
             xo['ref']['atl06_quality_summary'] += [self.cycle_stats.atl06_summary_zero_count[i0,:] > 0]
-            xo['ref']['cycle_number'] += [getattr(self.corrected_h,'cycle_number')]
+            xo['ref']['cycle_number'] += [getattr(self.ROOT,'cycle_number')]
             if hasattr(self, 'x'):
                 for field in ['x','y']:      
                     xo['ref'][field] += [getattr(self, field)[i0]+zz]
@@ -467,14 +498,14 @@ class data(object):
 
     def plot(self):
         # method to plot the results.  At present, this plots corrected h AFN of x_atc
-        n_cycles=self.corrected_h.h_corr.shape[1]
+        n_cycles=self.ROOT.h_corr.shape[1]
         HR=np.nan+np.zeros((n_cycles, 2))
         h=list()
         #plt.figure(1);plt.clf()
         for cycle in range(self.cycles[1]+1- self.cycles[0], dtype=int):
             xx=self.ref_surf.x_atc
-            zz=self.corrected_h.h_corr[:,cycle]
-            ss=self.corrected_h.h_corr_sigma[:,cycle]
+            zz=self.ROOT.h_corr[:,cycle]
+            ss=self.ROOT.h_corr_sigma[:,cycle]
             good=np.abs(ss)<15
             ss[~good]=np.NaN
             zz[~good]=np.NaN
@@ -483,8 +514,8 @@ class data(object):
                 h.append(h0)
                 HR[cycle,:]=np.array([zz[good].min(), zz[good].max()])
                 #plt.plot(xx[good], zz[good], 'k',picker=None)
-        temp=self.corrected_h.h_corr.copy()
-        temp[self.corrected_h.h_corr_sigma>20]=np.nan
+        temp=self.ROOT.h_corr.copy()
+        temp[self.ROOT.h_corr_sigma>20]=np.nan
         temp=np.nanmean(temp, axis=1)
         plt.plot(xx, temp, 'k.', picker=5)
         plt.ylim((np.nanmin(HR[:,0]),  np.nanmax(HR[:,1])))
@@ -581,7 +612,7 @@ class data(object):
                 continue
             
             # regress the geographic coordinates from the data to the fit center
-            P11.corrected_h.latitude, P11.corrected_h.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
+            P11.ROOT.latitude, P11.ROOT.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
 
             # find the reference surface
             P11.find_reference_surface(D6_sub, pair_data)
@@ -597,7 +628,7 @@ class data(object):
             # correct the heights from other cycles to the reference point using the reference surface
             P11.corr_heights_other_cycles(D6_sub)
 
-            P11.corrected_h.quality_summary = np.logical_not(
+            P11.ROOT.quality_summary = np.logical_not(
                     (P11.cycle_stats.min_signal_selection_source <=1) &\
                     (P11.cycle_stats.min_snr_significance < 0.02) &\
                     (P11.cycle_stats.atl06_summary_zero_count > 0) )
@@ -609,7 +640,7 @@ class data(object):
             P11.ref_surf.dem_h=regress_to(D6_sub, ['dem_h'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
 
             # get the data for the crossover point
-            if GI_files is not None and np.abs(P11.corrected_h.latitude) < 86:
+            if GI_files is not None and np.abs(P11.ROOT.latitude) < 86:
                 D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
                 P11.corr_xover_heights(D_xover)
             # if we have read any data for the current bin, run the crossover calculation
@@ -622,7 +653,7 @@ class data(object):
                 plt.plot(D_xover.x, D_xover.y,'m.')
                 plt.plot(x0, y0,'g*')
 
-            if not np.isfinite(P11.corrected_h.latitude):
+            if not np.isfinite(P11.ROOT.latitude):
                 continue
             P11_list.append(P11)
             if count-last_count>1000:
