@@ -94,7 +94,7 @@ def duplicate_group(f_in, f_out, ingroup):
   if ingroup not in f_in:
       print("[duplicate_group] Error, requested input group not present")
       return
-# Remove outgroup if it already exists and option to retain is not provided
+# Remove outgroup if it already exists
   if ingroup in f_out:
       del f_out[ingroup]
   f_out.require_group(ingroup)
