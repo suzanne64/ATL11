@@ -12,7 +12,7 @@ import numpy as np
 import sys
 from datetime import datetime
 import ATL11
-from ATL11.h5util import create_attribute
+from ATL11.h5util import create_attribute, duplicate_group
 from ATL11.version import version
 
 def write_METADATA(outfile,infiles):
@@ -167,7 +167,6 @@ def filemeta(outfile,infiles):
                              val = f.attrs[key]
                              g.attrs[key]=val
                            else:
-#                             val = f.attrs[key].astype('U13')
                              val = f.attrs[key].decode()
                              create_attribute(g.id, key, [], val)
                     del g['METADATA/Extent']
@@ -175,19 +174,7 @@ def filemeta(outfile,infiles):
 
 #
 # Read the datasets from orbit_info
-#
-# BPJ: The orbit info add on doesn't work with "processed_*" files
-### Why segfault?                    f.copy('orbit_info',g)
-# NOTE: Comment out the 1 following line if using subset files from NSIDC!
-                    gf = f.copy('orbit_info',g)
-#                    for key, keyval in orbit_info.items():
-#                        dsname='/orbit_info/'+key
-#                        if dsname in f:
-#                           f.copy(dsname,gf)
-#                           if f[dsname].dtype.kind == 'S':
-#                               orbit_info[key] = (f[dsname][0].decode()).strip()
-#                           else:
-#                               orbit_info[key] = f[dsname][0]
+                    duplicate_group(f, g, 'orbit_info')
 
                 m.close()
                 f.close()
@@ -206,8 +193,6 @@ def filemeta(outfile,infiles):
                        end_delta_time = f['ancillary_data/end_delta_time'][0]
                        val = float(end_delta_time) - float(start_delta_time)
                        g.attrs[key] = val
-#                           create_attribute(g.id, key, [], np.string(val))
-#                gf = g['METADATA']['Lineage']['Control'].attrs['control'].decode()
                 g['ancillary_data/data_end_utc'][...] = f['ancillary_data/data_end_utc']
                 g['ancillary_data/end_cycle'][...] = f['ancillary_data/end_cycle']
                 g['ancillary_data/end_delta_time'][...] = f['ancillary_data/end_delta_time']

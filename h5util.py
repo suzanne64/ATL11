@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 from h5py import h5a, h5t, h5s
+import h5py
 import numpy as np
 
 
@@ -78,3 +79,32 @@ def create_attribute(_id, _name, _dims, _value):
   return _aid
 # enddef -----------------------------------------------------------------------
 
+def duplicate_group(f_in, f_out, ingroup):
+  """
+  Duplicates group from one h5 object to another
+ 
+  f_in should the result of something like f = h5py.File(infile,'r')
+
+  f_out should the result of something like f = h5py.File(infile,'r+')
+ 
+  ingroup should be a string.
+ 
+  """
+# Check that ingroup exists in f_in
+  if ingroup not in f_in:
+      print("[duplicate_group] Error, requested input group not present")
+      return
+# Remove outgroup if it already exists
+  if ingroup in f_out:
+      del f_out[ingroup]
+  f_out.require_group(ingroup)
+  for dset in f_in[ingroup].values():
+      f_out[ingroup].create_dataset_like(dset.name, dset, data=np.array(dset))
+      for att in dset.attrs:
+        if att == 'DIMENSION_SCALE': continue
+        if att == 'CLASS': continue
+        if att == 'NAME': continue
+        if att == 'DIMENSION_LIST': continue
+        if att == 'REFERENCE_LIST': continue
+        f_out[ingroup][dset.name].attrs[att] = dset.attrs[att]
+  return
