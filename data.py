@@ -317,7 +317,7 @@ class data(object):
             dset = g.create_dataset(field.encode('ASCII'),data=data) #,fillvalue=fillvalue)
             dset.dims[0].label = field
             for attr in attr_names:
-                if 'dimensions' not in attr:
+                if 'dimensions' not in attr and 'datatype' not in attr:
                     create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
             if field_attrs[field]['datatype'].startswith('int'):
                 dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
@@ -348,7 +348,7 @@ class data(object):
                     dset.dims[ii].attach_scale(g['cycle_number'])
                     dset.dims[ii].label = 'cycle_number'
             for attr in attr_names:
-                if 'dimensions' not in attr:
+                if 'dimensions' not in attr and 'datatype' not in attr:
                     create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
             if field_attrs[field]['datatype'].startswith('int'):
                 dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
@@ -373,19 +373,19 @@ class data(object):
                         dset = grp.create_dataset('ref_pt'.encode('ASCII'), shape=[0])
                     dset.dims[0].label = 'ref_pt'.encode('ASCII')
                     for attr in attr_names:
-                        if 'dimensions' not in attr:
+                        if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['ref_pt'][attr])
 
                 if 'N_coeffs' in udims:
                     dset = grp.create_dataset('poly_exponent_x'.encode('ASCII'),data=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)) 
                     dset.dims[0].label = 'poly_exponent_x'.encode('ASCII')
                     for attr in attr_names:
-                        if 'dimensions' not in attr:
+                        if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['poly_exponent_x'][attr])
                     dset = grp.create_dataset('poly_exponent_y'.encode('ASCII'),data=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)) 
                     dset.dims[0].label = 'poly_exponent_y'.encode('ASCII')
                     for attr in attr_names:
-                        if 'dimensions' not in attr:
+                        if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['poly_exponent_y'][attr])
                             
                 if 'ref_surf' in group:
@@ -427,7 +427,7 @@ class data(object):
                                 dset.dims[ii].attach_scale(grp['ref_pt'])
                                 dset.dims[ii].label = 'ref_pt'
                         for attr in attr_names:
-                            if 'dimensions' not in attr:
+                            if 'dimensions' not in attr and 'datatype' not in attr:
 # bpj                                    dset.attrs[attr.encode('ASCII')] = str(field_attrs[field][attr]).encode('ASCII')
                                 create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
                         if field_attrs[field]['datatype'].startswith('int'):
