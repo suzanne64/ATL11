@@ -59,12 +59,18 @@ def create_attribute(_id, _name, _dims, _value):
     _fdtype.set_strpad(h5t.STR_NULLTERM)
 # endif
  
+## Either add or replace the attribute
+#  if h5a.exists(_id, _name):
+#    _aid = h5a.open(_id, name=_name)
+#  else:
+#    _aid=h5a.create(_id, _name, _fdtype, _sid)
+# endif
 # Either add or replace the attribute
   if h5a.exists(_id, _name):
-    _aid = h5a.open(_id, name=_name)
-  else:
-    _aid=h5a.create(_id, _name, _fdtype, _sid)
+    _aid = h5a.delete(_id, name=_name)
 # endif
+  _aid=h5a.create(_id, _name, _fdtype, _sid)
+
   if _classtype == h5t.STRING:
     if isinstance(_value, list):
       _value = np.array(_value, dtype=np.string_)
