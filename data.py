@@ -314,7 +314,7 @@ class data(object):
             field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
             dimensions = field_attrs[field]['dimensions'].split(',')
             data = getattr(getattr(self,'ROOT'),field)
-            dset = g.create_dataset(field.encode('ASCII'),data=data,chunks=True,compression=6) #,fillvalue=fillvalue)
+            dset = g.create_dataset(field.encode('ASCII'),data=data,chunks=True,compression=6,dtype=field_attrs[field]['datatype']) #,fillvalue=fillvalue)
             dset.dims[0].label = field
             for attr in attr_names:
                 if 'dimensions' not in attr and 'datatype' not in attr:
@@ -336,7 +336,7 @@ class data(object):
             elif field_attrs[field]['datatype'].startswith('Float'):
                 data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
                 fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
-            dset = g.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6)
+            dset = g.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype'])
             dset.dims[0].label = field
             
             for ii,dim in enumerate(dimensions):
@@ -360,35 +360,30 @@ class data(object):
                 grp = g.create_group(group.encode('ASCII'))
 
                 field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if group in row['group']}
-                # get the dimensions for the group
-                unique_dims = []
-                [unique_dims.append(dim.strip()) for field in field_attrs for dim in field_attrs[field]['dimensions'].split(',')]
-                udims = list(set(unique_dims))
                 
-                if 'Nxo' in udims:
+                if 'crossing_track_data' in group: 
                     this_ref_pt=getattr(getattr(self,group),'ref_pt')
                     if len(this_ref_pt) > 0:
-                        dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=this_ref_pt.astype(int),chunks=True,compression=6)
+                        dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=this_ref_pt,chunks=True,compression=6,dtype=field_attrs['ref_pt']['datatype'])
                     else:
-                        dset = grp.create_dataset('ref_pt'.encode('ASCII'), shape=[0],chunks=True,compression=6)
+                        dset = grp.create_dataset('ref_pt'.encode('ASCII'), shape=[0],chunks=True,compression=6,dtype=np.int32)
                     dset.dims[0].label = 'ref_pt'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['ref_pt'][attr])
 
-                if 'N_coeffs' in udims:
-                    dset = grp.create_dataset('poly_exponent_x'.encode('ASCII'),data=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int),chunks=True,compression=6)
+                if 'ref_surf' in group: 
+                    dset = grp.create_dataset('poly_exponent_x'.encode('ASCII'),data=np.array([item[0] for item in params_11.poly_exponent_list]),chunks=True,compression=6,dtype=field_attrs['poly_exponent_x']['datatype'])
                     dset.dims[0].label = 'poly_exponent_x'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['poly_exponent_x'][attr])
-                    dset = grp.create_dataset('poly_exponent_y'.encode('ASCII'),data=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int),chunks=True,compression=6)
+                    dset = grp.create_dataset('poly_exponent_y'.encode('ASCII'),data=np.array([item[1] for item in params_11.poly_exponent_list]),chunks=True,compression=6, dtype=field_attrs['poly_exponent_y']['datatype'])
                     dset.dims[0].label = 'poly_exponent_y'.encode('ASCII')
                     for attr in attr_names:
                         if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['poly_exponent_y'][attr])
                             
-                if 'ref_surf' in group:
                     grp.attrs['poly_exponent_x'.encode('ASCII')]=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['poly_exponent_y'.encode('ASCII')]=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['slope_change_t0'.encode('ASCII')]=np.mean(self.slope_change_t0).astype('int')
@@ -410,7 +405,7 @@ class data(object):
                             data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
                             fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
                                 
-                        dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6) #,dtype=dt) 
+                        dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype']) 
                         for ii,dim in enumerate(dimensions):
                             dim=dim.strip()
                             if 'N_pts' in dim: 
