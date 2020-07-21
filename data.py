@@ -428,7 +428,6 @@ class data(object):
                                 dset.dims[ii].label = 'ref_pt'
                         for attr in attr_names:
                             if 'dimensions' not in attr and 'datatype' not in attr:
-# bpj                                    dset.attrs[attr.encode('ASCII')] = str(field_attrs[field][attr]).encode('ASCII')
                                 create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
                         if field_attrs[field]['datatype'].startswith('int'):
                             dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
