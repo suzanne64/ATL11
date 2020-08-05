@@ -187,9 +187,6 @@ def filemeta(outfile,infiles):
               if os.path.isfile(infile):
                 f = h5py.File(infile,'r')
                 for oi_dset in g['orbit_info'].values():
-                   print('maxshape',oi_dset.name)
-                   print(oi_dset.shape)
-                   print(oi_dset.shape[0])
                    oi_dset.resize( (oi_dset.shape[0]+1,) )
                    oi_dset[-1] = f[oi_dset.name][0]
                 f.close()
