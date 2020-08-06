@@ -25,7 +25,7 @@ def write_METADATA(outfile,infiles):
 #        g.create_group('METADATA')
 #        gl = g['METADATA'].create_group('Lineage')
 #        gf = gl.create_group('ATL06')
-        gf = g.create_group('METADATA/Lineage/ATL06')
+        gf = g.create_group('METADATA/Lineage/ATL06'.encode('ASCII','replace'))
         fname = []
         sname = []
         scycle = []
@@ -64,7 +64,7 @@ def write_METADATA(outfile,infiles):
                 sgeoseg = np.min([sgeoseg,np.min(g[pt]['ref_pt'][:])])
                 egeoseg = np.max([egeoseg,np.max(g[pt]['ref_pt'][:])])
 
-        gf.attrs['description'] = 'ICESat-2 ATLAS Land Ice'
+        gf.attrs['description'] = 'ICESat-2 ATLAS Land Ice'.encode('ASCII','replace')
 #
 # Use create_attribute for strings to get ASCII and NULLTERM
 #
@@ -129,21 +129,21 @@ def filemeta(outfile,infiles):
               create_attribute(gf.id, 'shortName', [], 'CNTL')
               create_attribute(gf.id, 'version', [], '1')
               create_attribute(gf.id, 'control', [], ' '.join(sys.argv))
+              create_attribute(g['METADATA/ProcessStep/PGE'].id, 'runTimeParameters', [], ' '.join(sys.argv))
               gf = g.create_group('quality_assessment'.encode('ASCII','replace'))
 
               if os.path.isfile(infile):
                 f = h5py.File(infile,'r')
-                val=' '.join(sys.argv)
-                create_attribute(g['METADATA/ProcessStep/PGE'].id, 'runTimeParameters', [], val)
                 f.copy('quality_assessment/qa_granule_fail_reason',g['quality_assessment'])
                 f.copy('quality_assessment/qa_granule_pass_fail',g['quality_assessment'])
                 f.copy('ancillary_data',g)
                 del g['ancillary_data/land_ice']
                 gf = g['METADATA']['Lineage']['Control'].attrs['control'].decode()
                 g['ancillary_data/control'][...] = gf.encode('ASCII','replace')
-                if ii==0:
-                    start_delta_time = f['ancillary_data/start_delta_time'][0]
-                    for key, keyval in root_info.items():
+                del g['METADATA/Extent']
+                f.copy('METADATA/Extent',g['METADATA'])
+                start_delta_time = f['ancillary_data/start_delta_time'][0]
+                for key, keyval in root_info.items():
                        dsname=key
                        if key=='date_created' or key=='history':
                            val=str(datetime.now().date())
@@ -169,16 +169,30 @@ def filemeta(outfile,infiles):
                            else:
                              val = f.attrs[key].decode()
                              create_attribute(g.id, key, [], val)
-                    del g['METADATA/Extent']
-                    f.copy('METADATA/Extent',g['METADATA'])
 
 #
 # Read the datasets from orbit_info
-                    duplicate_group(f, g, 'orbit_info')
+                duplicate_group(f, g, 'orbit_info')
+                g['orbit_info/cycle_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+                g['orbit_info/lan'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+                g['orbit_info/orbit_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+                g['orbit_info/rgt'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+                g['orbit_info/sc_orient_time'].dims[0].attach_scale(g['orbit_info/sc_orient'])
+
 
                 m.close()
                 f.close()
 
+            if ii>0:
+              if os.path.isfile(infile):
+                f = h5py.File(infile,'r')
+                for oi_dset in g['orbit_info'].values():
+                   print('maxshape',oi_dset.name)
+                   print(oi_dset.shape)
+                   print(oi_dset.shape[0])
+                   oi_dset.resize( (oi_dset.shape[0]+1,) )
+                   oi_dset[-1] = f[oi_dset.name][0]
+                f.close()
 
             if ii==len(infiles)-1:
               if os.path.isfile(infile):
@@ -202,6 +216,7 @@ def filemeta(outfile,infiles):
                 g['ancillary_data/end_region'][...] = f['ancillary_data/end_region']
                 g['ancillary_data/end_rgt'][...] = f['ancillary_data/end_rgt']
                 g['ancillary_data/granule_end_utc'][...] = f['ancillary_data/granule_end_utc']
+                g['METADATA/Extent'].attrs['rangeEndingDateTime'] = f['METADATA/Extent'].attrs['rangeEndingDateTime']
                   
                 m.close()
                 f.close()
