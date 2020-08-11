@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jan 24 10:45:47 2020fig
+Created on Fri Jan 24 10:45:47 2020
 
 @author: ben05
 """
@@ -425,73 +425,20 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         with PdfPages('{0}/{1}.pdf'.format(out_path,ATL11_file_str)) as pdff:
             for fig in figs:
                 pdff.savefig(fig)
-    
-#    def plt2hdf5(self, f_out, fig, label, legend=None, noclear=False):
-#        """
-#        Renders a plot and writes it to a HDF5 dataset    - NOTE: If f_out is the character string. In that case, this routine
-#          directly writes an image file to the specified directory. The special
-#          case is mostly only useful for testing.    - NOTE: By default, this clears the Figure so that it can be re-used for
-#          the next plot. Creating multiple Figures effectively creates a
-#          memory leak!
-#        """
-#        THIS_MOD = self.__class__.__name__
-#        THIS_SUB = 'plt2hdf5'    # Add a timestamp to the top of the plot
-#        self.add_timestamp(fig)    # If the f_out argument is a string, save to an image file of that name
-#        if type(f_out) is str:
-#            img_file = os.path.join(f_out, '%s.%s' % (label, self.IMG_FMT))
-#            if not os.path.exists(os.path.dirname(img_file)):
-#                try:
-#                    os.makedirs(os.path.dirname(img_file))
-#                except OSError:
-#                    self.A_Err.msg(self.A_Err.WARNING, self.A_Err.PGE_NAME, THIS_SUB,
-#                                   'Cannot create directory for: %s' % img_file)
-#                    #print(traceback.format_exc())
-#                    raise
-#            fig.savefig(img_file, format=self.IMG_FMT, bbox_inches='tight')    # Otherwise, save as an HDF5 image into the f_out file.
-#        else:
-#            dirname = os.path.dirname(label)
-#            
-#            if dirname :
-#                f_out.require_group(dirname)
-#            imgdata = io.BytesIO()
-#            if legend is None:
-#                fig.savefig(imgdata, format=self.IMG_FMT, bbox_inches='tight')
-#            else:
-#                fig.savefig(imgdata, format=self.IMG_FMT, bbox_extra_artists=(legend,),
-#                  bbox_inches='tight')
-#            imgdata.seek(0)
-#            img = imageio.imread(imgdata, pilmode='RGB')
-#            if label in f_out:
-#                del f_out[label]
-#            dset = f_out.create_dataset(label, img.shape, data=img.data, \
-#                chunks=img.shape, compression='gzip', compression_opts=6)
-#            dset.attrs['CLASS'] = np.string_('IMAGE')
-#            dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
-#            dset.attrs['IMAGE_SUBCLASS'] =  np.string_('IMAGE_TRUECOLOR')
-#            dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
-#            del(img)
-#            del(imgdata)    
-#            # Clear the figure for re-use
-#            if not noclear:
-#                fig.clf()    
-#    #        gc.collect
-           
-    # put images into browse file 
+
+    # put images into browse file            
     ATL11_file_brw='{}/{}_BRW.h5'.format(out_path,ATL11_file_str)
     if os.path.isfile(ATL11_file_brw):
         os.remove(ATL11_file_brw)
-# #    f_out = h5py.File(ATL11_file_brw,'w')
-    
-    shutil.copyfile('BRW_template.h5',ATL11_file_brw)    
+    shutil.copyfile('BRW_template.h5',ATL11_file_brw)
     with h5py.File(ATL11_file_brw,'r+') as hf:
-#        gdefault = hf.create_group('default')
         for ii, name in enumerate(sorted(glob.glob('{0}/{1}_BRW_def*.png'.format(out_path,ATL11_file_str)))):
+            hf.require_group('/default')
             img = imageio.imread(name, pilmode='RGB') 
     
             namestr = os.path.splitext(name)[0]
             namestr = os.path.basename(namestr).split('BRW_')[-1]
-            print('line 440',namestr)
-            dset = gdefault.create_dataset(namestr, img.shape, data=img.data, \
+            dset = hf.create_dataset('default/'+namestr, img.shape, data=img.data, \
                                      chunks=img.shape, compression='gzip',compression_opts=6)
             dset.attrs['CLASS'] = np.string_('IMAGE')
             dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
@@ -499,7 +446,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
         for ii, name in enumerate(sorted(glob.glob('{0}/{1}_Figure*.png'.format(out_path,ATL11_file_str)))):
             if 'Figure1' not in name and 'Figure3' not in name:
-                print('line 453',name)
                 img = imageio.imread(name, pilmode='RGB') 
         
                 namestr = os.path.splitext(name)[0]
@@ -510,12 +456,13 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
                 dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
                 dset.attrs['IMAGE_SUBCLASS'] = np.string_('IMAGE_TRUECOLOR')
                 dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
+        del hf['ancillary_data']
         with h5py.File(ATL11_file,'r') as g:
             g.copy('ancillary_data',hf)
       
     # remove individual png files
-#    for name in sorted(glob.glob('{0}/{1}_Figure*.png'.format(out_path,ATL11_file_str))):
-#        if os.path.isfile(name): os.remove(name)
+    for name in sorted(glob.glob('{0}/{1}_Figure*.png'.format(out_path,ATL11_file_str))):
+        if os.path.isfile(name): os.remove(name)
     fhlog.close()
     
 #    plt.show()
