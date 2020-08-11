@@ -9,6 +9,7 @@ import ATL11
 import numpy as np
 from scipy import stats
 import sys, os, h5py, glob
+import shutil
 import io
 import pointCollection as pc
 from PointDatabase.mapData import mapData
@@ -479,9 +480,9 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     ATL11_file_brw='{}/{}_BRW.h5'.format(out_path,ATL11_file_str)
     if os.path.isfile(ATL11_file_brw):
         os.remove(ATL11_file_brw)
-#    shutil.copyfile('BRW_template.h5',ATL11_file_brw)    
-#    f_out = h5py.File(ATL11_file_brw,'w')
+# #    f_out = h5py.File(ATL11_file_brw,'w')
     
+    shutil.copyfile('BRW_template.h5',ATL11_file_brw)    
     with h5py.File(ATL11_file_brw,'w') as hf:
 #        gdefault = hf.create_group('default')
         for ii, name in enumerate(sorted(glob.glob('{0}/{1}_BRW_def*.png'.format(out_path,ATL11_file_str)))):
