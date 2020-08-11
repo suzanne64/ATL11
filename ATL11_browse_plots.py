@@ -483,7 +483,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
 # #    f_out = h5py.File(ATL11_file_brw,'w')
     
     shutil.copyfile('BRW_template.h5',ATL11_file_brw)    
-    with h5py.File(ATL11_file_brw,'w') as hf:
+    with h5py.File(ATL11_file_brw,'r+') as hf:
 #        gdefault = hf.create_group('default')
         for ii, name in enumerate(sorted(glob.glob('{0}/{1}_BRW_def*.png'.format(out_path,ATL11_file_str)))):
             img = imageio.imread(name, pilmode='RGB') 
