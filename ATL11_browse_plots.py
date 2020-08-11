@@ -479,7 +479,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     ATL11_file_brw='{}/{}_BRW.h5'.format(out_path,ATL11_file_str)
     if os.path.isfile(ATL11_file_brw):
         os.remove(ATL11_file_brw)
-    shutil.copyfile('BRW_template.h5',ATL11_file_brw)    
+#    shutil.copyfile('BRW_template.h5',ATL11_file_brw)    
 #    f_out = h5py.File(ATL11_file_brw,'w')
     
     with h5py.File(ATL11_file_brw,'w') as hf:
