@@ -9,6 +9,7 @@ import ATL11
 import numpy as np
 from scipy import stats
 import sys, os, h5py, glob
+import shutil
 import io
 import pointCollection as pc
 from PointDatabase.mapData import mapData
@@ -429,9 +430,10 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     ATL11_file_brw='{}/{}_BRW.h5'.format(out_path,ATL11_file_str)
     if os.path.isfile(ATL11_file_brw):
         os.remove(ATL11_file_brw)
-    
-    with h5py.File(ATL11_file_brw,'w') as hf:
+    shutil.copyfile('BRW_template.h5',ATL11_file_brw)
+    with h5py.File(ATL11_file_brw,'r+') as hf:
         for ii, name in enumerate(sorted(glob.glob('{0}/{1}_BRW_def*.png'.format(out_path,ATL11_file_str)))):
+            hf.require_group('/default')
             img = imageio.imread(name, pilmode='RGB') 
     
             namestr = os.path.splitext(name)[0]
@@ -454,6 +456,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
                 dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
                 dset.attrs['IMAGE_SUBCLASS'] = np.string_('IMAGE_TRUECOLOR')
                 dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
+        del hf['ancillary_data']
         with h5py.File(ATL11_file,'r') as g:
             g.copy('ancillary_data',hf)
       
