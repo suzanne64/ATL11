@@ -8,7 +8,7 @@ Created on Fri Jan 24 10:45:47 2020fig
 import ATL11
 import numpy as np
 from scipy import stats
-import sys, os, h5py, glob, shutil
+import sys, os, h5py, glob
 import io
 import pointCollection as pc
 from PointDatabase.mapData import mapData
