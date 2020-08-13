@@ -147,7 +147,7 @@ def filemeta(outfile,infiles):
                        dsname=key
                        if key=='date_created' or key=='history':
                            val=str(datetime.now().date())
-                           val=val+'T'+str(datetime.now().time())
+                           val=val+'T'+str(datetime.now().time())+'Z'
                            create_attribute(g.id, key, [], val)
                            create_attribute(g['METADATA/ProcessStep/PGE'].id, 'stepDateTime', [], val)
                            continue
