@@ -19,7 +19,7 @@ def read_rtw_from_excel(xls_file=None, to_csv=False):
     rtw_orb=[]
     rtw_rgt=[]
     rtw_cycle=[]
-    for cycle in range(1, 7):
+    for cycle in range(1, 8):
         print(f'cycle= {cycle}')
         df = pd.read_excel(xls_file, sheet_name=f'ATLAS Activities Cycle {cycle}', header=1)
         for row in range(len(df['DETAILS'])):
@@ -40,7 +40,7 @@ def read_rtw_from_excel(xls_file=None, to_csv=False):
 
 def read_rtw_from_csv(csv_file=None):
     if csv_file is None:
-        csv_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ICESat-2_TechRefTable_05012020_rgts_RTWs.csv')
+        csv_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ICESat-2_TechRefTable_07222020_RTWs.csv')
     rtw_times=[]
     rtw_orb=[]
     rtw_rgt=[]
