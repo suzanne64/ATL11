@@ -9,6 +9,7 @@ import ATL11
 import numpy as np
 from scipy import stats
 import sys, os, h5py, glob
+import shutil
 import io
 import pointCollection as pc
 from PointDatabase.mapData import mapData
@@ -78,9 +79,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     for pr in np.arange(3): 
         pair = pr+1
         D = ATL11.data().from_file(ATL11_file, pair=pair, field_dict=None)   
-        if D.no_pair:
-            print('you should write no pair')
-            fhlog.write('{}: No beam pair {} data\n'.format(ATL11_file_str,pair))
 
         if hemisphere==1:
             D.get_xy(EPSG=3413)
@@ -93,8 +91,8 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             projection = ccrs.Stereographic(central_longitude=+0.0,
                                             central_latitude=-90.0,
                                             true_scale_latitude=-71.0)  
-        
         if D.no_pair:       
+            fhlog.write('{}: No beam pair {} data\n'.format(ATL11_file_str,pair))
             ref_pt      = np.concatenate( (ref_pt,np.full((1,),np.nan)), axis=0) 
             h_corr      = np.concatenate( (h_corr,np.full((1,num_cycles),np.nan)), axis=0) 
             delta_time  = np.concatenate( (delta_time,np.full((1,num_cycles),np.nan)), axis=0) 
@@ -115,23 +113,20 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             xo_cycle_number  = np.concatenate( (xo_cycle_number, np.full((1,),np.nan)), axis=0)
             xo_pair_number = np.concatenate( (xo_pair_number,np.full((1,),np.nan)), axis=0)
         else:
-            # get only common reference points
-            ci,ri = np.intersect1d(D.corrected_h.ref_pt, D.ref_surf.ref_pt, return_indices=True)[1:]
-            ref_pt     = np.concatenate( (ref_pt,D.corrected_h.ref_pt[ci]), axis=0) 
-            h_corr     = np.concatenate( (h_corr,D.corrected_h.h_corr[ci]), axis=0) 
-            delta_time = np.concatenate( (delta_time,D.corrected_h.delta_time[ci]), axis=0) 
-            lat        = np.concatenate( (lat,D.corrected_h.latitude[ci]), axis=0) 
-            lon        = np.concatenate( (lon,D.corrected_h.longitude[ci]), axis=0) 
-            x = np.concatenate( (x,D.x[ci]), axis=0)
-            y = np.concatenate( (y,D.y[ci]), axis=0)
-            pair_number = np.concatenate( (pair_number,np.full((len(ci),),pair)), axis=0)
+            ref_pt     = np.concatenate( (ref_pt,D.ROOT.ref_pt.ravel()), axis=0) 
+            h_corr     = np.concatenate( (h_corr,D.ROOT.h_corr), axis=0) 
+            delta_time = np.concatenate( (delta_time,D.ROOT.delta_time), axis=0) 
+            lat        = np.concatenate( (lat,D.ROOT.latitude.ravel()), axis=0) 
+            lon        = np.concatenate( (lon,D.ROOT.longitude.ravel()), axis=0) 
+            x = np.concatenate( (x,D.x), axis=0)
+            y = np.concatenate( (y,D.y), axis=0)
+            pair_number = np.concatenate( (pair_number,np.full((len(D.ROOT.ref_pt.ravel()),),pair)), axis=0)
 
-            refsurf_pt = np.concatenate( (refsurf_pt,D.ref_surf.ref_pt[ri]), axis=0)
-            dem_h = np.concatenate( (dem_h,D.ref_surf.dem_h[ri]), axis=0)            
-            if ~np.all(np.isnan(D.ref_surf.fit_quality.ravel())):   #hasattr(D.ref_surf,'fit_quality'):
-                fit_quality= np.concatenate( (fit_quality,D.ref_surf.fit_quality[ri].ravel()), axis=0) 
-            else:
-                fit_quality= np.concatenate( (fit_quality,D.ref_surf.quality_summary[ri]), axis=0) 
+            dem_h = np.concatenate( (dem_h,D.ref_surf.dem_h), axis=0)            
+#            if ~np.all(np.isnan(D.ref_surf.fit_quality.ravel())):   #hasattr(D.ref_surf,'fit_quality'):
+            fit_quality= np.concatenate( (fit_quality,D.ref_surf.fit_quality.ravel()), axis=0) 
+#            else:
+#                fit_quality= np.concatenate( (fit_quality,D.ref_surf.quality_summary), axis=0) 
                     
             ref, xo, delta   = D.get_xovers()
             ref_h_corr       = np.concatenate( (ref_h_corr, ref.h_corr), axis=0)
@@ -150,7 +145,6 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
                                                              pair_number[fit_quality==0], dem_h[fit_quality==0]
 
 
-#    fhlog.write('{}: Percentage of good data points, {:.2f}%\n'.format(ATL11_file_str, len(fit_quality[fit_quality==0])/len(fit_quality)*100))
     fhlog.write('{}: {:.1f}% data with good fit, used in figures\n'.format(ATL11_file_str, len(fit_quality[fit_quality==0])/len(fit_quality)*100))
 
     if ~np.all(np.isnan(h_corr.ravel())):
@@ -174,7 +168,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         ybuf = xwidth/4/2;
     bounds = [ [np.nanmin([xctr-xbuf, np.nanmin(x)-1e4]), np.nanmax([xctr+xbuf, np.nanmax(x)+1e4])],
                [np.nanmin([yctr-ybuf, np.nanmin(y)-1e4]), np.nanmax([yctr+ybuf, np.nanmax(y)+1e4])] ]
-    
+
     ddem = h_corr-dem_h[:,None]
     ddem05 = stats.scoreatpercentile(ddem[~np.isnan(ddem)].ravel(),5)
     ddem95 = stats.scoreatpercentile(ddem[~np.isnan(ddem)].ravel(),95)
@@ -321,9 +315,9 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         if np.all(np.isnan(h_corr[pair_number==pair,:])):
             ax4[0,pr].annotate('No Data',xy=(0.1, 0.8), xycoords='axes fraction')
             ax4[1,pr].annotate('No Data',xy=(0.1, 0.8), xycoords='axes fraction')
-        ax4[0,1].set_title('corrected_h/h_corr', fontdict={'fontsize':10});
+        ax4[0,1].set_title('h_corr', fontdict={'fontsize':10});
         ax4[0,pr].grid(linestyle='--')
-        ax4[1,1].set_title('corrected_h/h_corr minus DEM', fontdict={'fontsize':10});
+        ax4[1,1].set_title('h_corr minus DEM', fontdict={'fontsize':10});
         ax4[1,pr].grid(linestyle='--')
         ax4[0,0].set_ylim((h05,h95))
         ax4[0,0].set_ylabel('meters')
@@ -408,7 +402,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             ax8[0,1].set_title('crossing_track_data/h_corr', fontdict={'fontsize':10})
             ax8[1,0].set_ylabel('meters')
             ax8[1,0].set_ylim((dxo05,dxo95))
-            ax8[1,1].set_title('corrected_h/h_corr minus crossing_track_data/h_corr', fontdict={'fontsize':10})
+            ax8[1,1].set_title('h_corr minus crossing_track_data/h_corr', fontdict={'fontsize':10})
         else:
             ax8[0,0].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
         if pair == 3:
@@ -436,9 +430,10 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     ATL11_file_brw='{}/{}_BRW.h5'.format(out_path,ATL11_file_str)
     if os.path.isfile(ATL11_file_brw):
         os.remove(ATL11_file_brw)
-    
-    with h5py.File(ATL11_file_brw,'w') as hf:
+    shutil.copyfile('BRW_template.h5',ATL11_file_brw)
+    with h5py.File(ATL11_file_brw,'r+') as hf:
         for ii, name in enumerate(sorted(glob.glob('{0}/{1}_BRW_def*.png'.format(out_path,ATL11_file_str)))):
+            hf.require_group('/default')
             img = imageio.imread(name, pilmode='RGB') 
     
             namestr = os.path.splitext(name)[0]
@@ -461,6 +456,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
                 dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
                 dset.attrs['IMAGE_SUBCLASS'] = np.string_('IMAGE_TRUECOLOR')
                 dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
+        del hf['ancillary_data']
         with h5py.File(ATL11_file,'r') as g:
             g.copy('ancillary_data',hf)
       

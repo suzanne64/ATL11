@@ -153,41 +153,57 @@ class data(object):
             # if the field dict is not specified, read it
             if field_dict is None:
                 field_dict={}
-                for group in FH[pt].keys():
-                    #print('group line 149',group)
-                    field_dict[group]=[]
-                    for field in FH[pt][group].keys():
-                        #print('line 153',group, field)
-                        field_dict[group].append(field)
-
-            # Suzanne, rework this using dim scales.
+                field_dict['ROOT']=[]
+                for key,val in FH[pt].items():
+                    if isinstance(val, h5py.Group):
+                        field_dict[key]=[]
+                        for field in FH[pt][key].keys():
+                            field_dict[key].append(field)
+                    if isinstance(val, h5py.Dataset):
+                        field_dict['ROOT'].append(key)
+            
             N_pts=FH[pt]['h_corr'][index_range[0]:index_range[-1],:].shape[0]
+            N_cycles=FH[pt]['cycle_number'].shape[0]
             cycles=[FH[pt].attrs['first_cycle'], FH[pt].attrs['last_cycle']]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs)
-            
-            for in_group in (field_dict):
-                # the root group is represented as "ROOT"
-                if in_group is None:
-                    out_group=in_group
-                else:
-                    out_group='ROOT'
-                if in_group != 'crossing_track_data':
-                    for field in field_dict[group]:
-                        try:
-                            this_field = np.array(FH[pt][in_group][field]).astype('float')
-                            # check for invalids replace with nans
-                            if invalid_to_nan:
-                                this_field[this_field==FH[pt][in_group][field].fillvalue.astype('float')] = np.nan
-                            if len(this_field.shape) > 1:
-                                setattr(getattr(self, out_group), field, this_field[index_range[0]:index_range[1],:])
-                            else:
-                                if 'cycle_number' in field and (out_group=='ROOT' or out_group=='cycle_stats'):
-                                    setattr(getattr(self, out_group), field, this_field[:])
+
+            for group in (field_dict):
+#                if in_group is None:
+#                    out_group=in_group
+#                else:
+#                    out_group='ROOT'
+                if group != 'crossing_track_data':
+                    if group == 'ROOT':
+                        for field in field_dict[group]:
+                            try:
+                                this_field = np.array(FH[pt][field]).astype('float')
+                                # check for invalids replace with nans
+                                if invalid_to_nan:
+                                    this_field[this_field==FH[pt][field].fillvalue.astype('float')] = np.nan
+                                if len(this_field.shape) > 1:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
                                 else:
-                                    setattr(getattr(self, out_group), field, this_field[index_range[0]:index_range[1]])
-                        except KeyError:
-                            print("ATL11 file %s: missing %s/%s" % (filename, out_group, field))
+                                    if 'cycle_number' in field: # and (out_group=='ROOT' or out_group=='cycle_stats'):
+                                        setattr(getattr(self, group), field, this_field[:])
+                                    else:
+                                        setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
+                            except KeyError:
+                                print("ATL11 file %s: missing %s/%s" % (filename, out_group, field))
+                           
+                    else:
+                        for field in field_dict[group]:
+                            try:
+                                this_field = np.array(FH[pt][group][field]).astype('float')
+                                # check for invalids replace with nans
+                                if invalid_to_nan:
+                                    this_field[this_field==FH[pt][group][field].fillvalue.astype('float')] = np.nan
+                                if len(this_field.shape) > 1:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1],:])
+                                else:
+                                    setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
+                            except KeyError:
+                                print("ATL11 file %s: missing %s/%s" % (filename, group, field))
                 else:
                     # get the indices for the crossing_track_data group:
                     if self.ROOT.ref_pt.size <1:
@@ -213,7 +229,7 @@ class data(object):
             self.poly_exponent={'x':np.array(FH[pt]['ref_surf']['poly_exponent_x']), 'y':np.array(FH[pt]['ref_surf']['poly_exponent_y'])}
             for attr in FH[pt].attrs.keys():
                 self.attrs[attr]=FH[pt].attrs[attr]
-            self.cycle_number=np.array(FH[pt]['/cycle_number'])
+            self.cycle_number=np.array(FH[pt]['cycle_number'])
         return self
 
     def get_xy(self, proj4_string=None, EPSG=None):
@@ -251,15 +267,15 @@ class data(object):
         #   fileout: filename of hdf5 filename to write
         # Optional input:
         #   parms_11: ATL11.defaults structure
-        group_name='/pt%d' % self.beam_pair
-        group_name=group_name.encode('ASCII')
+        beam_pair_name='/pt%d' % self.beam_pair
+        beam_pair_name=beam_pair_name.encode('ASCII')
         if os.path.isfile(fileout):
             f = h5py.File(fileout.encode('ASCII'),'r+')
-            if group_name in f:
-                del f[group_name]
+            if beam_pair_name in f:
+                del f[beam_pair_name]
         else:
             f = h5py.File(fileout.encode('ASCII'),'w')
-        g=f.create_group(group_name)
+        g=f.create_group(beam_pair_name)
 
         # set the output pair and track attributes
         g.attrs['beam_pair'.encode('ASCII')]=self.beam_pair
@@ -269,7 +285,7 @@ class data(object):
         # put default parameters as top level attributes
         if params_11 is None:
             params_11=ATL11.defaults()
-            
+        
         # write each variable in params_11 as an attribute
         for param, val in  vars(params_11).items():
             if not isinstance(val,(dict,type(None))):
@@ -283,102 +299,136 @@ class data(object):
                 except Exception as e:
                     print("write_to_file:could not automatically set parameter: %s error = %s" % (param,str(e)))
                     continue
-
+                
         # put groups, fields and associated attributes from .csv file
         with open(os.path.dirname(inspect.getfile(ATL11.data))+'/ATL11_output_attrs.csv','r') as attrfile:
             reader=list(csv.DictReader(attrfile))
         group_names=set([row['group'] for row in reader])
         attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']
+        
+        # start with 'ROOT' group
+        list_vars=getattr(self,'ROOT').list_of_fields
+        list_vars.append('cycle_number')        
+        # establish the two main dimension scales
+        for field in ['ref_pt','cycle_number']:
+            field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
+            dimensions = field_attrs[field]['dimensions'].split(',')
+            data = getattr(getattr(self,'ROOT'),field)
+            dset = g.create_dataset(field.encode('ASCII'),data=data,chunks=True,compression=6,dtype=field_attrs[field]['datatype']) #,fillvalue=fillvalue)
+            dset.dims[0].label = field
+            for attr in attr_names:
+                if 'dimensions' not in attr and 'datatype' not in attr:
+                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
+            if field_attrs[field]['datatype'].startswith('int'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+            elif field_attrs[field]['datatype'].startswith('Float'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
 
-        for group in group_names:
+        for field in [item for item in list_vars if (item != 'ref_pt') and (item != 'cycle_number')]:
+            field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
+            dimensions = field_attrs[field]['dimensions'].split(',')
+            data = getattr(getattr(self,'ROOT'),field)
+            # change nans to proper invalid, depending on datatype
+            if field_attrs[field]['datatype'].startswith('int'):
+                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
+                data = data.astype('int')  # don't change to int before substituting nans with invalid.
+                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+            elif field_attrs[field]['datatype'].startswith('Float'):
+                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
+                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+            dset = g.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype'])
+            dset.dims[0].label = field
+            
+            for ii,dim in enumerate(dimensions):
+                dim=dim.strip()
+                if 'N_pts' in dim: 
+                    dset.dims[ii].attach_scale(g['ref_pt'])
+                    dset.dims[ii].label = 'ref_pt'
+                if 'N_cycles' in dim:
+                    dset.dims[ii].attach_scale(g['cycle_number'])
+                    dset.dims[ii].label = 'cycle_number'
+            for attr in attr_names:
+                if 'dimensions' not in attr and 'datatype' not in attr:
+                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
+            if field_attrs[field]['datatype'].startswith('int'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+            elif field_attrs[field]['datatype'].startswith('Float'):
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+
+        for group in [item for item in group_names if item != 'ROOT']:
             if hasattr(getattr(self,group),'list_of_fields'):
-                
                 grp = g.create_group(group.encode('ASCII'))
 
                 field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if group in row['group']}
-                # get the dimensions for the group
-                unique_dims = []
-                [unique_dims.append(dim.strip()) for field in field_attrs for dim in field_attrs[field]['dimensions'].split(',')]
-                udims = list(set(unique_dims))
-                # make datasets for dimension scales ~
-                if 'N_pts' in udims or 'Nxo' in udims:
+                
+                if 'crossing_track_data' in group: 
                     this_ref_pt=getattr(getattr(self,group),'ref_pt')
                     if len(this_ref_pt) > 0:
-                        dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=this_ref_pt.astype(int))
+                        dset = grp.create_dataset('ref_pt'.encode('ASCII'),data=this_ref_pt,chunks=True,compression=6,dtype=field_attrs['ref_pt']['datatype'])
                     else:
-                        dset = grp.create_dataset('ref_pt'.encode('ASCII'), shape=[0])
+                        dset = grp.create_dataset('ref_pt'.encode('ASCII'), shape=[0],chunks=True,compression=6,dtype=np.int32)
                     dset.dims[0].label = 'ref_pt'.encode('ASCII')
                     for attr in attr_names:
-                        if 'dimensions' not in attr:
-# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['ref_pt'][attr].encode('ASCII')
+                        if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['ref_pt'][attr])
-                if 'N_cycles' in udims:
-                    dset = grp.create_dataset('cycle_number'.encode('ASCII'),data=getattr(getattr(self,group),'cycle_number')) 
-                    dset.dims[0].label = 'cycle_number'.encode('ASCII')                   
-                    for attr in attr_names:
-                        if 'dimensions' not in attr:
-# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['cycle_number'][attr].encode('ASCII')
-                            create_attribute(dset.id, attr, [], field_attrs['cycle_number'][attr])
-                if 'N_coeffs' in udims:
-                    dset = grp.create_dataset('poly_exponent_x'.encode('ASCII'),data=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)) 
+
+                if 'ref_surf' in group: 
+                    dset = grp.create_dataset('poly_exponent_x'.encode('ASCII'),data=np.array([item[0] for item in params_11.poly_exponent_list]),chunks=True,compression=6,dtype=field_attrs['poly_exponent_x']['datatype'])
                     dset.dims[0].label = 'poly_exponent_x'.encode('ASCII')
                     for attr in attr_names:
-                        if 'dimensions' not in attr:
-# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_x'][attr].encode('ASCII')
+                        if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['poly_exponent_x'][attr])
-                    dset = grp.create_dataset('poly_exponent_y'.encode('ASCII'),data=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)) 
+                    dset = grp.create_dataset('poly_exponent_y'.encode('ASCII'),data=np.array([item[1] for item in params_11.poly_exponent_list]),chunks=True,compression=6, dtype=field_attrs['poly_exponent_y']['datatype'])
                     dset.dims[0].label = 'poly_exponent_y'.encode('ASCII')
                     for attr in attr_names:
-                        if 'dimensions' not in attr:
-# bpj                            dset.attrs[attr.encode('ASCII')] = field_attrs['poly_exponent_y'][attr].encode('ASCII')
+                        if 'dimensions' not in attr and 'datatype' not in attr:
                             create_attribute(dset.id, attr, [], field_attrs['poly_exponent_y'][attr])
                             
-                if 'ref_surf' in group:
                     grp.attrs['poly_exponent_x'.encode('ASCII')]=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['poly_exponent_y'.encode('ASCII')]=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['slope_change_t0'.encode('ASCII')]=np.mean(self.slope_change_t0).astype('int')
                     g.attrs['N_poly_coeffs'.encode('ASCII')]=int(self.N_coeffs)
-                                        
+
                 list_vars=getattr(self,group).list_of_fields
-                if 'cycle_stats' in group or 'ROOT' in group:
-                    list_vars.append('cycle_number')
+                if group == 'crossing_track_data':
+                    list_vars.remove('ref_pt')  # handled above
                 if list_vars is not None:
                     for field in list_vars:
                         dimensions = field_attrs[field]['dimensions'].split(',')
-                        if ('ref_pt' not in field and 'cycle_number' not in field) or ('cycle_number' in field and 'crossing_track_data' in group):
-                            data = getattr(getattr(self,group),field)
-                            # change nans to proper invalid, depending on datatype
-                            if field_attrs[field]['datatype'].startswith('int'):
-                                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
-                                data = data.astype('int')  # don't change to int before substituting nans with invalid.
-                                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
-                            elif field_attrs[field]['datatype'].startswith('Float'):
-                                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
-                                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                        data = getattr(getattr(self,group),field)
+                        # change nans to proper invalid, depending on datatype
+                        if field_attrs[field]['datatype'].startswith('int'):
+                            data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
+                            data = data.astype('int')  # don't change to int before substituting nans with invalid.
+                            fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                        elif field_attrs[field]['datatype'].startswith('Float'):
+                            data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
+                            fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
                                 
-                            dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue) #,dtype=dt)                            
-                            for ii,dim in enumerate(dimensions):
-                                dim=dim.strip()
-                                if 'N_pts' in dim or 'Nxo' in dim: 
-                                    dset.dims[ii].attach_scale(grp['ref_pt'])
-                                    dset.dims[ii].label = 'ref_pt'
-                                if 'N_cycles' in dim:
-                                    dset.dims[ii].attach_scale(grp['cycle_number'])
-                                    dset.dims[ii].label = 'cycle_number'
-                                if 'N_coeffs' in dim:
-                                    dset.dims[ii].attach_scale(grp['poly_exponent_x'])
-                                    dset.dims[ii].attach_scale(grp['poly_exponent_y'])
-                                    dset.dims[ii].label = '(poly_exponent_x, poly_exponent_y)'
-                                    
-                            for attr in attr_names:
-                                if 'dimensions' not in attr:
-# bpj                                    dset.attrs[attr.encode('ASCII')] = str(field_attrs[field][attr]).encode('ASCII')
-                                    create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
-                            if field_attrs[field]['datatype'].startswith('int'):
-                                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
-                            elif field_attrs[field]['datatype'].startswith('Float'):
-                                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
-        f.close()
+                        dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype']) 
+                        for ii,dim in enumerate(dimensions):
+                            dim=dim.strip()
+                            if 'N_pts' in dim: 
+                                dset.dims[ii].attach_scale(g['ref_pt'])
+                                dset.dims[ii].label = 'ref_pt'
+                            if 'N_cycles' in dim:
+                                dset.dims[ii].attach_scale(g['cycle_number'])
+                                dset.dims[ii].label = 'cycle_number'
+                            if 'N_coeffs' in dim:
+                                dset.dims[ii].attach_scale(grp['poly_exponent_x'])
+                                dset.dims[ii].attach_scale(grp['poly_exponent_y'])
+                                dset.dims[ii].label = '(poly_exponent_x, poly_exponent_y)'
+                            if 'Nxo' in dim: 
+                                dset.dims[ii].attach_scale(grp['ref_pt'])
+                                dset.dims[ii].label = 'ref_pt'
+                        for attr in attr_names:
+                            if 'dimensions' not in attr and 'datatype' not in attr:
+                                create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
+                        if field_attrs[field]['datatype'].startswith('int'):
+                            dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                        elif field_attrs[field]['datatype'].startswith('Float'):
+                            dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+        f.close()        
         return
 
         

@@ -12,30 +12,22 @@ import numpy as np
 import sys
 from datetime import datetime
 import ATL11
-from ATL11.h5util import create_attribute
+from ATL11.h5util import create_attribute, duplicate_group
 from ATL11.version import version
 
 def write_METADATA(outfile,infiles):
     if os.path.isfile(outfile):        
 #
-# Call filemeta, copies METADATA grouop from template
+# Call filemeta, copies METADATA group from template
 #
         filemeta(outfile,infiles)
         g = h5py.File(outfile,'r+')
 #        g.create_group('METADATA')
 #        gl = g['METADATA'].create_group('Lineage')
 #        gf = gl.create_group('ATL06')
-        gf = g.create_group('METADATA/Lineage/ATL06')
+        gf = g.create_group('METADATA/Lineage/ATL06'.encode('ASCII','replace'))
         fname = []
         sname = []
-#        scycle = np.array([13],dtype='int32')
-#        ecycle = np.array([0],dtype='int32')
-#        srgt = np.array([1400],dtype='int32')
-#        ergt = np.array([0],dtype='int32')
-#        sregion = np.array([15],dtype='int32')
-#        eregion = np.array([0],dtype='int32')
-#        sgeoseg = np.array([10e6],dtype='int32')
-#        egeoseg = np.array([0],dtype='int32')
         scycle = []
         ecycle = []
         srgt = []
@@ -50,29 +42,8 @@ def write_METADATA(outfile,infiles):
         version = []
         for ii,infile in enumerate(sorted(infiles)):
             fname.append(os.path.basename(infile).encode('ASCII'))
-#
-# bpj: parsing by underscore doesn't work without "processed_"
-#
-#            sname.append('_'.join(os.path.basename(infile).split('_',2)[:2]).encode('ASCII'))
-#            digits =infile.split('ATL06_')[1].split('_')
-#            if scycle > np.int32(digits[1][4:6]):
-#                scycle = np.int32(digits[1][4:6])
-#            if ecycle < np.int32(digits[1][4:6]):
-#                ecycle = np.int32(digits[1][4:6])
-#            if srgt > np.int32(digits[1][:4]):
-#                srgt = np.int32(digits[1][:4])
-#            if ergt < np.int32(digits[1][:4]):
-#                ergt = np.int32(digits[1][:4])
-#            if sregion > np.int32(digits[1][6:8]):
-#                sregion = np.int32(digits[1][6:8])
-#            if eregion < np.int32(digits[1][6:8]):
-#                eregion = np.int32(digits[1][6:8])
             if os.path.isfile(infile):
                 f = h5py.File(infile,'r')
-#                sorbit.append(f['METADATA']['Lineage']['ATL03'].attrs['start_orbit'])
-#                eorbit.append(f['METADATA']['Lineage']['ATL03'].attrs['end_orbit'])
-#                uuid.append(f['METADATA']['Lineage']['ATL03'].attrs['uuid'])
-#
 # Read the datasets from ATL06 ancillary_data, where available
 # All fields must be arrays, not just min/max, even if just repeats
 #
@@ -93,7 +64,7 @@ def write_METADATA(outfile,infiles):
                 sgeoseg = np.min([sgeoseg,np.min(g[pt]['ref_pt'][:])])
                 egeoseg = np.max([egeoseg,np.max(g[pt]['ref_pt'][:])])
 
-        gf.attrs['description'] = 'ICESat-2 ATLAS Land Ice'
+        gf.attrs['description'] = 'ICESat-2 ATLAS Land Ice'.encode('ASCII','replace')
 #
 # Use create_attribute for strings to get ASCII and NULLTERM
 #
@@ -133,7 +104,9 @@ def filemeta(outfile,infiles):
     orbit_info={'crossing_time':0., 'cycle_number':0, 'lan':0., \
         'orbit_number':0., 'rgt':0, 'sc_orient':0, 'sc_orient_time':0.}
     root_info={'date_created':'', 'geospatial_lat_max':0., 'geospatial_lat_min':0., \
-        'geospatial_lon_max':0., 'geospatial_lon_min':0., 'hdfversion':'', 'history':'', \
+        'geospatial_lat_units':'', \
+        'geospatial_lon_max':0., 'geospatial_lon_min':0., 'geospatial_lon_units':'', \
+        'hdfversion':'', 'history':'', \
         'identifier_file_uuid':'', 'identifier_product_format_version':'', 'time_coverage_duration':0., \
         'time_coverage_end':'', 'time_coverage_start':''}
     # copy METADATA group from ATL11 template. Make lineage/cycle_array conatining each ATL06 file, where the ATL06 filenames
@@ -151,18 +124,30 @@ def filemeta(outfile,infiles):
               g['METADATA'].create_group('Lineage'.encode('ASCII','replace'))
               gf = g['METADATA']['Lineage'].create_group('ANC36-11'.encode('ASCII','replace'))
               gf = g['METADATA']['Lineage'].create_group('ANC38-11'.encode('ASCII','replace'))
+              gf = g['METADATA']['Lineage'].create_group('Control'.encode('ASCII','replace'))
+              create_attribute(gf.id, 'description', [], 'Exact command line execution of ICESat-2/ATL11 algorithm providing all of the conditions required for each individual run of the software.')
+              create_attribute(gf.id, 'shortName', [], 'CNTL')
+              create_attribute(gf.id, 'version', [], '1')
+              create_attribute(gf.id, 'control', [], ' '.join(sys.argv))
+              create_attribute(g['METADATA/ProcessStep/PGE'].id, 'runTimeParameters', [], ' '.join(sys.argv))
+              gf = g.create_group('quality_assessment'.encode('ASCII','replace'))
 
               if os.path.isfile(infile):
                 f = h5py.File(infile,'r')
-                val=' '.join(sys.argv)
-                create_attribute(g['METADATA/ProcessStep/PGE'].id, 'runTimeParameters', [], val)
-                if ii==0:
-                    start_delta_time = f['ancillary_data/start_delta_time'][0]
-                    for key, keyval in root_info.items():
+                f.copy('quality_assessment/qa_granule_fail_reason',g['quality_assessment'])
+                f.copy('quality_assessment/qa_granule_pass_fail',g['quality_assessment'])
+                f.copy('ancillary_data',g)
+                del g['ancillary_data/land_ice']
+                gf = g['METADATA']['Lineage']['Control'].attrs['control'].decode()
+                g['ancillary_data/control'][...] = gf.encode('ASCII','replace')
+                del g['METADATA/Extent']
+                f.copy('METADATA/Extent',g['METADATA'])
+                start_delta_time = f['ancillary_data/start_delta_time'][0]
+                for key, keyval in root_info.items():
                        dsname=key
                        if key=='date_created' or key=='history':
                            val=str(datetime.now().date())
-                           val=val+'T'+str(datetime.now().time())
+                           val=val+'T'+str(datetime.now().time())+'Z'
                            create_attribute(g.id, key, [], val)
                            create_attribute(g['METADATA/ProcessStep/PGE'].id, 'stepDateTime', [], val)
                            continue
@@ -182,33 +167,29 @@ def filemeta(outfile,infiles):
                              val = f.attrs[key]
                              g.attrs[key]=val
                            else:
-#                             val = f.attrs[key].astype('U13')
                              val = f.attrs[key].decode()
                              create_attribute(g.id, key, [], val)
-                    del g['METADATA/Extent']
-                    f.copy('METADATA/Extent',g['METADATA'])
-                    f.copy('ancillary_data',g)
-                    del g['ancillary_data/land_ice']
 
 #
 # Read the datasets from orbit_info
-#
-# BPJ: The orbit info add on doesn't work with "processed_*" files
-### Why segfault?                    f.copy('orbit_info',g)
-# NOTE: Comment out the 1 following line if using subset files from NSIDC!
-                    gf = f.copy('orbit_info',g)
-#                    for key, keyval in orbit_info.items():
-#                        dsname='/orbit_info/'+key
-#                        if dsname in f:
-#                           f.copy(dsname,gf)
-#                           if f[dsname].dtype.kind == 'S':
-#                               orbit_info[key] = (f[dsname][0].decode()).strip()
-#                           else:
-#                               orbit_info[key] = f[dsname][0]
+                duplicate_group(f, g, 'orbit_info')
+                g['orbit_info/cycle_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+                g['orbit_info/lan'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+                g['orbit_info/orbit_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+                g['orbit_info/rgt'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+                g['orbit_info/sc_orient_time'].dims[0].attach_scale(g['orbit_info/sc_orient'])
+
 
                 m.close()
                 f.close()
 
+            if ii>0:
+              if os.path.isfile(infile):
+                f = h5py.File(infile,'r')
+                for oi_dset in g['orbit_info'].values():
+                   oi_dset.resize( (oi_dset.shape[0]+1,) )
+                   oi_dset[-1] = f[oi_dset.name][0]
+                f.close()
 
             if ii==len(infiles)-1:
               if os.path.isfile(infile):
@@ -223,7 +204,16 @@ def filemeta(outfile,infiles):
                        end_delta_time = f['ancillary_data/end_delta_time'][0]
                        val = float(end_delta_time) - float(start_delta_time)
                        g.attrs[key] = val
-#                           create_attribute(g.id, key, [], np.string(val))
+                g['ancillary_data/data_end_utc'][...] = f['ancillary_data/data_end_utc']
+                g['ancillary_data/end_cycle'][...] = f['ancillary_data/end_cycle']
+                g['ancillary_data/end_delta_time'][...] = f['ancillary_data/end_delta_time']
+                g['ancillary_data/end_gpssow'][...] = f['ancillary_data/end_gpssow']
+                g['ancillary_data/end_gpsweek'][...] = f['ancillary_data/end_gpsweek']
+                g['ancillary_data/end_orbit'][...] = f['ancillary_data/end_orbit']
+                g['ancillary_data/end_region'][...] = f['ancillary_data/end_region']
+                g['ancillary_data/end_rgt'][...] = f['ancillary_data/end_rgt']
+                g['ancillary_data/granule_end_utc'][...] = f['ancillary_data/granule_end_utc']
+                g['METADATA/Extent'].attrs['rangeEndingDateTime'] = f['METADATA/Extent'].attrs['rangeEndingDateTime']
                   
                 m.close()
                 f.close()
