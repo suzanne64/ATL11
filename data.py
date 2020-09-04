@@ -189,7 +189,7 @@ class data(object):
                                     else:
                                         setattr(getattr(self, group), field, this_field[index_range[0]:index_range[1]])
                             except KeyError:
-                                print("ATL11 file %s: missing %s/%s" % (filename, out_group, field))
+                                print("ATL11 file %s: missing %s/%s" % (filename, group, field))
                            
                     else:
                         for field in field_dict[group]:
@@ -662,11 +662,11 @@ class data(object):
         else:
             return None
 
-def unwrap_lon(lon, lon0=0):
+def shift_lon(lon, lon0=0):
     """
     wrap longitudes to +-180
     """
-    lon -= lon0
+    lon += lon0
     lon[lon>180] -= 360
     lon[lon<-180] += 360
     return lon
@@ -685,11 +685,11 @@ def regress_to(D, out_field_names, in_field_names, in_field_pt, DEBUG=None):
 
     D_in = np.array(tuple([getattr(D, name).ravel() for name in in_field_names])).T
     D_out = np.array(tuple([getattr(D, name).ravel() for name in out_field_names])).T
-    if ['longitude'] in out_field_names:
+    if 'longitude' in out_field_names:
         # if longitude is in the regression parameters, need to unwrqp it
-        lon_col=out_field_names.index['longitude']
-        lon0=np.nanmedian(D_out[lon_col])
-        D_out[:, lon_col]=unwrap_lon(D_out[:, lon_col], lon0=lon0)
+        lon_col=out_field_names.index('longitude')
+        lon0=np.nanmedian(D_out[:,lon_col])
+        D_out[:, lon_col]=shift_lon(D_out[:, lon_col], lon0=-lon0)
     good_rows=np.all(~np.isnan( np.concatenate( (D_in,D_out), axis=1)), axis=1)
 
     if np.sum(good_rows) < 2:
@@ -702,8 +702,8 @@ def regress_to(D, out_field_names, in_field_names, in_field_pt, DEBUG=None):
 
     # calculate the regression coefficients (the intercepts will be the first row)
     out_pt = np.linalg.lstsq(G,D_out[good_rows,:], rcond=None)[0][0,:]
-    if ['longitude'] in out_field_names:
-        out_pt[lon_col] = unwrap_lon([out_pt[lon_col]+lon0], lon0=0)[0]
+    if 'longitude' in out_field_names:
+        out_pt[lon_col] = shift_lon([out_pt[lon_col]], lon0=lon0)[0]
     if DEBUG is not None:
         print('lat_ctr,lon_ctr',out_pt)
 
