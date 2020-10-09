@@ -438,12 +438,13 @@ class data(object):
         n_cycles=self.ROOT.h_corr.shape[1]
         zz=np.zeros(n_cycles)
 
-        for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle_number','x_atc','y_atc']:
+        for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary','latitude','longitude','cycle_number','x_atc','y_atc','fit_quality']:
             xo['ref'][field]=[]
             xo['crossing'][field]=[]
             #if field in  ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic']:
             #    xo['ref'][field].append([])
             #    xo['ref'][field].append([])
+        xo['crossing']['along_track_rss']=[]
         if hasattr(self,'x'):
             for field in ['x','y']:
                  xo['ref'][field]=[]
@@ -457,7 +458,8 @@ class data(object):
                 xo['ref'][field] += [getattr(self.ref_surf, field)[i0]+zz]
             xo['ref']['ref_pt'] += [self.ROOT.ref_pt[i0]+zz]
             xo['ref']['rgt'] += [rgt+zz]
-            for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary', 'cycle_number']:#,'along_track_min_dh' ]:
+            xo['ref']['fit_quality'] += [self.ref_surf.fit_quality[i0]+zz]
+            for field in ['delta_time','h_corr','h_corr_sigma','h_corr_sigma_systematic', 'ref_pt','rgt','atl06_quality_summary', 'cycle_number', 'along_track_rss' ]:
                 xo['crossing'][field] += [getattr(self.crossing_track_data, field)[i1]+zz]
                     
             # fill vectors for each cycle
@@ -473,7 +475,7 @@ class data(object):
         xo['crossing']['longitude']=xo['ref']['longitude']
         xo['crossing']['x_atc']=xo['ref']['x_atc']
         xo['crossing']['y_atc']=xo['ref']['y_atc']
-        
+        xo['crossing']['fit_quality'] = xo['ref']['fit_quality']
         for field in xo['crossing']:
             xo['crossing'][field]=np.concatenate(xo['crossing'][field], axis=0)
         for field in xo['ref']:
