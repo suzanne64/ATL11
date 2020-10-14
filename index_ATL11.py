@@ -6,7 +6,7 @@ Created on Mon Oct  7 19:02:14 2019
 @author: ben
 """
 
-from PointDatabase import geo_index
+import pointCollection as pc
 import glob
 import os
 import sys
