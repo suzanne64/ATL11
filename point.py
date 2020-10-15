@@ -310,12 +310,26 @@ class point(ATL11.data):
         all_zero_cycles=np.all(G[:, TOC['zp']]==0, axis=0)
         if np.any(all_zero_cycles):
             fit_columns[TOC['zp'][all_zero_cycles]]=False
-        # 2. check other columns (polynomial and slope-change)
-        columns_to_check=np.setdiff1d(np.arange(G.shape[1], dtype=int), TOC['zp'])
-        columns_to_check=columns_to_check[::-1]
-        for c in columns_to_check:   # check last col first, do in reverse order
-            if np.max(np.abs(G[:,c]-G[0,c])) < 0.0001:
-                    fit_columns[c]=False
+        # redundant parameters are correlated with one another
+        fit_col_ind=np.flatnonzero(fit_columns)
+        Gsq=G[:, fit_columns].T.dot(G[:, fit_columns])
+        Gnorm = np.sqrt(np.sum(G[:, fit_columns]**2, axis=0))[None,:]
+        Gcorr = Gsq / (Gnorm.T.dot(Gnorm))
+        # Gcorr should have ones on the diagonal; any off diagonals that are 1
+        # are redundant to the diagonal.  Delete whichever has the larger degree
+        redundant_rows, redundant_cols = np.where(np.triu(Gcorr>0.99, k=1))
+        if len(redundant_rows) > 0:
+            redundant_cols=redundant_cols[ deg_wt_sum[fit_col_ind][redundant_cols] 
+                                          > deg_wt_sum[fit_col_ind][redundant_rows] ]
+            if len(redundant_cols) > 0:
+                fit_columns[fit_col_ind[redundant_cols]]=False
+        
+        ## 2. check other columns (polynomial and slope-change)
+        #columns_to_check=np.setdiff1d(np.arange(G.shape[1], dtype=int), TOC['zp'])
+        #columns_to_check=columns_to_check[::-1]
+        #for c in columns_to_check:   # check last col first, do in reverse order
+        #    if np.max(np.abs(G[:,c]-G[0,c])) < 0.0001:
+        #            fit_columns[c]=False
         # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
         if np.sum(np.logical_not(fit_columns[TOC['zp']])) > 2:
             self.ref_surf.complex_surface_flag=True
@@ -365,12 +379,17 @@ class point(ATL11.data):
         G_zp=sparse.csc_matrix((data,(row,col)),shape=[len(cycle),len(self.ref_surf_cycles)])
 
         # 2. determine polynomial degree, using unique x's and unique y's of segments in valid pairs
-        x_atcU = np.unique(np.round(x_atc/20).astype(int)) # np.unique orders the unique values
+        # find the maximum number of unique x locations in any cycle
+        max_nx_per_cycle=0
+        for cycle_i in np.unique(cycle):
+            ii = cycle==cycle_i
+            max_nx_per_cycle = np.maximum( max_nx_per_cycle, \
+                               np.unique(np.round(x_atc[ii]/20).astype(int)).size )
         y_atcU = np.unique(np.round((pair_data.y[self.valid_pairs.all]-self.ref_surf.y_atc)/20).astype(int))
-        np.unique(np.round((y_atc-self.ref_surf.y_atc)/20)) # np.unique orders the unique values
+        #np.unique(np.round((y_atc-self.ref_surf.y_atc)/20)) # np.unique orders the unique values
         # Table 4-4   
-        self.ref_surf.deg_x = np.maximum(0, np.minimum(self.params_11.poly_max_degree_AT,len(x_atcU)-1) )
-        self.ref_surf.deg_y = np.maximum(0, np.minimum(self.params_11.poly_max_degree_XT,len(y_atcU)) )
+        self.ref_surf.deg_x = np.maximum(0, np.minimum(self.params_11.poly_max_degree_AT,max_nx_per_cycle-1) )
+        self.ref_surf.deg_y = np.maximum(0, np.minimum(self.params_11.poly_max_degree_XT, len(y_atcU)) )
         if self.ref_surf.complex_surface_flag > 0:
             self.ref_surf.deg_x = np.minimum(1, self.ref_surf.deg_x)
             self.ref_surf.deg_y = np.minimum(1, self.ref_surf.deg_y)
@@ -429,7 +448,7 @@ class point(ATL11.data):
             if G.shape[1]==0:
                 self.status['inversion failed']=True
                 return
-
+            
             # 3g, 3h. generate the data-covariance matrix, its inverse, and
             # the generalized inverse of G
             try:
@@ -480,7 +499,6 @@ class point(ATL11.data):
             if not np.any(selected_segs):
                 self.status['inversion failed']=True
                 return
-
             if P>0.025:
                 break
         if (n_rows-n_cols)>0:
