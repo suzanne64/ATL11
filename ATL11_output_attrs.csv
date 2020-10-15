@@ -55,6 +55,8 @@ crossing_track_data,delta_time,seconds since 2018-01-01,Nxo,Float64,"Mean number
 crossing_track_data,h_corr,meters,Nxo,Float32,"""WGS-84 height, corrected for the ATL11 surface shape""","""corrected height relative to geiod""","""derived, ATL11 algorithm""",delta_time latitude longitude
 crossing_track_data,h_corr_sigma,meters,Nxo,Float32,"""Error in the height estimate""","""corrected height error""","""derived, ATL11 algorithm""",delta_time latitude longitude
 crossing_track_data,h_corr_sigma_systematic,meters,Nxo,Float32,"""Error in the height estimate""","""corrected height error""","""derived, ATL11 algorithm""",delta_time latitude longitude
+crossing_track_data,tide_ocean,meters,Nxo,Float32,"""Ocean tide estimate""","""ocean tide""","""ATL06""",delta_time latitude longitude
+crossing_track_data,dac,meters,Nxo,Float32,"""Crossing-track dynamic-atmosphere correction""","""dynamic atmosphere correction""","""ATL06""",delta_time latitude longitude
 crossing_track_data,latitude,Degrees North,Nxo,Float64,"""latitude of the crossover point""","""crossover latitude""","""derived, ATL11 algorithm""",delta_time longitude
 crossing_track_data,longitude,Degrees East,Nxo,Float64,"""longitude of the crossover point""","""crossover longitude""","""derived, ATL11 algorithm""",delta_time latitude
 crossing_track_data,cycle_number,counts,Nxo,int8,"""Cycle number for the crossing data""","""crossover cycle number""","""ATL06""",delta_time latitude longitude
