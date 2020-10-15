@@ -51,7 +51,7 @@ class defaults:
                                      'longitude','atl06_quality_summary','segment_id',\
                                      'x_atc', 'dh_fit_dx', 'rgt','cycle_number',\
                                      'BP', 'LR', 'spot','sigma_geo_xt','sigma_geo_at', \
-                                     'sigma_geo_h','dac']
+                                     'sigma_geo_h','dac', 'tide_ocean']
         
 
 def default_ATL06_fields():
