@@ -860,6 +860,8 @@ class point(ATL11.data):
             self.crossing_track_data.cycle_number.append([Dsub.cycle_number[best]])
             self.crossing_track_data.h_corr.append([z_xover[best]])
             self.crossing_track_data.h_corr_sigma.append([z_xover_sigma[best]])
+            self.crossing_track_data.dac.append([Dsub.dac[best]])
+            self.crossing_track_data.tide_ocean.append([Dsub.tide_ocean[best]])
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
             self.crossing_track_data.ref_pt.append([self.ref_pt])
