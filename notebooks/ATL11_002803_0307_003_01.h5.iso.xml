@@ -1,0 +1,192 @@
+<?xml version="1.0"?>
+<gmd:DS_Series xsi:schemaLocation="http://www.isotc211.org/2005/gmi http://cdn.earthdata.nasa.gov/iso/schema/1.0/ISO19115-2_EOS.xsd" xmlns:eos="http://earthdata.nasa.gov/schema/eos" xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:gmd="http://www.isotc211.org/2005/gmd" xmlns:gmi="http://www.isotc211.org/2005/gmi" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:gmx="http://www.isotc211.org/2005/gmx" xmlns:gsr="http://www.isotc211.org/2005/gsr" xmlns:gss="http://www.isotc211.org/2005/gss" xmlns:gts="http://www.isotc211.org/2005/gts" xmlns:srv="http://www.isotc211.org/2005/srv" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <gmd:composedOf>
+    <gmd:DS_DataSet>
+      <gmd:has>
+        <gmi:MI_Metadata>
+          <gmd:fileIdentifier>
+            <gmx:FileName>ATL11_002803_0307_003_01.h5</gmx:FileName>
+          </gmd:fileIdentifier>
+          <gmd:contact>
+            <gmd:CI_ResponsibleParty>
+              <gmd:organisationName>
+                <gco:CharacterString>NSIDC DAAC &gt; National Snow and Ice Data Center DAAC</gco:CharacterString>
+              </gmd:organisationName>
+              <gmd:contactInfo>
+                <gmd:CI_Contact>
+                  <gmd:address>
+                    <gmd:CI_Address>
+                      <gmd:electronicMailAddress>
+                        <gco:CharacterString>nsidc@nsidc.org</gco:CharacterString>
+                      </gmd:electronicMailAddress>
+                    </gmd:CI_Address>
+                  </gmd:address>
+                  <gmd:onlineResource>
+                    <gmd:CI_OnlineResource>
+                      <gmd:linkage>
+                        <gmd:URL>http://nsidc.org/daac/</gmd:URL>
+                      </gmd:linkage>
+                    </gmd:CI_OnlineResource>
+                  </gmd:onlineResource>
+                </gmd:CI_Contact>
+              </gmd:contactInfo>
+              <gmd:role>
+                <gmd:CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="pointOfContact">pointOfContact</gmd:CI_RoleCode>
+              </gmd:role>
+            </gmd:CI_ResponsibleParty>
+          </gmd:contact>
+          <gmd:dateStamp>
+            <gco:DateTime>2020-10-08T16:57:35.227642Z</gco:DateTime>
+          </gmd:dateStamp>
+          <gmd:metadataStandardName>
+            <gco:CharacterString>ISO 19115-2 Geographic information - Metadata - Part 2: Extensions for imagery and gridded data</gco:CharacterString>
+          </gmd:metadataStandardName>
+          <gmd:metadataStandardVersion>
+            <gco:CharacterString>ISO 19115-2:2009-02-15</gco:CharacterString>
+          </gmd:metadataStandardVersion>
+          <gmd:identificationInfo>
+            <gmd:MD_DataIdentification>
+              <gmd:citation>
+                <gmd:CI_Citation>
+                  <gmd:title>
+                    <gmx:FileName>ATL11_002803_0307_003_01.h5</gmx:FileName>
+                  </gmd:title>
+                  <gmd:date>
+                    <gmd:CI_Date>
+                      <gmd:date>
+                        <gco:DateTime>2020-10-08T16:57:35.227642Z</gco:DateTime>
+                      </gmd:date>
+                      <gmd:dateType>
+                        <gmd:CI_DateTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_DateTypeCode" codeListValue="creation">creation</gmd:CI_DateTypeCode>
+                      </gmd:dateType>
+                    </gmd:CI_Date>
+                  </gmd:date>
+                  <gmd:identifier>
+                    <gmd:MD_Identifier>
+                      <gmd:code>
+                        <gco:CharacterString>ATL11</gco:CharacterString>
+                      </gmd:code>
+                      <gmd:description>
+                        <gco:CharacterString>The ECS Short Name</gco:CharacterString>
+                      </gmd:description>
+                    </gmd:MD_Identifier>
+                  </gmd:identifier>
+                  <gmd:identifier>
+                    <gmd:MD_Identifier>
+                      <gmd:code>
+                        <gco:CharacterString>001</gco:CharacterString>
+                      </gmd:code>
+                      <gmd:description>
+                        <gco:CharacterString>The ECS Version ID</gco:CharacterString>
+                      </gmd:description>
+                    </gmd:MD_Identifier>
+                  </gmd:identifier>
+                  <gmd:identifier>
+                    <gmd:MD_Identifier>
+                      <gmd:code>
+                        <gco:CharacterString>ATL11_002803_0307_003_01.h5</gco:CharacterString>
+                      </gmd:code>
+                      <gmd:description>
+                        <gco:CharacterString>ProducerGranuleId</gco:CharacterString>
+                      </gmd:description>
+                    </gmd:MD_Identifier>
+                  </gmd:identifier>
+                </gmd:CI_Citation>
+              </gmd:citation>
+              <gmd:abstract>
+                <gco:CharacterString>The ICESat-2 ATL11 standard data product reports seasonal satellite altimetry heights of land based ice-sheets derived from each cycle including 91 orbits of IceSat-2.</gco:CharacterString>
+              </gmd:abstract>
+              <gmd:status>
+                <gmd:MD_ProgressCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ProgressCode" codeListValue="onGoing">onGoing</gmd:MD_ProgressCode>
+              </gmd:status>
+              <gmd:aggregationInfo>
+                <gmd:MD_AggregateInformation>
+                  <gmd:aggregateDataSetName>
+                    <gmd:CI_Citation>
+                      <gmd:title>
+                        <gco:CharacterString>ATL11</gco:CharacterString>
+                      </gmd:title>
+                      <gmd:date gco:nilReason="unknown"/>
+                      <gmd:edition>
+                        <gco:CharacterString>001</gco:CharacterString>
+                      </gmd:edition>
+                    </gmd:CI_Citation>
+                  </gmd:aggregateDataSetName>
+                  <gmd:associationType>
+                    <gmd:DS_AssociationTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#DS_AssociationTypeCode" codeListValue="largerWorkCitation">largerWorkCitation</gmd:DS_AssociationTypeCode>
+                  </gmd:associationType>
+                </gmd:MD_AggregateInformation>
+              </gmd:aggregationInfo>
+              <gmd:language>
+                <gco:CharacterString>eng</gco:CharacterString>
+              </gmd:language>
+              <gmd:topicCategory>
+                <gmd:MD_TopicCategoryCode>geoscientificInformation</gmd:MD_TopicCategoryCode>
+              </gmd:topicCategory>
+              <gmd:extent>
+                <gmd:EX_Extent id="boundingExtent">
+                  <gmd:geographicElement>
+                    <gmd:EX_BoundingPolygon id="boundingPolygon0">
+                     <gmd:extentTypeCode>
+                       <gco:Boolean>true</gco:Boolean>
+                      </gmd:extentTypeCode>
+                      <gmd:polygon>
+                        <gml:Polygon gml:id="atl11_Poly0">
+                          <gml:exterior>
+                            <gml:LinearRing>
+                              <gml:posList srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/4326">59.521008    74.929947    59.503307    74.933456    59.500366    74.876595    59.497406    74.819801    77.062126    68.269714    77.071854    68.393944    77.075699    68.523071    77.074654    68.524315    77.057159    68.537621    77.036491    68.553268    76.995140    68.584366    76.931519    68.631752    76.912430    68.645950    76.881149    68.669075    76.835541    68.702545    76.819626    68.714127    76.673218    68.819473    76.658890    68.829742    76.519379    68.929359    76.392570    69.017799    76.390442    69.019264    76.379295    69.026871    73.574379    70.666534    73.546684    70.680298    73.350128    70.776901    73.203636    70.847954    73.080017    70.906837    72.995300    70.946877    72.943604    70.971039    72.865265    71.007553    72.803436    71.036079    72.751198    71.059967    72.710159    71.078758    72.629143    71.115746    72.546532    71.153397    
+72.314087    71.256996    72.218109    71.299072    72.169579    71.320190    72.129051    71.337753    72.042656    71.374969    72.010658    71.388718    71.895454    71.437729    71.783440    71.484886    71.766907    71.491806    71.697556    71.520691    71.658081    71.537102    71.643143    71.543274    71.570587    71.573174    71.555649    71.579308    71.523102    71.592628    71.447342    71.623596    71.396652    71.644096    71.307541    71.680069    71.188004    71.727829    71.061523    71.777878    70.936096    71.826859    70.819733    71.871872    70.814392    71.873924    70.724174    71.908447    70.690544    71.921265    70.590706    71.959129    70.471115    72.004036    70.344559    72.050957    70.275146    72.076630    70.139511    72.126457    69.983017    72.182770    69.814262    72.243713    69.683929    72.289856    69.514580    72.348801    69.472908    72.363281    69.439789    72.374748    69.406662    72.386177    69.375137    72.397011    69.328659    72.412956    69.297134 
+   72.423729    69.267212    72.433922    69.244232    72.441742    69.213776    72.452049    69.173698    72.465591    68.050514    72.850716    66.844566    73.189186    66.803368    73.201027    66.764847    73.212067    66.719910    73.224915    66.678177    73.236816    66.621468    73.252945    66.574913    73.266136    66.491447    73.289719    66.412788    73.311821    66.352859    73.328613    66.297745    73.343994    66.219086    73.365891    66.128647    73.390923    66.055870    73.410980    65.998611    73.426704    65.948837    73.440323    65.889969    73.456383    65.833237    73.471809    65.790955    73.483276    65.720840    73.502213    65.646446    73.522217    65.567230    73.543427    65.528152    73.553841    65.487473    73.564659    65.447327    73.575310    65.408783    73.585510    65.363815    73.597389    65.333839    73.605286    65.289940    73.616829    65.248718    73.627640    65.206429    73.638710    65.161995    73.650307    65.124519    73.660065    65.083298    
+73.670776    65.046356    73.680351    64.978897    73.697815    64.933388    73.709541    64.838623    73.733894    64.795250    73.744987    64.757767    73.754547    64.729393    73.761772    64.667274    73.777557    64.576782    73.800430    64.495384    73.820900    64.426308    73.838211    63.896622    73.968826    63.833954    73.984055    63.766998    74.000267    63.694687    74.017715    63.624512    74.034592    63.512554    74.061386    63.451485    74.075935    63.224335    74.129662    63.162724    74.144150    63.122540    74.153564    63.072712    74.165207    62.970375    74.189056    62.927513    74.198997    62.882504    74.209419    62.836960    74.219940    62.796234    74.229324    62.750690    74.239799    62.707821    74.249641    62.659595    74.260689    62.617260    74.270363    62.519196    74.292702    62.425411    74.313957    62.336449    74.334023    62.300007    74.342224    62.275356    74.347763    62.214794    74.361328    62.062042    74.395378    61.983253    74.412865 
+   61.909286    74.429230    61.825668    74.447655    61.740978    74.466232    61.684692    74.478546    61.665394    74.482765    61.570515    74.503418    61.522804    74.513779    61.471340    74.524933    61.419876    74.536064    61.370556    74.546700    61.271912    74.567932    61.152359    74.593536    61.064430    74.612282    60.982399    74.629707    60.915916    74.643791    60.855328    74.656593    60.759888    74.676674    60.675163    74.694420    60.612427    74.707535    60.571136    74.716133    60.527702    74.725166    60.473003    74.736519    60.403828    74.750854    60.355564    74.760818    60.304081    74.771423    60.252060    74.782120    60.198433    74.793121    60.143730    74.804314    60.091705    74.814941    60.038609    74.825760    59.987122    74.836227    59.931343    74.847549    59.866444    74.860680    59.758633    74.882408    59.661011    74.902000    59.583233    74.917549    59.521008    74.929947</gml:posList>
+                              </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                      </gmd:polygon>
+                    </gmd:EX_BoundingPolygon>
+                  </gmd:geographicElement>
+                  <gmd:temporalElement>
+                    <gmd:EX_TemporalExtent>
+                      <gmd:extent>
+                        <gml:TimePeriod gml:id="TIME_PERIOD_ID">
+                          <gml:beginPosition>2019-03-31T02:21:06.120171Z</gml:beginPosition>
+                          <gml:endPosition>2020-03-28T09:04:43.560629Z</gml:endPosition>
+                        </gml:TimePeriod>
+                      </gmd:extent>
+                    </gmd:EX_TemporalExtent>
+                  </gmd:temporalElement>
+                </gmd:EX_Extent>
+              </gmd:extent>
+            </gmd:MD_DataIdentification>
+          </gmd:identificationInfo>
+          <gmd:dataQualityInfo>
+            <gmd:DQ_DataQuality>
+              <gmd:scope>
+                <gmd:DQ_Scope>
+                  <gmd:level>
+                    <gmd:MD_ScopeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ScopeCode" codeListValue="dataset">dataset</gmd:MD_ScopeCode>
+                  </gmd:level>
+                </gmd:DQ_Scope>
+              </gmd:scope>
+              <gmd:lineage>
+                <gmd:LI_Lineage>
+                  <gmd:processStep>
+                    <gmi:LE_ProcessStep>
+                      <gmd:description>
+                        <gco:CharacterString>2020-10-08T16:57:35.233227Z</gco:CharacterString>
+                      </gmd:description>
+                      <gmd:dateTime>
+                        <gco:DateTime>2020-10-08T16:57:35.227642Z</gco:DateTime>
+                      </gmd:dateTime>
+                    </gmi:LE_ProcessStep>
+                  </gmd:processStep>
+                </gmd:LI_Lineage>
+              </gmd:lineage>
+            </gmd:DQ_DataQuality>
+          </gmd:dataQualityInfo>
+        </gmi:MI_Metadata>
+      </gmd:has>
+    </gmd:DS_DataSet>
+  </gmd:composedOf>
+  <gmd:seriesMetadata gco:nilReason="missing"/>
+</gmd:DS_Series>

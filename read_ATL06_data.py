@@ -26,7 +26,7 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=Fals
 
     hold_list=None
 
-    # check the files against the blacklist
+    # check the files against the hold list
     for filename in ATL06_files.copy():
         try:
             m=ATL06_re.search(filename)

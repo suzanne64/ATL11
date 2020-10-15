@@ -17,12 +17,11 @@ import time
 
 cycles=[3, 4, 5, 6, 7]
 n_skip=4
-field_dict={'corrected_h':['h_corr','h_corr_sigma', 'latitude','longitude','delta_time'], 'ref_surf':['quality_summary', 'dem_h']}
 t0=time.time()
 if True:
     MOG=pc.grid.data().from_geotif('/Volumes/ice1/ben/MOG/2005/mog_2005_1km.tif')
-    thedir='/Volumes/ice2/ben/scf/GL_11/U07'
-    files=glob.glob(thedir+'/ATL11*.h5')
+    thedir='/Volumes/ice2/ben/scf/GL_11/007'
+    files=glob.glob(thedir+'/ATL11*07.h5')
     xydh=[]
     data_count=0
     xydh=[None]* (3*len(files))
@@ -33,41 +32,33 @@ if True:
         for pair in [1, 2, 3]:
             filePair=(file, pair)
             try:
-                with h5py.File(file,'r') as h5f:
-                    cycle_number=np.array(h5f[f'pt{pair}']['corrected_h']['cycle_number'])
 
-                cycle_ind=[np.flatnonzero(cycle_number==cycles[0])[0], np.flatnonzero(cycle_number==cycles[1])[0]]
-                n_cols=len(cycle_number)
+                D11 = pc.ATL11.data().from_h5(file, pair=pair)
 
-                D11 = pc.data().from_h5(file, field_dict={f'/pt{pair}/'+group:field_dict[group] for group in field_dict})
-
-            except Exception:
+            except Exception as e:
+                #print(file)
+                #print(e)
                 continue
 
-            n_data=len(D11.longitude)
-            temp=pc.data().from_dict({'latitude':D11.latitude,'longitude':D11.longitude}).get_xy(EPSG=3413)
-            D11.assign({'x':temp.x,'y':temp.y})
-            # replicated the single-column fields
-            for field in ['latitude','longitude','quality_summary','dem_h', 'x','y']:
-                setattr(D11, field, np.tile(np.reshape(getattr(D11,field), [n_data, 1]), (1, n_cols)))
 
-            try:
-                ind=np.arange(5, D11.x.shape[0], n_skip)
-                els=(temp.x[ind] > MOG.x[0]) & (temp.x[ind] < MOG.x[-1]) & \
-                    (temp.y[ind] > MOG.y[0]) & (temp.y[ind] < MOG.y[-1])
+            D11.get_xy(EPSG=3413)
+            ind=np.arange(5, D11.x.shape[0], n_skip)
+            els=(D11.x[ind,0] > MOG.x[0]) & (D11.x[ind,0] < MOG.x[-1]) & \
+                (D11.y[ind,0] > MOG.y[0]) & (D11.y[ind,0] < MOG.y[-1])
+            if els.size > 0:
                 ind=ind[els]
                 D11.assign({'file_ind':np.zeros_like(D11.x)+count})
                 D11.index(ind)
                 xydh[data_count]=D11
                 data_count += 1
 
-            except:
-                print("problem with "+file)
+            #except:
+            #    print("problem with "+file)
 
-    D=pc.data(columns=len(cycles)).from_list(xydh)
+    D=pc.data(columns=D11.shape[1]).from_list(xydh)
 
 
-D.to_h5('/Volumes/ice2/ben/scf/GL_11/relU07_dump_every_4th.h5')
+D.to_h5('/Volumes/ice2/ben/scf/GL_11/rel007_dump_every_4th.h5')
 
 
 if False:
