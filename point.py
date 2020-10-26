@@ -454,12 +454,12 @@ class point(ATL11.data):
             try:
                 C_d, C_di, G_g = gen_inv(self,G,h_li_sigma[selected_segs])
             except:
-                self.status['inversion failed']=True
+                self.status['inversion failed'] = True
                 return
             # check if any rows of G_g are all-zero (this is in 3h)
             # if so, set the error and return
             if np.any(np.all(G_g==0, axis=1)):
-                self.status['inversion failed']=True
+                self.status['inversion failed'] = True
                 return
 
             # inititalize the combined surface and cycle-height model, m_surf_zp
@@ -546,6 +546,11 @@ class point(ATL11.data):
         C_dp = sparse.diags(np.maximum(h_li_sigma**2,(ATL11.RDE(r_fit))**2))
         # calculate the model covariance matrix
         C_m = np.dot(np.dot(G_g,C_dp.toarray()),np.transpose(G_g))
+ 
+        # check for really excessive errors (also in 3l)
+        if np.any(np.diagonal(C_m)>1.e4):
+            self.status['inversion failed']=True
+            return
         # calculate the combined-model errors
         m_surf_zp_sigma=np.zeros_like(m_surf_zp)+np.nan
         m_surf_zp_sigma[fit_columns]=np.sqrt(C_m.diagonal())
