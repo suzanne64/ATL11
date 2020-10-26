@@ -128,15 +128,25 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
 #            else:
 #                fit_quality= np.concatenate( (fit_quality,D.ref_surf.quality_summary), axis=0) 
                     
-            ref, xo, delta   = D.get_xovers()
-            ref_h_corr       = np.concatenate( (ref_h_corr, ref.h_corr), axis=0)
-            ref_cycle_number = np.concatenate( (ref_cycle_number, ref.cycle_number), axis=0)
-            xo_h_corr        = np.concatenate( (xo_h_corr, xo.h_corr), axis=0)
-            delta_h_corr     = np.concatenate( (delta_h_corr, delta.h_corr), axis=0)
-            xo_ref_pt        = np.concatenate( (xo_ref_pt, xo.ref_pt), axis=0)
-            xo_cycle_number  = np.concatenate( (xo_cycle_number, xo.cycle_number), axis=0)
-            xo_pair_number   = np.concatenate( (xo_pair_number, np.full((len(xo.ref_pt),),pair)))
-
+            try:
+                ref, xo, delta   = D.get_xovers()
+                ref_h_corr       = np.concatenate( (ref_h_corr, ref.h_corr), axis=0)
+                ref_cycle_number = np.concatenate( (ref_cycle_number, ref.cycle_number), axis=0)
+                xo_h_corr        = np.concatenate( (xo_h_corr, xo.h_corr), axis=0)
+                delta_h_corr     = np.concatenate( (delta_h_corr, delta.h_corr), axis=0)
+                xo_ref_pt        = np.concatenate( (xo_ref_pt, xo.ref_pt), axis=0)
+                xo_cycle_number  = np.concatenate( (xo_cycle_number, xo.cycle_number), axis=0)
+                xo_pair_number   = np.concatenate( (xo_pair_number, np.full((len(xo.ref_pt),),pair)))
+            except:
+                print(f'There are no crossover data for pair {pair}')
+                ref_h_corr       = np.concatenate( (ref_h_corr, np.full((1,),np.nan)), axis=0)
+                ref_cycle_number = np.concatenate( (ref_cycle_number, np.full((1,),np.nan)), axis=0)
+                xo_h_corr        = np.concatenate( (xo_h_corr, np.full((1,),np.nan)), axis=0)
+                delta_h_corr     = np.concatenate( (delta_h_corr, np.full((1,),np.nan)), axis=0)
+                xo_ref_pt        = np.concatenate( (xo_ref_pt, np.full((1,),np.nan)), axis=0)
+                xo_cycle_number  = np.concatenate( (xo_cycle_number, np.full((1,),np.nan)), axis=0)
+                xo_pair_number   = np.concatenate( (xo_pair_number,np.full((1,),np.nan)), axis=0)
+                
     #require that fit_quality is zero (good)
     ref_pt,h_corr,delta_time,lat,lon,x,y,pair_number,dem_h = ref_pt[fit_quality==0], \
                                                              h_corr[fit_quality==0,:], delta_time[fit_quality==0,:], \
