@@ -13,6 +13,7 @@ import scipy.sparse as sparse
 from scipy import linalg
 from scipy import stats
 import ATL11
+import pdb
 
 class point(ATL11.data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
@@ -243,8 +244,8 @@ class point(ATL11.data):
 
         cycle=D6.cycle_number[self.valid_pairs.all,:]
         y_atc=D6.y_atc[self.valid_pairs.all,:]
-        # find the middle of the range of the selected beams
-        y0=(np.min(y_atc)+np.max(y_atc))/2
+        # December 10 2015 version:
+        y0 = np.nanmedian(np.unique(np.round(pair_data.y)))
         # 1: define a range of y centers, select the center with the best score
         y0_shifts=np.round(y0)+np.arange(-100.5,101.5)
         # 2: search for optimal shift value
@@ -265,7 +266,7 @@ class point(ATL11.data):
         count_kernel = np.ones(np.ceil(self.params_11.L_search_XT*2-self.params_11.beam_spacing).astype(int))
         score = np.convolve(N_sel_cycles,count_kernel, mode='same')
         score += np.convolve(N_unsel_cycles, count_kernel, mode='same')/100
-
+        
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
         self.y_atc_ctr=np.median(y0_shifts[best])+0.5*(y0_shifts[1]-y0_shifts[0])
