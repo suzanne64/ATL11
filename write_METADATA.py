@@ -12,6 +12,9 @@ import numpy as np
 import sys
 import alphashape
 import uuid
+import pyproj
+import shapely
+import shapely.geometry
 from osgeo import osr
 from datetime import datetime
 #from shapely.ops import cascaded_union
@@ -29,9 +32,6 @@ def write_METADATA(outfile,infiles):
 #
         filemeta(outfile,infiles)
         g = h5py.File(outfile,'r+')
-#        g.create_group('METADATA')
-#        gl = g['METADATA'].create_group('Lineage')
-#        gf = gl.create_group('ATL06')
         gf = g.create_group('METADATA/Lineage/ATL06'.encode('ASCII','replace'))
         fname = []
         sname = []
@@ -65,7 +65,6 @@ def write_METADATA(outfile,infiles):
                 srgt.append(f['ancillary_data/start_rgt'])
                 ergt.append(f['ancillary_data/end_rgt'])
                 version.append(f['ancillary_data/version'])
-#            version.append(str(digits[2]).encode('ASCII'))
         for pt in g.keys():
             if pt.startswith('pt'):
                 sgeoseg = np.min([sgeoseg,np.min(g[pt]['ref_pt'][:])])
@@ -154,6 +153,7 @@ def filemeta(outfile,infiles):
                 del g['METADATA/Extent']
                 f.copy('METADATA/Extent',g['METADATA'])
                 start_delta_time = f['ancillary_data/start_delta_time'][0]
+                create_attribute(g.id, 'short_name', [], 'ATL11')
                 for key, keyval in root_info.items():
                        dsname=key
                        if key=='date_created' or key=='history':
@@ -234,7 +234,7 @@ def filemeta(outfile,infiles):
                 f.close()
 
         g.close()
-        set_polygon_bounds(outfile)
+        poly_buffered_linestring(outfile)
         return()
 
 def set_polygon_bounds(outfile):
@@ -247,12 +247,10 @@ def set_polygon_bounds(outfile):
         if pt not in list(g['/'].keys()):
             continue
         lat = np.concatenate((lat,np.array(g[pt]['latitude']).astype('float')),axis=0)
-#        lat = np.concatenate((lat,np.array(g[pt]['crossing_track_data']['latitude']).astype('float')),axis=0)
         lon = np.concatenate((lon,np.array(g[pt]['longitude']).astype('float')),axis=0)
-#        lon = np.concatenate((lon,np.array(g[pt]['crossing_track_data']['longitude']).astype('float')),axis=0)
 
     polar_srs=osr.SpatialReference()
-    if np.sum(lat)/len(lat):
+    if np.sum(lat)/len(lat) >= 0.0:
       EPSG=3413
     else:
       EPSG=3031
@@ -273,7 +271,7 @@ def set_polygon_bounds(outfile):
     gap_limit = gap_limit_x1
 
     # If max * min is negative, then we span the date line
-    if "True" == "True":
+    if "True":
 # Need to check the lon, lat order is correct!!
 # Should be obvious by comparing to plot of groundtrack.
         points1 = tuple(zip(plon, plat))
@@ -315,9 +313,11 @@ def set_polygon_bounds(outfile):
 #print('original size =', len(alpha_shape.exterior.coords))
 
 # But we have way too many points, so we need to simplify. I think the
-# 0.0001 is (maybe) in units of degrees. Larger numbers create a smaller
+# 0.0001 is (maybe) in units of degrees. No, in units of input, whatever it is.
+# Larger numbers create a smaller
 # number of points. I tried different using 10x reductions.
-        alpha_shape1 = alpha_shape1.simplify(0.00001)
+#        alpha_shape1 = alpha_shape1.simplify(0.00001)
+        alpha_shape1 = alpha_shape1.simplify(100.0)
         alpha_shape1 = alpha_shape1.buffer(0.0001)
         print(explain_validity(alpha_shape1))
         if not alpha_shape1.is_valid:
@@ -327,7 +327,8 @@ def set_polygon_bounds(outfile):
           if not alpha_shape1.is_valid: print('Still invalid alpha_shape1!')
         if isgap:
           print(explain_validity(alpha_shape2))
-          alpha_shape2 = alpha_shape2.simplify(0.00001)
+#          alpha_shape2 = alpha_shape2.simplify(0.00001)
+          alpha_shape2 = alpha_shape2.simplify(100.0)
           alpha_shape2 = alpha_shape2.buffer(0.0001)
           if not alpha_shape2.is_valid:
             print('Fixing invalid 2')
@@ -389,6 +390,69 @@ def set_polygon_bounds(outfile):
 
     g.close()
     return
+
+def poly_buffered_linestring(outfile):
+    lonlat_11=[]
+    with h5py.File(outfile,'r') as h5f:
+        for pair in ['pt1', 'pt2', 'pt3']:
+            try:
+                lonlat_11 += [np.c_[h5f[pair+'/longitude'], h5f[pair+'/latitude']]]
+            except Exception as e:
+                print(e)
+    print('avg lat lonlat_11[0]',np.sum(lonlat_11[0][:,1])/len(lonlat_11[0]))
+    if np.sum(lonlat_11[0][:,1])/len(lonlat_11[0]) >= 0.0:
+      polarEPSG=3413
+    else:
+      polarEPSG=3031
+
+    xformer_ll2pol=pyproj.Transformer.from_crs(4326, polarEPSG)
+    xformer_pol2ll=pyproj.Transformer.from_crs(polarEPSG, 4326)
+    xy_11=[]
+    for ll in lonlat_11:
+        xy_11 += [np.c_[xformer_ll2pol.transform(ll[:,1], ll[:,0])]]
+    lines=[]
+    for xx in xy_11:
+        lines += [shapely.geometry.LineString(xx)]
+    line_simp=[]
+    for line in lines:
+        line_simp += [line.simplify(tolerance=100)]
+    all_lines=shapely.geometry.MultiLineString(line_simp)
+    common_buffer=all_lines.buffer(3000, 4)
+    common_buffer=common_buffer.simplify(tolerance=500)
+
+    xpol, ypol = np.array(common_buffer.exterior.coords.xy)
+    y1, x1 = xformer_pol2ll.transform(xpol, ypol)
+    print("polygon size:",len(x1))
+
+    with h5py.File(outfile,'r+') as h5f:
+      if '/orbit_info/bounding_polygon_dim1' in h5f:
+        del h5f['/orbit_info/bounding_polygon_dim1']
+        del h5f['/orbit_info/bounding_polygon_lon1']
+        del h5f['/orbit_info/bounding_polygon_lat1']
+      if '/orbit_info/bounding_polygon_dim2' in h5f:
+        del h5f['/orbit_info/bounding_polygon_dim2']
+        del h5f['/orbit_info/bounding_polygon_lon2']
+        del h5f['/orbit_info/bounding_polygon_lat2']
+
+      h5f.create_dataset('/orbit_info/bounding_polygon_dim1',data=np.arange(1,np.size(x1)+1),chunks=True,compression=6,dtype='int32')
+      create_attribute(h5f['orbit_info/bounding_polygon_dim1'].id, 'description', [], 'Polygon extent vertex count')
+      create_attribute(h5f['orbit_info/bounding_polygon_dim1'].id, 'units', [], '1')
+      create_attribute(h5f['orbit_info/bounding_polygon_dim1'].id, 'long_name', [], 'Polygon vertex count')
+      create_attribute(h5f['orbit_info/bounding_polygon_dim1'].id, 'source', [], 'model')
+      dset = h5f.create_dataset('/orbit_info/bounding_polygon_lon1',data=x1,chunks=True,compression=6,dtype='float32')
+      dset.dims[0].attach_scale(h5f['orbit_info']['bounding_polygon_dim1'])
+      create_attribute(h5f['orbit_info/bounding_polygon_lon1'].id, 'description', [], 'Polygon extent vertex longitude')
+      create_attribute(h5f['orbit_info/bounding_polygon_lon1'].id, 'units', [], 'degrees East')
+      create_attribute(h5f['orbit_info/bounding_polygon_lon1'].id, 'long_name', [], 'Polygon vertex longitude')
+      create_attribute(h5f['orbit_info/bounding_polygon_lon1'].id, 'source', [], 'model')
+      create_attribute(h5f['orbit_info/bounding_polygon_lon1'].id, 'coordinates', [], 'bounding_polygon_dim1')
+      dset = h5f.create_dataset('/orbit_info/bounding_polygon_lat1',data=y1,chunks=True,compression=6,dtype='float32')
+      dset.dims[0].attach_scale(h5f['orbit_info']['bounding_polygon_dim1'])
+      create_attribute(h5f['orbit_info/bounding_polygon_lat1'].id, 'description', [], 'Polygon extent vertex latitude')
+      create_attribute(h5f['orbit_info/bounding_polygon_lat1'].id, 'units', [], 'degrees North')
+      create_attribute(h5f['orbit_info/bounding_polygon_lat1'].id, 'long_name', [], 'Polygon vertex latitude')
+      create_attribute(h5f['orbit_info/bounding_polygon_lat1'].id, 'source', [], 'model')
+      create_attribute(h5f['orbit_info/bounding_polygon_lat1'].id, 'coordinates', [], 'bounding_polygon_dim1')
 
 def minimum_bounding_rectangle(points):
     """
