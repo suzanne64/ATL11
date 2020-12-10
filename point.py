@@ -13,7 +13,6 @@ import scipy.sparse as sparse
 from scipy import linalg
 from scipy import stats
 import ATL11
-import pdb
 
 class point(ATL11.data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
