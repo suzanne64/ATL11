@@ -12,6 +12,7 @@ import ATL11
 from osgeo import osr
 import inspect
 import pointCollection as pc
+import importlib.resources
 from ATL11.ATL06_pair import ATL06_pair
 from ATL11.h5util import create_attribute
 import time
@@ -25,8 +26,9 @@ class data(object):
         # define empty records here based on ATL11 ATBD
         # read in parameters information in .csv
         ATL11_root=os.path.dirname(inspect.getfile(ATL11.defaults))
-        with open(ATL11_root+'/ATL11_output_attrs.csv','r') as attrfile:
-            reader=list(csv.DictReader(attrfile))
+        with importlib.resources.path('ATL11','package_data') as pp:
+            with open(os.path.join(pp,'ATL11_output_attrs.csv'),'r') as attrfile:
+                reader=list(csv.DictReader(attrfile))
         group_names = set([row['group'] for row in reader])
         for group in group_names:
             field_dims=[{k:v for k,v in ii.items()} for ii in reader if ii['group']==group]
@@ -301,8 +303,9 @@ class data(object):
                     continue
                 
         # put groups, fields and associated attributes from .csv file
-        with open(os.path.dirname(inspect.getfile(ATL11.data))+'/ATL11_output_attrs.csv','r') as attrfile:
-            reader=list(csv.DictReader(attrfile))
+        with importlib.resources.path('ATL11','package_data') as pp:
+            with open(os.path.join(pp,'ATL11_output_attrs.csv'),'r') as attrfile:
+                reader=list(csv.DictReader(attrfile))
         group_names=set([row['group'] for row in reader])
         attr_names=[x for x in reader[0].keys() if x != 'field' and x != 'group']
         

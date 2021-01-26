@@ -12,7 +12,7 @@ os.environ['OPENBLAS_NUM_THREADS']="1"
 
 import numpy as np
 import ATL11
-import write_METADATA
+#import write_METADATA
 import glob
 import sys, h5py
 import matplotlib.pyplot as plt
@@ -109,7 +109,7 @@ def main(argv):
         if D11 is not None:
             D11.write_to_file(out_file)
 
-    out_file = write_METADATA.write_METADATA(out_file,files)
+    out_file = ATL11.write_METADATA.write_METADATA(out_file,files)
 
     print("ATL06_to_ATL11: done with "+out_file)
         

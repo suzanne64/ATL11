@@ -5,7 +5,6 @@ Created on Thu Mar 19 09:52:39 2020
 
 @author: root
 
-NOTE: Requires the presence of atl11_metadata_template.h5 in same directory as this python file!
 """
 import os, h5py
 import numpy as np
@@ -24,6 +23,7 @@ import ATL11
 from ATL11.h5util import create_attribute, duplicate_group
 from ATL11.version import softwareVersion,softwareDate,softwareTitle,identifier,series_version
 from scipy.spatial import ConvexHull
+import importlib.resources
 
 def write_METADATA(outfile,infiles):
     if os.path.isfile(outfile):        
@@ -112,10 +112,12 @@ def filemeta(outfile,infiles):
         'identifier_file_uuid':'', 'identifier_product_format_version':'', 'time_coverage_duration':0., \
         'time_coverage_end':'', 'time_coverage_start':''}
     # copy METADATA group from ATL11 template. Make lineage/cycle_array conatining each ATL06 file, where the ATL06 filenames
+    with importlib.resources.path('ATL11','package_data') as pp:
+        template_file=os.path.join(pp, '/atl11_metadata_template.h5')
     if os.path.isfile(outfile):
         g = h5py.File(outfile,'r+')
         for ii,infile in enumerate(sorted(infiles)):
-            m = h5py.File(os.path.dirname(os.path.realpath(__file__))+'/atl11_metadata_template.h5','r')
+            m = h5py.File(template_file,'r')
             if ii==0:
               if 'METADATA' in list(g['/'].keys()):
                   del g['METADATA']

@@ -8,11 +8,13 @@ Created on Mon May 11 15:38:56 2020
 import os
 import re
 import numpy as np
+import importlib.resources
 
 def read_rtw_from_excel(xls_file=None, to_csv=False, last_cycle=8):
     import pandas as pd
     if xls_file is None:
-        xls_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ICESat-2_TechRefTable_08282020.xlsx')
+        with importlib.resources.path('ATL11','package_data') as pp:
+            xls_file=os.path.join(pp, 'ICESat-2_TechRefTable_08282020.xlsx')
     rtw_rows=[]
     rtw_re = re.compile('RTWscan')
     rtw_times=[]
@@ -40,7 +42,8 @@ def read_rtw_from_excel(xls_file=None, to_csv=False, last_cycle=8):
 
 def read_rtw_from_csv(csv_file=None):
     if csv_file is None:
-        csv_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ICESat-2_TechRefTable_08282020_RTWs.xlsx')
+        with importlib.resources.path('ATL11','package_data') as pp:
+                                  csv_file=os.path.join(pp, 'ICESat-2_TechRefTable_08282020_RTWs.xlsx')
     rtw_times=[]
     rtw_orb=[]
     rtw_rgt=[]
