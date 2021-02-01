@@ -8,10 +8,12 @@ import os
 import glob
 import re
 import numpy as np
+import importlib.resources
 
 def read_files(hold_dir=None):
     if hold_dir is None:
-        hold_dir=os.path.join(os.path.dirname(__file__), 'held_granules')
+        with importlib.resources.path('ATL11','package_data') as pp:                                                       
+            hold_dir=os.path.join(pp, 'held_granules')
     rgt=[]; cycle=[]; subprod=[];
     for file in glob.glob(os.path.join(hold_dir, '*.csv')):
         with open(file,'r') as ff:
