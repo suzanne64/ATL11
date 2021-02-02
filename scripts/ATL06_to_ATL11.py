@@ -109,7 +109,8 @@ def main(argv):
         if D11 is not None:
             D11.write_to_file(out_file)
 
-    out_file = ATL11.write_METADATA.write_METADATA(out_file,files)
+#    out_file = ATL11.write_METADATA.write_METADATA(out_file,files)
+    out_file = ATL11.write_METADATA(out_file,files)
 
     print("ATL06_to_ATL11: done with "+out_file)
         
