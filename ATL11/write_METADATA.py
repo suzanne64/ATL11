@@ -113,7 +113,7 @@ def filemeta(outfile,infiles):
         'time_coverage_end':'', 'time_coverage_start':''}
     # copy METADATA group from ATL11 template. Make lineage/cycle_array conatining each ATL06 file, where the ATL06 filenames
     with importlib.resources.path('ATL11','package_data') as pp:
-        template_file=os.path.join(pp, '/atl11_metadata_template.h5')
+        template_file=os.path.join(pp, 'atl11_metadata_template.h5')
     if os.path.isfile(outfile):
         g = h5py.File(outfile,'r+')
         for ii,infile in enumerate(sorted(infiles)):
