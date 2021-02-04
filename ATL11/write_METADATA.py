@@ -135,7 +135,7 @@ def filemeta(outfile,infiles):
               create_attribute(gf.id, 'shortName', [], 'CNTL')
               create_attribute(gf.id, 'version', [], '1')
               create_attribute(gf.id, 'control', [], ' '.join(sys.argv))
-# handle METADATA aatributes
+# handle METADATA attributes
               create_attribute(g['METADATA/DatasetIdentification'].id, 'fileName', [], os.path.basename(outfile))
               create_attribute(g['METADATA/DatasetIdentification'].id, 'uuid', [], str(uuid.uuid4()))
               create_attribute(g['METADATA/ProcessStep/PGE'].id, 'runTimeParameters', [], ' '.join(sys.argv))
@@ -148,10 +148,14 @@ def filemeta(outfile,infiles):
                 f = h5py.File(infile,'r')
                 f.copy('quality_assessment/qa_granule_fail_reason',g['quality_assessment'])
                 f.copy('quality_assessment/qa_granule_pass_fail',g['quality_assessment'])
+# ancillary_data adjustments
                 f.copy('ancillary_data',g)
                 del g['ancillary_data/land_ice']
                 gf = g['METADATA']['Lineage']['Control'].attrs['control'].decode()
                 g['ancillary_data/control'][...] = gf.encode('ASCII','replace')
+                g['ancillary_data/release'][...] = os.path.basename(outfile).split('_')[3].encode('ASCII','replace')
+                g['ancillary_data/version'][...] = os.path.splitext(os.path.basename(outfile))[0].split('_')[4].encode('ASCII','replace')
+                
                 del g['METADATA/Extent']
                 f.copy('METADATA/Extent',g['METADATA'])
                 start_delta_time = f['ancillary_data/start_delta_time'][0]
