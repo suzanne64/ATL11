@@ -339,7 +339,11 @@ class data(object):
             elif field_attrs[field]['datatype'].startswith('Float'):
                 data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
                 fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
-            dset = g.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype'])
+            dset = g.create_dataset(field.encode('ASCII'),
+                                    data=data,fillvalue=fillvalue,
+                                    chunks=True,
+                                    compression=6,
+                                    dtype=field_attrs[field]['datatype'])
             dset.dims[0].label = field
             
             for ii,dim in enumerate(dimensions):
@@ -521,7 +525,10 @@ class data(object):
         plt.xlim((np.nanmin(xx),  np.nanmax(xx)))
         return h
 
-    def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],  ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,  mission_time_bds=None, verbose=False, DOPLOT=None, DEBUG=None):
+    def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],\
+                   ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,\
+                   mission_time_bds=None, max_xover_latitude=90, \
+                   verbose=False, DOPLOT=None,DEBUG=None,):
         """
         Fit a collection of ATL06 files with ATL11 surface models
 
@@ -533,6 +540,7 @@ class data(object):
                 GI_files: list of geo_index file from which to read ATL06 data for crossovers
                 hemisphere: +1 (north) or -1 (south), used to choose a projection
             Optional keyword arguments (not necessarily independent)
+                max_xover_latitude: calculate crossovers for latitudes lower than this value
                 mission_time_bds: starting and ending times for the mission
                 verbose: write fitting info to stdout if true
                 DOPLOT: list of plots to make
@@ -611,7 +619,9 @@ class data(object):
                 continue
             
             # regress the geographic coordinates from the data to the fit center
-            P11.ROOT.latitude, P11.ROOT.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
+            P11.ROOT.latitude, P11.ROOT.longitude = regress_to(D6_sub,\
+                            ['latitude','longitude'], ['x_atc','y_atc'],
+                            [x_atc_ctr, P11.y_atc_ctr])
 
             # find the reference surface
             P11.find_reference_surface(D6_sub, pair_data)
@@ -636,11 +646,13 @@ class data(object):
             x0, y0=regress_to(D6_sub, ['x','y'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
 
             # get the DEM elevation
-            P11.ref_surf.dem_h=regress_to(D6_sub, ['dem_h'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
-
+            P11.ref_surf.dem_h=regress_to(D6_sub,
+                                          ['dem_h'], ['x_atc', 'y_atc'],
+                                          [x_atc_ctr,P11.y_atc_ctr])
             # get the data for the crossover point
-            if GI_files is not None and np.abs(P11.ROOT.latitude) < 86:
-                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
+            if GI_files is not None and np.abs(P11.ROOT.latitude) < max_xover_latitude:
+                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, \
+                                             D_xover_cache, index_bin_size, params_11)
                 P11.corr_xover_heights(D_xover)
             # if we have read any data for the current bin, run the crossover calculation
             PLOTME=False
