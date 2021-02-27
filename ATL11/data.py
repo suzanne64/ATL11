@@ -317,15 +317,15 @@ class data(object):
             field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
             dimensions = field_attrs[field]['dimensions'].split(',')
             data = getattr(getattr(self,'ROOT'),field)
-            dset = g.create_dataset(field.encode('ASCII'),data=data,chunks=True,compression=6,dtype=field_attrs[field]['datatype']) #,fillvalue=fillvalue)
+            dset = g.create_dataset(field.encode('ASCII'),data=data,chunks=True,compression=6,dtype=field_attrs[field]['datatype'].lower()) #,fillvalue=fillvalue)
             dset.dims[0].label = field
             for attr in attr_names:
                 if 'dimensions' not in attr and 'datatype' not in attr:
                     create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
             if field_attrs[field]['datatype'].startswith('int'):
-                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
             elif field_attrs[field]['datatype'].startswith('Float'):
-                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
 
         for field in [item for item in list_vars if (item != 'ref_pt') and (item != 'cycle_number')]:
             field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
@@ -333,17 +333,17 @@ class data(object):
             data = getattr(getattr(self,'ROOT'),field)
             # change nans to proper invalid, depending on datatype
             if field_attrs[field]['datatype'].startswith('int'):
-                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
+                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max)
                 data = data.astype('int')  # don't change to int before substituting nans with invalid.
-                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
             elif field_attrs[field]['datatype'].startswith('Float'):
-                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
-                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max)
+                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
             dset = g.create_dataset(field.encode('ASCII'),
                                     data=data,fillvalue=fillvalue,
                                     chunks=True,
                                     compression=6,
-                                    dtype=field_attrs[field]['datatype'])
+                                    dtype=field_attrs[field]['datatype'].lower())
             dset.dims[0].label = field
             
             for ii,dim in enumerate(dimensions):
@@ -358,9 +358,9 @@ class data(object):
                 if 'dimensions' not in attr and 'datatype' not in attr:
                     create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
             if field_attrs[field]['datatype'].startswith('int'):
-                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
             elif field_attrs[field]['datatype'].startswith('Float'):
-                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
 
         for group in [item for item in group_names if item != 'ROOT']:
             if hasattr(getattr(self,group),'list_of_fields'):
@@ -407,12 +407,12 @@ class data(object):
                         if field_attrs[field]['datatype'].startswith('int'):
                             data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
                             data = data.astype('int')  # don't change to int before substituting nans with invalid.
-                            fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                            fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
                         elif field_attrs[field]['datatype'].startswith('Float'):
-                            data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
-                            fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                            data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max)
+                            fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
                                 
-                        dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype']) 
+                        dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype'].lower()) 
                         for ii,dim in enumerate(dimensions):
                             dim=dim.strip()
                             if 'N_pts' in dim: 
@@ -432,9 +432,9 @@ class data(object):
                             if 'dimensions' not in attr and 'datatype' not in attr:
                                 create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
                         if field_attrs[field]['datatype'].startswith('int'):
-                            dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                            dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
                         elif field_attrs[field]['datatype'].startswith('Float'):
-                            dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                            dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
         f.close()        
         return
 
