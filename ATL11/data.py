@@ -649,6 +649,10 @@ class data(object):
             P11.ref_surf.dem_h=regress_to(D6_sub,
                                           ['dem_h'], ['x_atc', 'y_atc'],
                                           [x_atc_ctr,P11.y_atc_ctr])
+            # get the geoid height
+            P11.ref_surf.geoid_h=regress_to(D6_sub,
+                                          ['geoid_h'], ['x_atc', 'y_atc'],
+                                          [x_atc_ctr,P11.y_atc_ctr])
             # get the data for the crossover point
             if GI_files is not None and np.abs(P11.ROOT.latitude) < max_xover_latitude:
                 D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, \
