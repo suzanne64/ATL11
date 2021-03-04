@@ -197,7 +197,8 @@ def filemeta(outfile,infiles):
                 g['orbit_info/lan'].dims[0].attach_scale(g['orbit_info/crossing_time'])
                 g['orbit_info/orbit_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
                 g['orbit_info/rgt'].dims[0].attach_scale(g['orbit_info/crossing_time'])
-                g['orbit_info/sc_orient_time'].dims[0].attach_scale(g['orbit_info/sc_orient'])
+#                g['orbit_info/sc_orient_time'].dims[0].attach_scale(g['orbit_info/sc_orient'])
+                g['orbit_info/sc_orient'].dims[0].attach_scale(g['orbit_info/sc_orient_time'])
 
 
                 m.close()
