@@ -31,6 +31,7 @@ ref_surf,slope_change_rate_y_sigma,years^-1,N_pts,Float64,"""Formal error in the
 ref_surf,misfit_chi2r,meters,N_pts,Float64,"""misfit chi square, divided by the number of degrees in the solution""","""misfit chi square""","""derived, ATL11 algorithm"""
 ref_surf,misfit_RMS,meters,N_pts,Float64,"""RMS misfit for the surface-polynomial fit""","""misfit RMS""","""derived, ATL11 algorithm"""
 ref_surf,dem_h,meters,N_pts,Float64,"""DEM elevation, derived from ATL06 /gtxx/atl06_segments/dem/dem_h""","""DEM elevation""","""ATL06"""
+ref_surf,geoid_h,meters,N_pts,Float64,"""Geoid height above WGS-84 reference ellipsoid, derived from ATL06 /gtxx/atl06_segments/dem/geoid_h""","""Geoid Height""","""ATL06"""
 ref_surf,fit_quality,1,N_pts,int8,"""Indicates quality of the fit: 0: no problem identified, 1: One or more polynomial coefficients has an error of 2 or larger, 2: One or more surface slope components is greater than 0.02, 3: both 1 and 2""","""fit quality summary""","""derived, ATL11 algorithm"""
 cycle_stats,cycle_number,counts,N_cycles,int8,"""cycle number""","""cycle number""","""ATL06"""
 cycle_stats,atl06_summary_zero_count,counts,"N_pts, N_cycles",int8,"""Number of segments with ATL06_quality_summary==0 (0 indicates the best-quality data)""","""ATL06 best quality count""","""ATL06"""

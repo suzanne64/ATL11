@@ -49,6 +49,7 @@ def main(argv):
     parser.add_argument('--num_points','-N', type=int, default=None, help="Number of reference points to process")
     parser.add_argument('--Hemisphere','-H', type=int, default=-1)
     parser.add_argument('--bounds', '-b', type=float, nargs=4, default=None, help="latlon bounds: west, south, east, north")
+    parser.add_argument('--max_xover_latitude', type=float, default=90, help="highest latitude for which crossovers will be calculated")
     parser.add_argument('--test_plot', action='store_true', help="plots locations, elevations, and elevation differences between cycles")
     parser.add_argument('--Blacklist','-B', action='store_true')
     parser.add_argument('--verbose','-v', action='store_true')
@@ -93,7 +94,8 @@ def main(argv):
             continue
         D11=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
                       cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
-                      GI_files=GI_files, hemisphere=args.Hemisphere) # defined in ATL06_to_ATL11
+                      GI_files=GI_files, hemisphere=args.Hemisphere, \
+                      max_xover_latitude=args.max_xover_latitude) # defined in ATL06_to_ATL11
         if D11 is None:
             print("ATL06_to_ATL11: Not enough good data to calculate an ATL11, nothing written")
             return()
