@@ -105,12 +105,15 @@ def filemeta(outfile,infiles):
 
     orbit_info={'crossing_time':0., 'cycle_number':0, 'lan':0., \
         'orbit_number':0., 'rgt':0, 'sc_orient':0, 'sc_orient_time':0.}
-    root_info={'date_created':'', 'geospatial_lat_max':0., 'geospatial_lat_min':0., \
+    root_info={'asas_release':'', 'Conventions':'', 'contributor_name':'', 'contributor_role':'', 'date_created':'', 'date_type':'', \
+        'description':'', 'featureType':'', 'geospatial_lat_max':0., 'geospatial_lat_min':0., \
         'geospatial_lat_units':'', \
-        'geospatial_lon_max':0., 'geospatial_lon_min':0., 'geospatial_lon_units':'', \
+        'geospatial_lon_max':0., 'geospatial_lon_min':0., 'geospatial_lon_units':'', 'granule_type':'', \
         'hdfversion':'', 'history':'', \
-        'identifier_file_uuid':'', 'identifier_product_format_version':'', 'time_coverage_duration':0., \
-        'time_coverage_end':'', 'time_coverage_start':''}
+        'identifier_file_uuid':'', 'identifier_product_doi_authority':'', 'identifier_product_format_version':'', \
+        'level':'', 'license':'', 'naming_authority':'', 'spatial_coverage_type':'', 'standard_name_vocabulary':'', \
+        'time_coverage_duration':0., \
+        'time_coverage_end':'', 'time_coverage_start':'', 'time_type':''}
     # copy METADATA group from ATL11 template. Make lineage/cycle_array conatining each ATL06 file, where the ATL06 filenames
     with importlib.resources.path('ATL11','package_data') as pp:
         template_file=os.path.join(pp, 'atl11_metadata_template.h5')
@@ -180,6 +183,18 @@ def filemeta(outfile,infiles):
                            val = f.attrs[key].decode()
                            create_attribute(g.id, key, [], val)
                            continue
+                       if key=='granule_type':
+                           val = 'ATL11'
+                           create_attribute(g.id, key, [], val)
+                           continue
+                       if key=='level':
+                           val = 'L3B'
+                           create_attribute(g.id, key, [], val)
+                           continue
+                       if key=='description':
+                           val = f.attrs[key].decode()
+                           create_attribute(g.id, key, [], val)
+                           continue
                        if key=='time_coverage_end' or key=='time_coverage_duration':
                            continue
                        if dsname in f.attrs:
@@ -197,7 +212,6 @@ def filemeta(outfile,infiles):
                 g['orbit_info/lan'].dims[0].attach_scale(g['orbit_info/crossing_time'])
                 g['orbit_info/orbit_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
                 g['orbit_info/rgt'].dims[0].attach_scale(g['orbit_info/crossing_time'])
-#                g['orbit_info/sc_orient_time'].dims[0].attach_scale(g['orbit_info/sc_orient'])
                 g['orbit_info/sc_orient'].dims[0].attach_scale(g['orbit_info/sc_orient_time'])
 
 
