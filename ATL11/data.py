@@ -317,15 +317,15 @@ class data(object):
             field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
             dimensions = field_attrs[field]['dimensions'].split(',')
             data = getattr(getattr(self,'ROOT'),field)
-            dset = g.create_dataset(field.encode('ASCII'),data=data,chunks=True,compression=6,dtype=field_attrs[field]['datatype']) #,fillvalue=fillvalue)
+            dset = g.create_dataset(field.encode('ASCII'),data=data,chunks=True,compression=6,dtype=field_attrs[field]['datatype'].lower()) #,fillvalue=fillvalue)
             dset.dims[0].label = field
             for attr in attr_names:
                 if 'dimensions' not in attr and 'datatype' not in attr:
                     create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
             if field_attrs[field]['datatype'].startswith('int'):
-                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
             elif field_attrs[field]['datatype'].startswith('Float'):
-                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
 
         for field in [item for item in list_vars if (item != 'ref_pt') and (item != 'cycle_number')]:
             field_attrs = {row['field']: {attr_names[ii]:row[attr_names[ii]] for ii in range(len(attr_names))} for row in reader if 'ROOT' in row['group']}
@@ -333,13 +333,17 @@ class data(object):
             data = getattr(getattr(self,'ROOT'),field)
             # change nans to proper invalid, depending on datatype
             if field_attrs[field]['datatype'].startswith('int'):
-                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
+                data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max)
                 data = data.astype('int')  # don't change to int before substituting nans with invalid.
-                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
             elif field_attrs[field]['datatype'].startswith('Float'):
-                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
-                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
-            dset = g.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype'])
+                data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max)
+                fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
+            dset = g.create_dataset(field.encode('ASCII'),
+                                    data=data,fillvalue=fillvalue,
+                                    chunks=True,
+                                    compression=6,
+                                    dtype=field_attrs[field]['datatype'].lower())
             dset.dims[0].label = field
             
             for ii,dim in enumerate(dimensions):
@@ -354,9 +358,9 @@ class data(object):
                 if 'dimensions' not in attr and 'datatype' not in attr:
                     create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
             if field_attrs[field]['datatype'].startswith('int'):
-                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
             elif field_attrs[field]['datatype'].startswith('Float'):
-                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
 
         for group in [item for item in group_names if item != 'ROOT']:
             if hasattr(getattr(self,group),'list_of_fields'):
@@ -403,12 +407,12 @@ class data(object):
                         if field_attrs[field]['datatype'].startswith('int'):
                             data = np.nan_to_num(data,nan=np.iinfo(np.dtype(field_attrs[field]['datatype'])).max)
                             data = data.astype('int')  # don't change to int before substituting nans with invalid.
-                            fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                            fillvalue = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
                         elif field_attrs[field]['datatype'].startswith('Float'):
-                            data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'])).max)
-                            fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                            data = np.nan_to_num(data,nan=np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max)
+                            fillvalue = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
                                 
-                        dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype']) 
+                        dset = grp.create_dataset(field.encode('ASCII'),data=data,fillvalue=fillvalue,chunks=True,compression=6,dtype=field_attrs[field]['datatype'].lower()) 
                         for ii,dim in enumerate(dimensions):
                             dim=dim.strip()
                             if 'N_pts' in dim: 
@@ -428,9 +432,9 @@ class data(object):
                             if 'dimensions' not in attr and 'datatype' not in attr:
                                 create_attribute(dset.id, attr, [], str(field_attrs[field][attr]))
                         if field_attrs[field]['datatype'].startswith('int'):
-                            dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'])).max
+                            dset.attrs['_FillValue'.encode('ASCII')] = np.iinfo(np.dtype(field_attrs[field]['datatype'].lower())).max
                         elif field_attrs[field]['datatype'].startswith('Float'):
-                            dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'])).max
+                            dset.attrs['_FillValue'.encode('ASCII')] = np.finfo(np.dtype(field_attrs[field]['datatype'].lower())).max
         f.close()        
         return
 
@@ -521,7 +525,10 @@ class data(object):
         plt.xlim((np.nanmin(xx),  np.nanmax(xx)))
         return h
 
-    def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],  ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,  mission_time_bds=None, verbose=False, DOPLOT=None, DEBUG=None):
+    def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],\
+                   ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,\
+                   mission_time_bds=None, max_xover_latitude=90, \
+                   verbose=False, DOPLOT=None,DEBUG=None,):
         """
         Fit a collection of ATL06 files with ATL11 surface models
 
@@ -533,6 +540,7 @@ class data(object):
                 GI_files: list of geo_index file from which to read ATL06 data for crossovers
                 hemisphere: +1 (north) or -1 (south), used to choose a projection
             Optional keyword arguments (not necessarily independent)
+                max_xover_latitude: calculate crossovers for latitudes lower than this value
                 mission_time_bds: starting and ending times for the mission
                 verbose: write fitting info to stdout if true
                 DOPLOT: list of plots to make
@@ -611,7 +619,9 @@ class data(object):
                 continue
             
             # regress the geographic coordinates from the data to the fit center
-            P11.ROOT.latitude, P11.ROOT.longitude = regress_to(D6_sub,['latitude','longitude'], ['x_atc','y_atc'], [x_atc_ctr, P11.y_atc_ctr])
+            P11.ROOT.latitude, P11.ROOT.longitude = regress_to(D6_sub,\
+                            ['latitude','longitude'], ['x_atc','y_atc'],
+                            [x_atc_ctr, P11.y_atc_ctr])
 
             # find the reference surface
             P11.find_reference_surface(D6_sub, pair_data)
@@ -636,11 +646,17 @@ class data(object):
             x0, y0=regress_to(D6_sub, ['x','y'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
 
             # get the DEM elevation
-            P11.ref_surf.dem_h=regress_to(D6_sub, ['dem_h'], ['x_atc', 'y_atc'], [x_atc_ctr,P11.y_atc_ctr])
-
+            P11.ref_surf.dem_h=regress_to(D6_sub,
+                                          ['dem_h'], ['x_atc', 'y_atc'],
+                                          [x_atc_ctr,P11.y_atc_ctr])
+            # get the geoid height
+            P11.ref_surf.geoid_h=regress_to(D6_sub,
+                                          ['geoid_h'], ['x_atc', 'y_atc'],
+                                          [x_atc_ctr,P11.y_atc_ctr])
             # get the data for the crossover point
-            if GI_files is not None and np.abs(P11.ROOT.latitude) < 86:
-                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, D_xover_cache, index_bin_size, params_11)
+            if GI_files is not None and np.abs(P11.ROOT.latitude) < max_xover_latitude:
+                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, \
+                                             D_xover_cache, index_bin_size, params_11)
                 P11.corr_xover_heights(D_xover)
             # if we have read any data for the current bin, run the crossover calculation
             PLOTME=False

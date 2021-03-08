@@ -67,7 +67,7 @@ def default_ATL06_fields():
                     'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr',
                                    'cloud_flg_atm','r_eff','tide_ocean', 'dac'],
                     'orbit_info':['rgt','cycle_number'],
-                    'dem':['dem_h'],
+                    'dem':['dem_h','geoid_h'],
                     'derived':['valid','BP', 'LR', 'spot', 'n_pixels',
                                'min_along_track_dh', 'sigma_geo_r']}
     return field_dict

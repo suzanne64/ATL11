@@ -774,7 +774,7 @@ class point(ATL11.data):
             best_seg=np.argmin(z_kc_sigma[cycle==non_ref_cycle])
             # index into D6:
             best_seg_ind=non_ref_cycle_ind[cycle==non_ref_cycle][best_seg]
-            for dataset in ('x_atc','y_atc','bsnow_h','r_eff','tide_ocean','sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
+            for dataset in ('x_atc','y_atc','bsnow_h','r_eff','tide_ocean','dac', 'sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
                 self.cycle_stats.__dict__[dataset][0,cc]=getattr(D6, dataset).ravel()[best_seg_ind]
             if z_kc_sigma[cycle==non_ref_cycle][best_seg] < 15:
                 # edit out errors larger than 15 m                
