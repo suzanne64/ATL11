@@ -41,8 +41,8 @@ def write_METADATA(outfile,infiles):
         ergt = []
         sregion = []
         eregion = []
-        sgeoseg = []
-        egeoseg = []
+        sgeoseg = 0
+        egeoseg = 0
         sorbit = []
         eorbit = []
         uuid = []
@@ -67,7 +67,7 @@ def write_METADATA(outfile,infiles):
                 version.append(f['ancillary_data/version'])
         for pt in g.keys():
             if pt.startswith('pt'):
-                if len(sgeoseg)==0:
+                if sgeoseg == 0:
                     sgeoseg=np.min(g[pt]['ref_pt'][:])
                     egeoseg=np.max(g[pt]['ref_pt'][:])
                 else:
