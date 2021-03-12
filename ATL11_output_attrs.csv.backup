@@ -55,7 +55,7 @@ cycle_stats,sigma_geo_xt,meters,"N_pts, N_cycles",Float64,"""Root-mean-weighted-
 cycle_stats,h_mean,meters,"N_pts, N_cycles",Float64,"""Weighted-average of surface heights, not including the correction for the reference surface""","""weighted average uncorrected surface heights""","""ATL06"""
 crossing_track_data,ref_pt,counts,Nxo,int32,"""The reference-point number of the fit center for the datum track""","""fit center reference point number, segmnent_id""","""derived, ATL11 algorithm"""
 crossing_track_data,delta_time,seconds,Nxo,Float64,"""Time relative to the ICESat-2 reference epoch""","""delta time""","""derived, ATL11 algorithm"""
-crossing_track_data,h_corr,meters,Nxo,Float64,"""WGS-84 height, corrected for the ATL11 surface shape""","""corrected height relative to geiod""","""derived, ATL11 algorithm"""
+crossing_track_data,h_corr,meters,Nxo,Float64,"""WGS-84 height, corrected for the ATL11 surface shape""","""corrected height from crossing data""","""derived, ATL11 algorithm"""
 crossing_track_data,h_corr_sigma,meters,Nxo,Float64,"""Error in the height estimate""","""corrected height error""","""derived, ATL11 algorithm"""
 crossing_track_data,h_corr_sigma_systematic,meters,Nxo,Float64,"""Error in the height estimate""","""corrected height error""","""derived, ATL11 algorithm"""
 crossing_track_data,latitude,Degrees North,Nxo,Float64,"""latitude of the crossover point""","""crossover latitude""","""derived, ATL11 algorithm"""
