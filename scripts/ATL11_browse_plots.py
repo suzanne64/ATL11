@@ -12,7 +12,7 @@ import sys, os, h5py, glob
 import shutil
 import io
 import pointCollection as pc
-from PointDatabase.mapData import mapData
+#from PointDatabase.mapData import mapData
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl

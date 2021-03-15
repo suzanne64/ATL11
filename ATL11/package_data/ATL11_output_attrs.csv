@@ -53,7 +53,7 @@ cycle_stats,sigma_geo_xt,meters,"N_pts, N_cycles",Float32,"""Root-mean-weighted-
 cycle_stats,h_mean,meters,"N_pts, N_cycles",Float32,"""Weighted-average of surface heights, not including the correction for the reference surface""","""weighted average uncorrected surface heights""","""ATL06""",../delta_time ../latitude ../longitude ../cycle_number
 crossing_track_data,ref_pt,counts,Nxo,int32,"""The reference-point number of the fit center for the datum track""","""fit center reference point number, segmnent_id""","""derived, ATL11 algorithm""",delta_time latitude longitude
 crossing_track_data,delta_time,seconds since 2018-01-01,Nxo,Float64,"Mean number of GPS seconds since the ATLAS SDP epoch","Elapsed GPS seconds","""derived, ATL11 algorithm""",latitude longitude
-crossing_track_data,h_corr,meters,Nxo,Float32,"""WGS-84 height, corrected for the ATL11 surface shape""","""corrected height relative to geiod""","""derived, ATL11 algorithm""",delta_time latitude longitude
+crossing_track_data,h_corr,meters,Nxo,Float32,"""WGS-84 height, corrected for the ATL11 surface shape""","""corrected height""","""derived, ATL11 algorithm""",delta_time latitude longitude
 crossing_track_data,h_corr_sigma,meters,Nxo,Float32,"""Error in the height estimate""","""corrected height error""","""derived, ATL11 algorithm""",delta_time latitude longitude
 crossing_track_data,h_corr_sigma_systematic,meters,Nxo,Float32,"""Error in the height estimate""","""corrected height error""","""derived, ATL11 algorithm""",delta_time latitude longitude
 crossing_track_data,tide_ocean,meters,Nxo,Float32,"""Ocean tide estimate""","""ocean tide""","""ATL06""",delta_time latitude longitude
