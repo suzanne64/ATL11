@@ -46,12 +46,15 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
             if len(temp) == 0:
                 xover_cache[this_key]=None
                 continue
-            xover_cache[this_key]={'D':pc.data(fields=params_11.ATL06_xover_field_list).from_list(temp)}
+            temp=pc.data(fields=params_11.ATL06_xover_field_list).from_list(temp)
+            xover_cache[this_key]={'D':temp}
             # remove the current rgt from data in the cache
-            xover_cache[this_key]['D'].index(~np.in1d(xover_cache[this_key]['D'].rgt, [rgt]))
+            temp.index(~np.in1d(xover_cache[this_key]['D'].rgt, [rgt]))
             if xover_cache[this_key]['D'].size==0:
                 continue
-            xover_cache[this_key]['D'].get_xy(EPSG=params_11.EPSG)
+            temp.get_xy(EPSG=params_11.EPSG)
+            sort_data_bin(temp, 100)
+            xover_cache[this_key]['D']=temp
             # index the cache at 100-m resolution
             xover_cache[this_key]['index']=pc.geoIndex(delta=[100, 100], data=xover_cache[this_key]['D'])
         # now read the data from the crossover cache
@@ -74,6 +77,21 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
         cleanup_xover_cache(xover_cache, x0, y0, 2e4)
 
     return D_xover
+
+def sort_data_bin(D, bin_W):
+    """
+    Sort the entries of a data structure so that they get indexed in contiguous chunks
+    """
+    y_bin_function=np.round(D.y/bin_W)
+    x_bin_function=np.round(D.x/bin_W)
+    x_scale=np.nanmax(x_bin_function)-np.nanmin(x_bin_function)
+    t=D.delta_time
+    t_scale=np.nanmax(t)-np.nanmin(t)
+    xy_bin_function=(y_bin_function-np.nanmin(y_bin_function))*x_scale+(x_bin_function-np.nanmin(x_bin_function))
+    xyt_bin_function= xy_bin_function + (t-np.nanmin(t))/t_scale
+    ind=np.argsort(xyt_bin_function)
+    return D.index(ind)
+
 
 def cleanup_xover_cache(cache, x0, y0, W):
     """
