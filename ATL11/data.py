@@ -17,6 +17,10 @@ from ATL11.ATL06_pair import ATL06_pair
 from ATL11.h5util import create_attribute
 import time
 
+##
+import resource
+##
+
 class data(object):
     # class to hold ATL11 data in ATL11.groups
     def __init__(self, N_pts=1, cycles=[1,2], N_coeffs=9, from_file=None, track_num=None, beam_pair=None):
@@ -673,6 +677,8 @@ class data(object):
             P11_list.append(P11)
             if count-last_count>1000:
                 print("completed %d/%d segments, ref_pt= %d, last 1000 segments in %2.2f s." %(count, len(ref_pt_numbers), ref_pt, time.time()-last_time))
+                print(f"memory: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}")
+                #D_xover_cache.clear()
                 last_time=time.time()
                 last_count=count
 
