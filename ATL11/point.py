@@ -604,7 +604,7 @@ class point(ATL11.data):
 
         # write out the errors to the data parameters
         self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)]=m_surf_zp_sigma[TOC['poly']]
-        if np.any(self.ref_surf.poly_coeffs_sigma > 2):
+        if np.any(self.ref_surf.poly_coeffs_sigma > 10):
             self.status['Polynomial_coefficients_with_high_error']=True
             self.ref_surf.fit_quality += 1
 
