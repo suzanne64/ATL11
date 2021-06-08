@@ -97,8 +97,8 @@ def main(argv):
                       GI_files=GI_files, hemisphere=args.Hemisphere, \
                       max_xover_latitude=args.max_xover_latitude) # defined in ATL06_to_ATL11
         if D11 is None:
-            print("ATL06_to_ATL11: Not enough good data to calculate an ATL11, nothing written")
-            return()
+            print(f"ATL06_to_ATL11: Not enough good data to calculate an ATL11 for {pair}, nothing written")
+            continue
         # fill cycle_number list in cycle_stats and ROOT
         setattr(D11.cycle_stats,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))
         setattr(D11.ROOT,'cycle_number',list(range(args.cycles[0],args.cycles[1]+1)))

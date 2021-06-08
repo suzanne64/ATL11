@@ -37,6 +37,7 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
         this_key=(np.real(x0_ctr), np.imag(x0_ctr))
         # check if we have already read in the data for this bin
         if this_key not in xover_cache:
+            #print(f"reading {this_key}")
             # if we haven't already read in the data, read it in.  These data will be in xover_cache[this_key]
             temp=[]
             for GI_file in GI_files:
@@ -73,7 +74,7 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
         D_xover=pc.data().from_list(D_xover)
 
     # cleanup the cache if it is too large
-    if len(xover_cache.keys()) > 50:
+    if len(xover_cache.keys()) > 5:
         cleanup_xover_cache(xover_cache, x0, y0, 2e4)
 
     return D_xover
@@ -99,6 +100,7 @@ def cleanup_xover_cache(cache, x0, y0, W):
     """
     for xy_bin in list(cache.keys()):
         if np.abs(x0+1j*y0 - (xy_bin[0]+1j*xy_bin[1])) > W:
+            #print(f"cleaning up {xy_bin}")
             del(cache[xy_bin])
 
 
