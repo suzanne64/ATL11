@@ -39,7 +39,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     if not args.nolog:        
         log_file = '{}/ATL11_BrowsePlots_{}.log'.format(out_path, dt.datetime.now().date())
         fhlog = open(log_file,'a')
-    cycle_number = np.arange(np.int(ATL11_file_str.split('_')[2][:2]),np.int(ATL11_file_str.split('_')[2][2:])+1)
+    cycle_number = np.arange(int(ATL11_file_str.split('_')[2][:2]),int(ATL11_file_str.split('_')[2][2:])+1)
     start_cycle=cycle_number[0]
     end_cycle=cycle_number[-1]
     num_cycles=len(cycle_number)
@@ -48,7 +48,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     colorslist = ['black','darkred','red','darkorange','gold','yellowgreen','green','darkturquoise','steelblue','blue','purple','orchid','deeppink']
     cm = mpl.cm.get_cmap('magma')
     cmCount = ListedColormap(colorslist[0:num_cycles+1])
-    cmCycles = ListedColormap(colorslist[np.int(start_cycle):np.int(end_cycle)+1])
+    cmCycles = ListedColormap(colorslist[int(start_cycle):int(end_cycle)+1])
     cmpr = ['red','green','blue']
     
     # establish constants
@@ -223,7 +223,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             DEM.show(ax=ax1[ii], xy_scale=1/1000, cmap='gray', \
                      vmin=gz05, vmax=gz95, interpolation='nearest', aspect='equal')
     h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)   
-    ax1[0].set_title('Heights, Cycle {}, km'.format(np.int(cycle_number[ccl])), fontdict={'fontsize':10});
+    ax1[0].set_title('Heights, Cycle {}, km'.format(int(cycle_number[ccl])), fontdict={'fontsize':10});
     h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cmCount, vmin=0-0.5, vmax=num_cycles+0.5)
     h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
     cbar = fig1.colorbar(h2, ax=ax1[2]) 
@@ -232,9 +232,9 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         cbar.set_ticks([],update_ticks=True)
         ax1[2].legend(['No Data'], loc='best') 
     if hemisphere==1:
-        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km. Maps are plotted in a polar-stereographic projection with a central longitude of 45W and a standard latitude of 70N.'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])),wrap=True)
+        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km. Maps are plotted in a polar-stereographic projection with a central longitude of 45W and a standard latitude of 70N.'.format(int(cycle_number[ccl]),int(cycle_number[ccf])),wrap=True)
     elif hemisphere==-1:
-        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km. Maps are plotted in a polar-stereographic projection with a central longitude of 0E and a standard latitude of 71S.'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])),wrap=True)
+        plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km. Maps are plotted in a polar-stereographic projection with a central longitude of 0E and a standard latitude of 71S.'.format(int(cycle_number[ccl]),int(cycle_number[ccf])),wrap=True)
     ax1[0].set_ylabel('y [km]', fontdict={'fontsize':10})
     ax1[1].set_title('Number of Valid Heights', fontdict={'fontsize':10});
     ax1[2].set_title('dH/dt, m/yr', fontdict={'fontsize':10});
@@ -281,11 +281,11 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         fig5,ax5 = plt.subplots(3,4,sharex=True,sharey=True)
     for ii, ax in enumerate(ax5.reshape(-1)):
         if ii<ddem.shape[-1]:
-            ax.hist(ddem[:,ii],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[np.int(cycle_number[ii])])  
+            ax.hist(ddem[:,ii],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[int(cycle_number[ii])])  
             if ii == 0:
-                ax.set_title('height-DEM: Cycle {}'.format(np.int(cycle_number[ii])), fontdict={'fontsize':10})
+                ax.set_title('height-DEM: Cycle {}'.format(int(cycle_number[ii])), fontdict={'fontsize':10})
             else:
-                ax.set_title('Cycle {}'.format(np.int(cycle_number[ii])), fontdict={'fontsize':10})
+                ax.set_title('Cycle {}'.format(int(cycle_number[ii])), fontdict={'fontsize':10})
     plt.figtext(0.1,0.01,'Figure 5. Histograms of heights minus DEM heights, in meters. One histogram per cycle, all beam pairs. X-axis limits are the scores at 5% and 95%.',wrap=True)
     plt.subplots_adjust(bottom=0.15)
     fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
@@ -298,15 +298,15 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             fig3,ax3 = plt.subplots(1,3,sharex=True,sharey=True)                
             cycle_dict = {}
             for cc in np.arange(start_cycle, end_cycle+1):
-                cycle_dict.update( {np.int(cc):colorslist[np.int(cc)]} )
+                cycle_dict.update( {int(cc):colorslist[int(cc)]} )
             fig3.subplots_adjust(bottom=0.15)
             plt.figtext(0.1,0.01,'Figure 3. Number of valid height measurements from each beam pair.',wrap=True)
 
         which_cycles = np.array([])
         for ii, cc in enumerate(np.arange(start_cycle, end_cycle+1)):
-            which_cycles = np.concatenate( (which_cycles,(np.int(cc)*np.ones(np.count_nonzero(~np.isnan(h_corr[pair_number==pair,ii]))).ravel())), axis=0)
+            which_cycles = np.concatenate( (which_cycles,(int(cc)*np.ones(np.count_nonzero(~np.isnan(h_corr[pair_number==pair,ii]))).ravel())), axis=0)
         hist, bin_edges = np.histogram(which_cycles, bins=np.arange(start_cycle, end_cycle+2))
-        ax3[pr].bar(cycle_number[:], hist, color=[cycle_dict[np.int(r)] for r in cycle_number[:]])
+        ax3[pr].bar(cycle_number[:], hist, color=[cycle_dict[int(r)] for r in cycle_number[:]])
         ax3[pr].set_xlim((cycle_number[0]-0.5, cycle_number[-1]+0.5))
         ax3[pr].set_xticks(cycle_number)
         ax3[pr].set_title('Beam Pair {}'.format(pair))
@@ -320,8 +320,8 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             fig4, ax4 = plt.subplots(2,3,sharex=True,sharey='row')
             plt.figtext(0.1,0.01,'Figure 4. Top row: Heights, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus DEM, in meters. Y-axis limits are scores at 5% and 95%. Color coded by cycle number. Plotted against reference point number/1000.',wrap=True)
         for ii, cyc in enumerate(np.arange(start_cycle, end_cycle+1)):
-            ax4[0,pr].plot(ref_pt[pair_number==pair]/1000,h_corr[pair_number==pair,ii], '.', markersize=1, color=colorslist[np.int(cyc)], linewidth=0.5)                
-            ax4[1,pr].plot(ref_pt[pair_number==pair]/1000,  ddem[pair_number==pair,ii], '.', markersize=1, color=colorslist[np.int(cyc)], linewidth=0.5)
+            ax4[0,pr].plot(ref_pt[pair_number==pair]/1000,h_corr[pair_number==pair,ii], '.', markersize=1, color=colorslist[int(cyc)], linewidth=0.5)                
+            ax4[1,pr].plot(ref_pt[pair_number==pair]/1000,  ddem[pair_number==pair,ii], '.', markersize=1, color=colorslist[int(cyc)], linewidth=0.5)
         if np.all(np.isnan(h_corr[pair_number==pair,:])):
             ax4[0,pr].annotate('No Data',xy=(0.1, 0.8), xycoords='axes fraction')
             ax4[1,pr].annotate('No Data',xy=(0.1, 0.8), xycoords='axes fraction')
@@ -343,13 +343,13 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             sm.set_array([])
             deltac=(end_cycle-start_cycle)/(num_cycles)
             cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
-            cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
+            cbar.set_ticklabels(np.arange(int(start_cycle),int(end_cycle)+2))
             cbar.set_label('Cycle Number')
             fig4.savefig('{0}/{1}_Figure4_h_corr_h_corr-DEM.png'.format(out_path,ATL11_file_str),format='png')
 
         if pair == 1:
             fig6, ax6 = plt.subplots()
-            plt.figtext(0.1,0.01,'Figure 6. Change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} from cycle {1}. Color coded by beam pair: 1 (red), 2 (green), 3 (blue). Y-axis limits are scores at 5% and 95%. Plotted against reference point number/1000.'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])),wrap=True)
+            plt.figtext(0.1,0.01,'Figure 6. Change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} from cycle {1}. Color coded by beam pair: 1 (red), 2 (green), 3 (blue). Y-axis limits are scores at 5% and 95%. Plotted against reference point number/1000.'.format(int(cycle_number[ccl]),int(cycle_number[ccf])),wrap=True)
             labels6=[]
         ax6.plot(ref_pt[pair_number==pair]/1000,dHdt[pair_number==pair], '.', markersize=1, color=cmpr[pr] )
         if np.any(~np.isnan(dHdt[pair_number==pair])):
@@ -357,7 +357,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         else:
             labels6.append('No Data Pair {}'.format(pair))
         if pair == 3:
-            ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])), fontdict={'fontsize':10})
+            ax6.set_title('Change in height over time: cycle {0} minus cycle {1}'.format(int(cycle_number[ccl]),int(cycle_number[ccf])), fontdict={'fontsize':10})
             ax6.legend(labels6, loc='best')
             ax6.grid(linestyle='--',linewidth=0.3)
             ax6.set_ylabel('meters/year')
@@ -377,8 +377,8 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         if pair == 1:
             fig7,ax7 = plt.subplots(1,3,sharex=True,sharey=True)
             fig7.subplots_adjust(bottom=0.2)
-            plt.figtext(0.1,0.01,'Figure 7. Histograms of change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} from cycle {1}. One histogram per beam pair: 1 (red), 2 (green), 3 (blue). X-axis limits are the scores at 5% and 95%.'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])),wrap=True)
-            ax7[1].set_title('Change in height histograms: cycle {0} minus cycle {1}'.format(np.int(cycle_number[ccl]),np.int(cycle_number[ccf])), fontdict={'fontsize':10})
+            plt.figtext(0.1,0.01,'Figure 7. Histograms of change in height over time, dH/dt, in meters/year. dH/dt is cycle {0} from cycle {1}. One histogram per beam pair: 1 (red), 2 (green), 3 (blue). X-axis limits are the scores at 5% and 95%.'.format(int(cycle_number[ccl]),int(cycle_number[ccf])),wrap=True)
+            ax7[1].set_title('Change in height histograms: cycle {0} minus cycle {1}'.format(int(cycle_number[ccl]),int(cycle_number[ccf])), fontdict={'fontsize':10})
         if np.any(~np.isnan(dHdt[pair_number==pair])):
             ax7[pr].hist(dHdt[pair_number==pair], bins=np.arange(np.floor(dHdt05*10)/10,np.ceil(dHdt95*10)/10+0.1,0.1), color=cmpr[pr])
         else:            
@@ -395,17 +395,17 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             if np.any(~np.isnan(xo_h_corr[xo_pair_number==pair])):
                 for ii, cyc in enumerate(cycle_number):
                     cc=np.flatnonzero((xo_cycle_number[xo_pair_number==pair]==cyc))
-                    ax8[0,pr].plot(xo_ref_pt[xo_pair_number==pair][cc]/1000,xo_h_corr[xo_pair_number==pair][cc],'x',color=colorslist[np.int(cyc)], markersize=1, label='cycle {:d}'.format(np.int(cyc)));
+                    ax8[0,pr].plot(xo_ref_pt[xo_pair_number==pair][cc]/1000,xo_h_corr[xo_pair_number==pair][cc],'x',color=colorslist[int(cyc)], markersize=1, label='cycle {:d}'.format(int(cyc)));
                     ax8[0,pr].grid(linestyle='--')
                     ccc=np.flatnonzero((xo_cycle_number[xo_pair_number==pair]==cyc) & (ref_cycle_number[xo_pair_number==pair]==cyc))  
-                    ax8[1,pr].plot(xo_ref_pt[xo_pair_number==pair][ccc]/1000,ref_h_corr[xo_pair_number==pair][ccc]-xo_h_corr[xo_pair_number==pair][ccc], '.', color=colorslist[np.int(cyc)], markersize=1, label=None);
+                    ax8[1,pr].plot(xo_ref_pt[xo_pair_number==pair][ccc]/1000,ref_h_corr[xo_pair_number==pair][ccc]-xo_h_corr[xo_pair_number==pair][ccc], '.', color=colorslist[int(cyc)], markersize=1, label=None);
                     ax8[1,pr].grid(linestyle='--')
             else:
                 ax8[0,pr].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
                 ax8[1,pr].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
-                ax8[0,pr].plot(xo_ref_pt[xo_pair_number==pair]/1000,xo_h_corr[xo_pair_number==pair],'x',color=colorslist[np.int(cyc)], markersize=1, label='cycle {:d}'.format(np.int(cyc)));
+                ax8[0,pr].plot(xo_ref_pt[xo_pair_number==pair]/1000,xo_h_corr[xo_pair_number==pair],'x',color=colorslist[int(cyc)], markersize=1, label='cycle {:d}'.format(int(cyc)));
                 ax8[0,pr].grid(linestyle='--')
-                ax8[1,pr].plot(xo_ref_pt[xo_pair_number==pair]/1000,ref_h_corr[xo_pair_number==pair]-xo_h_corr[xo_pair_number==pair], '.', color=colorslist[np.int(cyc)], markersize=1, label=None);
+                ax8[1,pr].plot(xo_ref_pt[xo_pair_number==pair]/1000,ref_h_corr[xo_pair_number==pair]-xo_h_corr[xo_pair_number==pair], '.', color=colorslist[int(cyc)], markersize=1, label=None);
                 ax8[1,pr].grid(linestyle='--')
             ax8[0,0].set_ylim((h05, h95))
             ax8[0,0].set_ylabel('meters')
@@ -424,7 +424,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             sm.set_array([])
             deltac=(end_cycle-start_cycle)/(num_cycles)
             cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
-            cbar.set_ticklabels(np.arange(np.int(start_cycle),np.int(end_cycle)+1))
+            cbar.set_ticklabels(np.arange(int(start_cycle),int(end_cycle)+1))
             cbar.set_label('Cycle Number')
             plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
             fig8.savefig('{0}/{1}_Figure8_h_corr_CrossOver.png'.format(out_path,ATL11_file_str),format='png')
