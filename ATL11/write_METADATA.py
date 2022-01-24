@@ -9,7 +9,6 @@ Created on Thu Mar 19 09:52:39 2020
 import os, h5py
 import numpy as np
 import sys
-import alphashape
 import uuid
 import pyproj
 import shapely
@@ -211,24 +210,25 @@ def filemeta(outfile,infiles):
 
 #
 # Read the datasets from orbit_info
-                duplicate_group(f, g, 'orbit_info')
-                g['orbit_info/cycle_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
-                g['orbit_info/lan'].dims[0].attach_scale(g['orbit_info/crossing_time'])
-                g['orbit_info/orbit_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
-                g['orbit_info/rgt'].dims[0].attach_scale(g['orbit_info/crossing_time'])
-                g['orbit_info/sc_orient'].dims[0].attach_scale(g['orbit_info/sc_orient_time'])
+                g.create_group('orbit_info'.encode('ASCII','replace'))
+#                duplicate_group(f, g, 'orbit_info')
+#                g['orbit_info/cycle_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+#                g['orbit_info/lan'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+#                g['orbit_info/orbit_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+#                g['orbit_info/rgt'].dims[0].attach_scale(g['orbit_info/crossing_time'])
+#                g['orbit_info/sc_orient'].dims[0].attach_scale(g['orbit_info/sc_orient_time'])
 
 
                 m.close()
                 f.close()
 # Fill orbit_info for each ATL06
-            if ii>0:
-              if os.path.isfile(infile):
-                f = h5py.File(infile,'r')
-                for oi_dset in g['orbit_info'].values():
-                   oi_dset.resize( (oi_dset.shape[0]+1,) )
-                   oi_dset[-1] = f[oi_dset.name][0]
-                f.close()
+#            if ii>0:
+#              if os.path.isfile(infile):
+#                f = h5py.File(infile,'r')
+#                for oi_dset in g['orbit_info'].values():
+#                   oi_dset.resize( (oi_dset.shape[0]+1,) )
+#                   oi_dset[-1] = f[oi_dset.name][0]
+#                f.close()
 
 # Capture ending dates, etc from last ATL06
             if ii==len(infiles)-1:
@@ -261,160 +261,6 @@ def filemeta(outfile,infiles):
         g.close()
         poly_buffered_linestring(outfile)
         return()
-
-def set_polygon_bounds(outfile):
-    g = h5py.File(outfile,'r+')
-    lat = np.empty(0)
-    lon = np.empty(0)
-    gap_limit = 60.0
-    for pt in ['pt1', 'pt2', 'pt3']:
-        #if pt doesn't exist, cycle
-        if pt not in list(g['/'].keys()):
-            continue
-        lat = np.concatenate((lat,np.array(g[pt]['latitude']).astype('float')),axis=0)
-        lon = np.concatenate((lon,np.array(g[pt]['longitude']).astype('float')),axis=0)
-
-    polar_srs=osr.SpatialReference()
-    if np.sum(lat)/len(lat) >= 0.0:
-      EPSG=3413
-    else:
-      EPSG=3031
-    polar_srs.ImportFromEPSG(EPSG)
-    ll_srs=osr.SpatialReference()
-    ll_srs.ImportFromEPSG(4326)
-    if hasattr(osr,'OAMS_TRADITIONAL_GIS_ORDER'):
-      ll_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-      polar_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    ct=osr.CoordinateTransformation(ll_srs, polar_srs)
-
-    plon, plat, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(lon), np.ravel(lat), np.zeros_like(np.ravel(lat)))]))
-
-    ct=osr.CoordinateTransformation(ll_srs, polar_srs)
-    gap_limit = 60.0
-    gap_limit_x1, gap_limit_y1, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel([gap_limit]), np.ravel([gap_limit]), np.zeros_like(np.ravel([gap_limit])))]))
-    print('gap_limit_x1:',gap_limit_x1)
-    gap_limit = gap_limit_x1
-
-    # If max * min is negative, then we span the date line
-    if "True":
-# Need to check the lon, lat order is correct!!
-# Should be obvious by comparing to plot of groundtrack.
-        points1 = tuple(zip(plon, plat))
-# Sort by lons, check for large gap
-        sort_points = sorted(points1, key=lambda x: x[0])
-        sort_lon = np.asarray(sort_points)[:,0]
-        sort_lat = np.asarray(sort_points)[:,1]
-        print('size sort_lon',np.shape(sort_lon))
-        isgap = False
-        if len(sort_points) > 10:
-          for i in range(3,len(sort_points)-4):
-            if abs(sort_lon[i]-sort_lon[i-1]) > gap_limit:
-              isgap = True
-              index_second = i
-              print('lon gap found, index',index_second)
-              print(sort_lon[0,],sort_lon[1,])
-              break
-# If no gap, sort by lats, check for large gap
-          if isgap is False:
-            for i in range(3,len(sort_points)-4):
-              if abs(sort_lat[i]-sort_lat[i-1]) > gap_limit:
-                isgap = True
-                index_second = i
-                print('lat gap found')
-                break
-
-# If gap, run alphashpe twice for 2 polygons
-        if isgap:
-          points1 = tuple(zip(sort_lon[0:index_second-1,],sort_lat[0:index_second-1,]))
-          points2 = tuple(zip(sort_lon[index_second::,],sort_lat[index_second::,]))
-
-# Result is a 'alpha shape' Polygon (shapely object)
-# , 0. is convex hull
-#        alpha_shape = alphashape.alphashape(points1, 0.01)
-        alpha_shape1 = alphashape.alphashape(points1, 0.)
-#        if isgap: alpha_shape2 = alphashape.alphashape(points2, 0.01)
-        if isgap: alpha_shape2 = alphashape.alphashape(points2, 0.)
-
-#print('original size =', len(alpha_shape.exterior.coords))
-
-# But we have way too many points, so we need to simplify. I think the
-# 0.0001 is (maybe) in units of degrees. No, in units of input, whatever it is.
-# Larger numbers create a smaller
-# number of points. I tried different using 10x reductions.
-#        alpha_shape1 = alpha_shape1.simplify(0.00001)
-        alpha_shape1 = alpha_shape1.simplify(100.0)
-        alpha_shape1 = alpha_shape1.buffer(0.0001)
-        print(explain_validity(alpha_shape1))
-        if not alpha_shape1.is_valid:
-          print('Fixing invalid 1')
-          print(explain_validity(alpha_shape1))
-          alpha_shape1 = alpha_shape1.buffer(0)
-          if not alpha_shape1.is_valid: print('Still invalid alpha_shape1!')
-        if isgap:
-          print(explain_validity(alpha_shape2))
-#          alpha_shape2 = alpha_shape2.simplify(0.00001)
-          alpha_shape2 = alpha_shape2.simplify(100.0)
-          alpha_shape2 = alpha_shape2.buffer(0.0001)
-          if not alpha_shape2.is_valid:
-            print('Fixing invalid 2')
-            print(explain_validity(alpha_shape2))
-            alpha_shape2 = alpha_shape2.buffer(0)
-
-# Extract coordinates as x/y
-        x1, y1 = np.array(alpha_shape1.exterior.xy)
-        if isgap: x2, y2 = np.array(alpha_shape2.exterior.xy)
-
-# Check for and remove duplicates
-    dup_tol = 0.0001
-    dup_tol = 90.0 # For polar coords
-    del_dups = np.full((len(x1)), False, dtype=bool)
-    print("len(x1)",len(x1))
-    for i in range(1,len(x1)-1):
-      if abs(x1[i]-x1[i-1]) < dup_tol and abs(y1[i]-y1[i-1]) < dup_tol:
-        del_dups[i] = True
-    x1_nodup = np.delete(x1,np.where(del_dups == 1))
-    y1_nodup = np.delete(y1,np.where(del_dups == 1))
-    print("len(x1_nodup)",len(x1_nodup))
-    x1 = x1_nodup
-    y1 = y1_nodup
-    if isgap:
-      del_dups = np.full((len(x2)), False, dtype=bool)
-      print("len(x2)",len(x2))
-      for i in range(1,len(x2)-1):
-        if abs(x2[i]-x2[i-1]) < dup_tol and abs(y2[i]-y2[i-1]) < dup_tol:
-          del_dups[i] = True
-      x2_nodup = np.delete(x2,np.where(del_dups == 1))
-      y2_nodup = np.delete(y2,np.where(del_dups == 1))
-      print("len(x2_nodup)",len(x2_nodup))
-      x2 = x2_nodup
-      y2 = y2_nodup
-      print("len(x2)",len(x2))
-
-    print(explain_validity(alpha_shape1))
-    ct=osr.CoordinateTransformation(polar_srs, ll_srs)
-    ll_x1, ll_y1, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(x1), np.ravel(y1), np.zeros_like(np.ravel(y1)))]))
-    x1 = ll_x1
-    y1 = ll_y1
-    if isgap:
-      ct=osr.CoordinateTransformation(polar_srs, ll_srs)
-      ll_x2, ll_y2, z= list(zip(*[ct.TransformPoint(*xyz) for xyz in zip(np.ravel(x2), np.ravel(y2), np.zeros_like(np.ravel(y2)))]))
-      x2 = ll_x2
-      y2 = ll_y2
-# Write polygon info to file
-    g.create_dataset('/orbit_info/bounding_polygon_dim1',data=np.arange(1,np.size(x1)+1),chunks=True,compression=6,dtype='int32')
-    dset = g.create_dataset('/orbit_info/bounding_polygon_lon1',data=x1,chunks=True,compression=6,dtype='float32')
-    dset.dims[0].attach_scale(g['orbit_info']['bounding_polygon_dim1'])
-    dset = g.create_dataset('/orbit_info/bounding_polygon_lat1',data=y1,chunks=True,compression=6,dtype='float32')
-    dset.dims[0].attach_scale(g['orbit_info']['bounding_polygon_dim1'])
-    if isgap:
-      g.create_dataset('/orbit_info/bounding_polygon_dim2',data=np.arange(1,np.size(x2)+1),chunks=True,compression=6,dtype='int32')
-      dset = g.create_dataset('/orbit_info/bounding_polygon_lon2',data=x2,chunks=True,compression=6,dtype='float32')
-      dset.dims[0].attach_scale(g['orbit_info']['bounding_polygon_dim2'])
-      dset = g.create_dataset('/orbit_info/bounding_polygon_lat2',data=y2,chunks=True,compression=6,dtype='float32')
-      dset.dims[0].attach_scale(g['orbit_info']['bounding_polygon_dim2'])
-
-    g.close()
-    return
 
 def poly_buffered_linestring(outfile):
     lonlat_11=[]
