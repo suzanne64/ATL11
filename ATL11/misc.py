@@ -52,7 +52,7 @@ class defaults:
                                      'x_atc', 'dh_fit_dx', 'rgt','cycle_number',\
                                      'BP', 'LR', 'spot','sigma_geo_xt','sigma_geo_at', \
                                      'sigma_geo_h','dac', 'tide_ocean']
-        
+
 
 def default_ATL06_fields():
     # NOTE: when release 3 comes out, change sigma_geo_r to a parameter in the ground_track group
@@ -60,14 +60,14 @@ def default_ATL06_fields():
                       'atl06_quality_summary','segment_id','sigma_geo_h'],
                     'ground_track':['x_atc', 'y_atc','seg_azimuth','sigma_geo_at',
                                     'sigma_geo_xt'],
-                    'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','h_mean', 
+                    'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','h_mean',
                                       'dh_fit_dy','h_rms_misfit','h_robust_sprd',
                                       'n_fit_photons', 'signal_selection_source',
                                       'snr_significance','w_surface_window_final'],
                     'geophysical':['bsnow_conf','bsnow_h','cloud_flg_asr',
                                    'cloud_flg_atm','r_eff','tide_ocean', 'dac'],
                     'orbit_info':['rgt','cycle_number'],
-                    'dem':['dem_h','geoid_h'],
+                    'dem':['dem_h','geoid_h','geoid_free2mean'],
                     'derived':['valid','BP', 'LR', 'spot', 'n_pixels',
                                'min_along_track_dh', 'sigma_geo_r']}
     return field_dict
