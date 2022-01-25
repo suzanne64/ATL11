@@ -43,7 +43,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     start_cycle=cycle_number[0]
     end_cycle=cycle_number[-1]
     num_cycles=len(cycle_number)
-
+    
     # establish color maps
     colorslist = ['black','darkred','red','darkorange','gold','yellowgreen','green','darkturquoise','steelblue','blue','purple','orchid','deeppink']
     cm = mpl.cm.get_cmap('magma')
@@ -369,7 +369,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
             sm.set_array([])
             deltac=(3-1)/(3)
-            cbar = fig6.colorbar(sm, ticks=np.arange(1+deltac/2,3+deltac,deltac), cax=cbar_ax)
+            cbar = fig6.colorbar(sm, ticks=np.arange(1+deltac/2,3,deltac), cax=cbar_ax)
             cbar.set_ticklabels(np.arange(1,3+1))
             cbar.set_label('Beam Pair')
             fig6.savefig('{0}/{1}_Figure6_dHdt.png'.format(out_path,ATL11_file_str),format='png')
@@ -423,7 +423,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
             sm.set_array([])
             deltac=(end_cycle-start_cycle)/(num_cycles)
-            cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle+deltac,deltac), cax=cbar_ax)
+            cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle,deltac), cax=cbar_ax)
             cbar.set_ticklabels(np.arange(int(start_cycle),int(end_cycle)+1))
             cbar.set_label('Cycle Number')
             plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
