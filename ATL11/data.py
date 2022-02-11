@@ -34,7 +34,8 @@ class data(object):
         # with importlib.resources.path('ATL11','package_data') as pp:
         #     with open(os.path.join(pp,'ATL11_output_attrs.csv'),'r') as attrfile:
         attrfile = pkg_resources.resource_filename('ATL11','package_data/ATL11_output_attrs.csv')
-        reader=csv.DictReader(open(attrfile))
+        # csv.DictReader should be wrapped in a list to iterate
+        reader=list(csv.DictReader(open(attrfile)))
  
         group_names = set([row['group'] for row in reader])
         for group in group_names:
