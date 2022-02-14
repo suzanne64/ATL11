@@ -55,25 +55,25 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     sec2year = 60*60*24*365.25
 
     # initialize variable arrays
-    ref_pt      = np.array([],dtype=np.int)
-    h_corr=np.array([],dtype=np.float).reshape([0,num_cycles])
-    delta_time  = np.array([],dtype=np.float).reshape([0,num_cycles])
-    lat         = np.array([],dtype=np.float)
-    lon         = np.array([],dtype=np.float)
-    x           = np.array([],dtype=np.float)
-    y           = np.array([],dtype=np.float)
-    pair_number = np.array([],dtype=np.int)
-    refsurf_pt  = np.array([],dtype=np.int)
-    dem_h       = np.array([],dtype=np.float)
-    fit_quality = np.array([],dtype=np.int)
+    ref_pt      = np.array([],dtype=int)
+    h_corr=np.array([],dtype=float).reshape([0,num_cycles])
+    delta_time  = np.array([],dtype=float).reshape([0,num_cycles])
+    lat         = np.array([],dtype=float)
+    lon         = np.array([],dtype=float)
+    x           = np.array([],dtype=float)
+    y           = np.array([],dtype=float)
+    pair_number = np.array([],dtype=int)
+    refsurf_pt  = np.array([],dtype=int)
+    dem_h       = np.array([],dtype=float)
+    fit_quality = np.array([],dtype=int)
 
-    ref_h_corr       = np.array([],dtype=np.float)
-    ref_cycle_number = np.array([],dtype=np.int)
-    xo_h_corr        = np.array([],dtype=np.float)
-    delta_h_corr     = np.array([],dtype=np.float)
-    xo_ref_pt        = np.array([],dtype=np.int)
-    xo_cycle_number  = np.array([],dtype=np.int)
-    xo_pair_number   = np.array([],dtype=np.int)
+    ref_h_corr       = np.array([],dtype=float)
+    ref_cycle_number = np.array([],dtype=int)
+    xo_h_corr        = np.array([],dtype=float)
+    delta_h_corr     = np.array([],dtype=float)
+    xo_ref_pt        = np.array([],dtype=int)
+    xo_cycle_number  = np.array([],dtype=int)
+    xo_pair_number   = np.array([],dtype=int)
     
     # gather all pairs of data
     for pr in np.arange(3): 
