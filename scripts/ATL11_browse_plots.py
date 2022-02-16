@@ -16,6 +16,7 @@ import pointCollection as pc
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.offsetbox import AnchoredText
 from matplotlib.colors import ListedColormap, LogNorm
 from matplotlib.backends.backend_pdf import PdfPages
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -27,7 +28,6 @@ import cartopy.feature as cfeature
 import osgeo.gdal
 import imageio
 import datetime as dt
-#import wradlib as wrl
 
 
 def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf=False, nolog=False):
@@ -44,8 +44,12 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     end_cycle=cycle_number[-1]
     num_cycles=len(cycle_number)
     
-    # establish color maps
-    colorslist = ['black','darkred','red','darkorange','gold','yellowgreen','green','darkturquoise','steelblue','blue','purple','orchid','deeppink']
+    # establish color maps, enough for 30 cycles
+    colorslist = ['black','darkred','red','darkorange','gold','yellowgreen',
+                  'green','darkturquoise','steelblue','blue','rebeccapurple','purple',
+                  'orchid','deeppink','crimson','firebrick','sienna','rosybrown',
+                  'darkgray','cornflowerblue','navy','black','darkred','red',
+                  'darkorange','gold','yellowgreen','green','darkturquoise','steelblue']
     cm = mpl.cm.get_cmap('magma')
     cmCount = ListedColormap(colorslist[0:num_cycles+1])
     cmCycles = ListedColormap(colorslist[int(start_cycle):int(end_cycle)+1])
@@ -269,27 +273,43 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     plt.subplots_adjust(bottom=0.15)
     fig2.savefig('{0}/{1}_Figure2_validRepeats_hist.png'.format(out_path,ATL11_file_str),format='png')
   
-    if num_cycles <= 3:  
-        fig5,ax5 = plt.subplots(num_cycles,1,sharex=True,sharey=True)
-    elif num_cycles == 4:
-        fig5,ax5 = plt.subplots(2,2,sharex=True,sharey=True)
-    elif num_cycles >= 5 and num_cycles <= 6:
-        fig5,ax5 = plt.subplots(3,2,sharex=True,sharey=True)
-    elif num_cycles >= 7 and num_cycles <= 9:
-        fig5,ax5 = plt.subplots(3,3,sharex=True,sharey=True)
-    elif num_cycles >= 10:
-        fig5,ax5 = plt.subplots(3,4,sharex=True,sharey=True)
-    for ii, ax in enumerate(ax5.reshape(-1)):
-        if ii<ddem.shape[-1]:
-            ax.hist(ddem[:,ii],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[int(cycle_number[ii])])  
-            if ii == 0:
-                ax.set_title('height-DEM: Cycle {}'.format(int(cycle_number[ii])), fontdict={'fontsize':10})
+    # n, bins = ax.hist(ddem[:,cycindex],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[int(cycle_number[cycindex])])  
+    for jj,item in enumerate(np.arange(start_cycle,end_cycle+1,6)):
+        fig5,ax5 = plt.subplots(2,3,sharex=True,sharey=True)
+        figstart_cycle=item
+        figend_cycle=item+5
+        if figend_cycle>end_cycle: figend_cycle=end_cycle
+        for ii, ax in enumerate(ax5.reshape(-1)):
+            cycindex=ii+item-start_cycle
+            if cycindex<num_cycles:
+                if ii<ddem.shape[-1]:
+                    ax.hist(ddem[:,cycindex],bins=np.arange(np.floor(ddem05*10)/10,np.ceil(ddem95*10)/10+0.1,0.1), color=colorslist[int(cycle_number[cycindex])])  
+                    anchored_text = AnchoredText(f'Cycle{cycle_number[cycindex]}', loc=2)
+                    ax.add_artist(anchored_text)
+                    # if ii == 0:
+                    #     ax.set_title('height-DEM: Cycle {}'.format(int(cycle_number[cycindex])), fontdict={'fontsize':10})
+                    # else:
+                    #     ax.set_title('Cycle {}'.format(int(cycle_number[cycindex])), fontdict={'fontsize':10})
+                    if ii==1:
+                        ax.set_title('height-DEM')
+                    if np.all(np.isnan(ddem[:,cycindex])):
+                        # ax.set_xticks([])
+                        # ax.set_yticks([])
+                        newline='\n'
+                        anchored_text = AnchoredText(f'No data{newline}for this cycle',
+                                                     loc='lower center', frameon=False,
+                                                     prop={'color': 'gray'})
+                        ax.add_artist(anchored_text)
+                    if ii>2:
+                        ax.set_xticks([-5,0,5])
+                    if ii==0 or ii==3:
+                        ax.set_ylim
             else:
-                ax.set_title('Cycle {}'.format(int(cycle_number[ii])), fontdict={'fontsize':10})
-    plt.figtext(0.1,0.01,'Figure 5. Histograms of heights minus DEM heights, in meters. One histogram per cycle, all beam pairs. X-axis limits are the scores at 5% and 95%.',wrap=True)
-    plt.subplots_adjust(bottom=0.15)
-    fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
-    fig5.savefig('{0}/{1}_Figure5_h_corr-DEM_hist.png'.format(out_path,ATL11_file_str),format='png')
+                ax.set_visible(False)            
+            plt.figtext(0.1,0.01,'Figure 5. Histograms of heights minus DEM heights, in meters. One histogram per cycle, all beam pairs. X-axis limits are the scores at 5% and 95%.',wrap=True)
+            plt.subplots_adjust(bottom=0.15)
+            fig5.suptitle('{}'.format(os.path.basename(ATL11_file)))
+            fig5.savefig(f'{out_path}/{ATL11_file_str}_Figure5_h_corr-DEM_hist_cycles{figstart_cycle:02d}{figend_cycle:02d}.png',format='png')
 
     for pr in np.arange(3):
         pair=pr+1
@@ -308,7 +328,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         hist, bin_edges = np.histogram(which_cycles, bins=np.arange(start_cycle, end_cycle+2))
         ax3[pr].bar(cycle_number[:], hist, color=[cycle_dict[int(r)] for r in cycle_number[:]])
         ax3[pr].set_xlim((cycle_number[0]-0.5, cycle_number[-1]+0.5))
-        ax3[pr].set_xticks(cycle_number)
+        ax3[pr].set_xticks(np.arange(cycle_number[0],cycle_number[-1],3))
         ax3[pr].set_title('Beam Pair {}'.format(pair))
         if pair == 3:
             ax3[1].set_xlabel('cycle number', fontdict={'fontsize':10})
@@ -475,7 +495,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         if os.path.isfile(name): os.remove(name)
     fhlog.close()
     
-#    plt.show()
+    # plt.show()
 #
     
 if __name__=='__main__':
