@@ -22,7 +22,8 @@ import ATL11
 from ATL11.h5util import create_attribute, duplicate_group
 from ATL11.version import softwareVersion,softwareDate,softwareTitle,identifier,series_version
 from scipy.spatial import ConvexHull
-import pkg_resources
+#import pkg_resources
+from importlib import resources
 # import importlib.resources
 
 def write_METADATA(outfile,infiles):
@@ -119,9 +120,8 @@ def filemeta(outfile,infiles):
         'time_coverage_duration':0., \
         'time_coverage_end':'', 'time_coverage_start':'', 'time_type':''}
     # copy METADATA group from ATL11 template. Make lineage/cycle_array conatining each ATL06 file, where the ATL06 filenames
-    # with importlib.resources.path('ATL11','package_data') as pp:
-    #     template_file=os.path.join(pp, 'atl11_metadata_template.h5')
-    template_file = pkg_resources.resource_filename('ATL11','package_data/atl11_metadata_template.h5')
+
+    template_file =  str(resources.files('ATL11').joinpath("package_data/atl11_metadata_template.h5"))
     if os.path.isfile(outfile):
         g = h5py.File(outfile,'r+')
         for ii,infile in enumerate(sorted(infiles)):

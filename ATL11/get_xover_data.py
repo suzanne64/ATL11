@@ -11,7 +11,7 @@ import numpy as np
 #from PointDatabase import geo_index
 import pointCollection as pc
 
-def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11):
+def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11, verbose=False):
     """
     Read the data from other tracks.
 
@@ -37,7 +37,8 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
         this_key=(np.real(x0_ctr), np.imag(x0_ctr))
         # check if we have already read in the data for this bin
         if this_key not in xover_cache:
-            #print(f"reading {this_key}")
+            if verbose:
+                print(f"reading {this_key}")
             # if we haven't already read in the data, read it in.  These data will be in xover_cache[this_key]
             temp=[]
             for GI_file in GI_files:
@@ -75,7 +76,7 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
 
     # cleanup the cache if it is too large
     if len(xover_cache.keys()) > 5:
-        cleanup_xover_cache(xover_cache, x0, y0, 2e4)
+        cleanup_xover_cache(xover_cache, x0, y0, 2e4, verbose=verbose)
 
     return D_xover
 
@@ -94,13 +95,14 @@ def sort_data_bin(D, bin_W):
     return D.index(ind)
 
 
-def cleanup_xover_cache(cache, x0, y0, W):
+def cleanup_xover_cache(cache, x0, y0, W, verbose=False):
     """
     delete entries in xover cache that are too far from the current point
     """
     for xy_bin in list(cache.keys()):
         if np.abs(x0+1j*y0 - (xy_bin[0]+1j*xy_bin[1])) > W:
-            #print(f"cleaning up {xy_bin}")
+            if verbose:
+                print(f"cleaning up {xy_bin}")
             del(cache[xy_bin])
 
 

@@ -65,6 +65,7 @@ def main(argv):
     if args.verbose:
         print('ATL11 output filename',out_file)
     glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
+    print(glob_str)
     files=glob.glob(glob_str)
 
     print("found ATL06 files:" + str(files))
