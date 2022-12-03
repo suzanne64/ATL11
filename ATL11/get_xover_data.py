@@ -11,7 +11,7 @@ import numpy as np
 #from PointDatabase import geo_index
 import pointCollection as pc
 
-def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11, verbose=False):
+def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11, verbose=False, xy_bin=None):
     """
     Read the data from other tracks.
 
@@ -42,9 +42,12 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
             # if we haven't already read in the data, read it in.  These data will be in xover_cache[this_key]
             temp=[]
             for GI_file in GI_files:
-                new_data = pc.geoIndex().from_file(GI_file).query_xy(this_key, fields=this_field_dict);
-                if new_data is not None:
-                    temp += new_data
+                new_data = pc.geoIndex().from_file(GI_file).query_xy(this_key, fields=this_field_dict)
+                if new_data is None:
+                    continue
+                if xy_bin is not None:
+                    subset_data_to_bins(new_data, xy_bin, EPSG=params_11.EPSG)
+                temp += new_data
             if len(temp) == 0:
                 xover_cache[this_key]=None
                 continue
@@ -79,6 +82,13 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
         cleanup_xover_cache(xover_cache, x0, y0, 2e4, verbose=verbose)
 
     return D_xover
+
+def subset_data_to_bins(D, xy_bin, bin_size=100, EPSG=None):
+    if D is None:
+        return
+    for Di in D:
+        Di.get_xy(EPSG=EPSG)
+        Di.index(np.in1d(np.round((Di.x+1j*Di.y)/bin_size)*bin_size, xy_bin[:,0]+1j*xy_bin[:,1]))
 
 def sort_data_bin(D, bin_W):
     """

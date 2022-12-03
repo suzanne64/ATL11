@@ -28,6 +28,8 @@ def get_proj4(hemisphere):
         return '+proj=stere +lat_0=90 +lat_ts=70 +lon_0=-45 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs '
 
 def main(argv):
+    # Tunable: 2000 sounds OK
+    BLOCKSIZE = 2000
     # account for a bug in argparse that misinterprets negative agruents
     for i, arg in enumerate(argv):
         if (arg[0] == '-') and arg[1].isdigit(): argv[i] = ' ' + arg
@@ -82,21 +84,69 @@ def main(argv):
     print("found GI files:"+str(GI_files))
     
     for pair in pairs:
-        D6 = ATL11.read_ATL06_data(files, beam_pair=pair, cycles=args.cycles, use_blacklist=args.Blacklist)
-        if D6 is None:
-            continue
-        D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, \
+        # read the lat, lon, segment_id data for each segment
+        D6_segdata = ATL11.read_ATL06_data(files, beam_pair=pair, 
+                                           cycles=args.cycles, 
+                                           use_blacklist=args.Blacklist, 
+                                           minimal=True)
+        all_ref_pts=[]
+        all_ref_pt_x=[]
+        for filename in D6_segdata.keys():
+            _, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(\
+                            D6_segdata[filename].copy(), \
                             first_ref_pt=args.first_point,\
                             last_ref_pt=args.last_point, \
-                            lonlat_bounds=args.bounds, 
+                            lonlat_bounds=args.bounds,\
                             num_ref_pts=args.num_points)
+            if ref_pt_numbers is None:
+                continue
+            all_ref_pts += [ref_pt_numbers]
+            all_ref_pt_x += [ref_pt_x]
+        all_ref_pts, ind =np.unique(np.concatenate(all_ref_pts), return_index=True)
+        all_ref_pt_x = np.concatenate(all_ref_pt_x)[ind]
+        
+        # loop over all segments in blocks of BLOCKSIZE
+        blocks=np.arange(0, len(all_ref_pts), BLOCKSIZE)
+        D11=[]
+        for block0 in blocks:
+            ref_pt_range = [all_ref_pts[block0], all_ref_pts[np.minimum(len(all_ref_pts)-1, block0+BLOCKSIZE)]]
+            print(f'ref_pt_range={ref_pt_range}')
+            seg_range=[np.maximum(0, ref_pt_range[0]-ATL11.defaults().N_search),
+                       ref_pt_range[1]+ATL11.defaults().N_search]
+            
+            D6 = ATL11.read_ATL06_data(files, beam_pair=pair,
+                                       cycles=args.cycles,
+                                       use_blacklist=args.Blacklist,
+                                       ATL06_dict=D6_segdata, seg_range = seg_range )
+            if D6 is None:
+                continue
+            #D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, \
+            ##                    first_ref_pt=args.first_point,\
+            #                    last_ref_pt=args.last_point, \
+            #                    lonlat_bounds=args.bounds, 
+            #                    num_ref_pts=args.num_points)
 
-        if D6 is None or len(ref_pt_numbers)==0: 
-            continue
-        D11=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
-                      cycles=args.cycles, beam_pair=pair, verbose=args.verbose, \
-                      GI_files=GI_files, hemisphere=args.Hemisphere, \
-                      max_xover_latitude=args.max_xover_latitude) # defined in ATL06_to_ATL11
+            ref_pt_ind=(all_ref_pts >= ref_pt_range[0]) & \
+                                   (all_ref_pts <= ref_pt_range[1])
+            ref_pt_numbers=all_ref_pts[ref_pt_ind]
+            ref_pt_x = all_ref_pt_x[ref_pt_ind]
+        
+            if len(ref_pt_numbers)==0: 
+                continue
+            D11 +=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
+                                           cycles=args.cycles, \
+                                           beam_pair=pair, \
+                                           verbose=args.verbose, \
+                                           GI_files=GI_files, \
+                                           hemisphere=args.Hemisphere, \
+                                           max_xover_latitude=args.max_xover_latitude, return_list=True) # defined in ATL06_to_ATL11
+        if len(D11) > 0:
+            cycles=[np.nanmin([Pi.cycles for Pi in D11]), np.nanmax([Pi.cycles for Pi in D11])]
+            N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in D11])
+            D11=ATL11.data(track_num=D11[0].rgt, beam_pair=pair, cycles=cycles, N_coeffs=N_coeffs).from_list(D11)
+        else:
+            D11=None
+        
         if D11 is None:
             print(f"ATL06_to_ATL11: Not enough good data to calculate an ATL11 for {pair}, nothing written")
             continue

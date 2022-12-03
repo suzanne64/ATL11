@@ -12,7 +12,24 @@ import re
 import pointCollection as pc
 from ATL11.check_ATL06_hold_list import check_ATL06_hold_list
 
-def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=False):
+
+def get_seg_index(seg_range, D6):
+    '''
+    Find the indexes in an ATL06 to read to match seg_range
+
+    required arguments:
+         seg_range:  first and last segments to read
+         D6:         ATL06 data structure, containing at least a segment_id field
+    returns:
+         list of indices needed to span seg_range
+    '''
+    index_range=np.searchsorted(D6.segment_id[:,0], seg_range)
+    if index_range[0] > 0:
+        index_range[0] -= 1
+    return index_range
+
+
+def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=False, minimal=False, ATL06_dict=None, seg_range=None):
     '''
     Read ATL06 data from a list of files for a specific beam pair
     
@@ -40,11 +57,26 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_blacklist=Fals
     if len(ATL06_files)==0:
         print("edited D6 list has no files")
         return None
+
+    if minimal:
+        # only read in the segment_id, latitude, and longitude fields, return in a dictionary
+        minimal_field_dict={None:['segment_id','latitude','longitude'],'ground_track':['x_atc', 'y_atc']}
+        D6_dict={}
+        for filename in ATL06_files:
+            temp=pc.ATL06.data(field_dict=minimal_field_dict, beam_pair=beam_pair).from_h5(filename)
+            D6_dict[filename]=temp
+        return D6_dict    
+
     # read in the ATL06 data from all the repeats
     D6_list=[]
+    
     for filename in ATL06_files:
         try:
-            D6_list.append(pc.ATL06.data(field_dict=params_11.ATL06_field_dict, beam_pair=beam_pair).from_h5(filename))
+            if seg_range is not None:
+                this_index_range = get_seg_index(seg_range, ATL06_dict[filename])
+            else:
+                this_index_range=None
+            D6_list.append(pc.ATL06.data(field_dict=params_11.ATL06_field_dict, beam_pair=beam_pair).from_h5(filename, index_range=this_index_range))
         except KeyError:
             pass
 

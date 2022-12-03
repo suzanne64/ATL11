@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 Created on Thu Oct 26 11:08:33 2017f
@@ -10,13 +11,13 @@ import matplotlib.pyplot as plt
 import h5py,  os, csv
 import ATL11
 from osgeo import osr
-import inspect
 import pointCollection as pc
 from ATL11.ATL06_pair import ATL06_pair
 from ATL11.h5util import create_attribute
 import time
 from importlib import resources
 
+import resource as memresource
 
 class data(object):
     # class to hold ATL11 data in ATL11.groups
@@ -26,11 +27,7 @@ class data(object):
 
         # define empty records here based on ATL11 ATBD
         # read in parameters information in .csv
-        ATL11_root=os.path.dirname(inspect.getfile(ATL11.defaults))
-        # with importlib.resources.path('ATL11','package_data') as pp:
-        #     with open(os.path.join(pp,'ATL11_output_attrs.csv'),'r') as attrfile:
-        attrfile = str(resources.files('ATL11').joinpath("package_data/ATL11_output_attrs.csv") 
-        
+        attrfile = str(resources.files('ATL11').joinpath("package_data/ATL11_output_attrs.csv") )
         # csv.DictReader should be wrapped in a list to iterate
         reader=list(csv.DictReader(open(attrfile)))
  
@@ -145,6 +142,56 @@ class data(object):
 
         return self
 
+    def from_list_of_ATL11_data(self, D11_list):
+        # Assemble an ATL11 data instance from a list of ATL11 data
+        # Input: list of ATL11 data instances
+        # loop over variables in ATL11.data (self), concatenate each with the 
+        # proper dimensions
+
+        # get the point count
+        ref_pts=np.concatenate([Di.ROOT.ref_pt for Di in D11_list])
+        N_pts=len(ref_pts)
+        self.__init__(N_pts=N_pts, track_num=self.track_num, 
+                      beam_pair=self.beam_pair, 
+                      cycles=D11_list[0].cycles, 
+                      N_coeffs=D11_list[0].ref_surf.poly_coeffs.shape[1])
+
+        for group in vars(self).keys():
+            # check if each variable is an ATl11 group
+            if  not isinstance(getattr(self,group), ATL11.group):
+                continue
+            for field in getattr(self, group).per_pt_fields:
+                temp=np.concatenate([
+                    getattr(getattr(Di, group), field) for Di in D11_list])
+                setattr(getattr(self,group),field,temp)
+
+            for field in getattr(self,group).full_fields:
+                temp=np.concatenate([
+                    getattr(getattr(Di, group), field) for Di in D11_list], axis=0)
+                setattr(getattr(self,group),field,temp)
+
+            for field in getattr(self,group).poly_fields:
+                temp=np.concatenate([
+                    getattr(getattr(Di, group), field) for Di in D11_list], axis=0)
+                setattr(getattr(self,group),field,temp)
+
+            for field in getattr(self, group).xover_fields:
+                temp_out=list()
+                for item in D11_list:
+                    this_field=getattr(getattr(item, group), field)
+                    if len(this_field)>0:
+                        temp_out.append(this_field)
+                if len(temp_out)>0:
+                    try:
+                        setattr(getattr(self, group), field, np.concatenate(temp_out).ravel())
+                    except ValueError:
+                        print("Problem writing %s" %field)
+
+        self.slope_change_t0=D11_list[0].slope_change_t0
+
+        return self
+
+
     def from_file(self,  filename, pair=2, index_range=[0, -1], field_dict=None, invalid_to_nan=True):
         '''
         read ATL11 data for a pair track from a file
@@ -170,7 +217,6 @@ class data(object):
                         field_dict['ROOT'].append(key)
 
             N_pts=FH[pt]['h_corr'][index_range[0]:index_range[-1],:].shape[0]
-            N_cycles=FH[pt]['cycle_number'].shape[0]
             cycles=[FH[pt].attrs['first_cycle'], FH[pt].attrs['last_cycle']]
             N_coeffs=FH[pt]['ref_surf']['poly_coeffs'].shape[1]
             self.__init__(N_pts=N_pts, cycles=cycles, N_coeffs=N_coeffs)
@@ -534,7 +580,7 @@ class data(object):
     def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],\
                    ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,\
                    mission_time_bds=None, max_xover_latitude=90, \
-                   verbose=False, DOPLOT=None,DEBUG=None,):
+                   verbose=False, DOPLOT=None,DEBUG=None, return_list=True):
         """
         Fit a collection of ATL06 files with ATL11 surface models
 
@@ -552,7 +598,7 @@ class data(object):
                 DOPLOT: list of plots to make
                 DEBUG: output debugging info
         """
-
+        
         params_11=ATL11.defaults()
         if mission_time_bds is None:
             mission_time_bds=np.array([286.*24*3600, 398.*24*3600])
@@ -573,6 +619,9 @@ class data(object):
         last_count=0
         # loop over reference points
         P11_list=list()
+
+        D6_xyB = make_ATL06_xy_bins(D6, 100)
+        
         for count, ref_pt in enumerate(ref_pt_numbers):
 
             x_atc_ctr=ref_pt_x[count]
@@ -666,7 +715,8 @@ class data(object):
             # get the data for the crossover point
             if GI_files is not None and np.abs(P11.ROOT.latitude) < max_xover_latitude:
                 D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, \
-                                             D_xover_cache, index_bin_size, params_11)
+                                             D_xover_cache, index_bin_size, params_11, xy_bin=D6_xyB,
+                                             verbose=verbose)
                 P11.corr_xover_heights(D_xover)
             # if we have read any data for the current bin, run the crossover calculation
             PLOTME=False
@@ -683,11 +733,13 @@ class data(object):
             P11_list.append(P11)
             if count-last_count>1000:
                 print("completed %d/%d segments, ref_pt= %d, last 1000 segments in %2.2f s." %(count, len(ref_pt_numbers), ref_pt, time.time()-last_time))
-                print(f"memory: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}")
+                print(f"memory: {memresource.getrusage(memresource.RUSAGE_SELF).ru_maxrss}")
                 #D_xover_cache.clear()
                 last_time=time.time()
                 last_count=count
-
+        if return_list:
+            return P11_list
+        
         if len(P11_list) > 0:
             cycles=[np.nanmin([Pi.cycles for Pi in P11_list]), np.nanmax([Pi.cycles for Pi in P11_list])]
             N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in P11_list])
@@ -695,6 +747,17 @@ class data(object):
         else:
             return None
 
+
+def make_ATL06_xy_bins(D6, bin_size):
+    '''
+    Make an array that covers all the rounded locations in D6, plus one bin on either side 
+    '''
+    
+    xy0 = pc.unique_by_rows(np.round(np.c_[D6.x.ravel(), D6.y.ravel()]/bin_size)*bin_size)
+    dx, dy = np.meshgrid(np.array([-1, 0, 1])*bin_size, np.array([-1, 0, 1])*bin_size)
+    xy0 = pc.unique_by_rows(np.c_[(xy0[:,0][:, None]+dx.ravel()[None,:]).ravel(), (xy0[:,1][:, None]+dy.ravel()[None,:]).ravel()])
+    return xy0
+    
 def shift_lon(lon, lon0=0):
     """
     wrap longitudes to +-180
