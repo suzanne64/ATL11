@@ -13,9 +13,11 @@ os.environ['OPENBLAS_NUM_THREADS']="1"
 import numpy as np
 import ATL11
 #import write_METADATA
+import time
 import glob
-import sys, h5py
+import sys
 import matplotlib.pyplot as plt
+import resource as memresource
 
 
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5"
@@ -67,10 +69,9 @@ def main(argv):
     if args.verbose:
         print('ATL11 output filename',out_file)
     glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
-    print(glob_str)
     files=glob.glob(glob_str)
-
-    print("found ATL06 files:" + str(files))
+    if args.verbose:
+        print("found ATL06 files:" + str(files))
 
     if args.pair is None:
         pairs=[1, 2, 3]
@@ -81,7 +82,8 @@ def main(argv):
         GI_files=glob.glob(args.GI_file_glob)
     else:
         GI_files=None   
-    print("found GI files:"+str(GI_files))
+    if args.verbose:
+        print("found GI files:"+str(GI_files))
     
     for pair in pairs:
         # read the lat, lon, segment_id data for each segment
@@ -108,6 +110,8 @@ def main(argv):
         # loop over all segments in blocks of BLOCKSIZE
         blocks=np.arange(0, len(all_ref_pts), BLOCKSIZE)
         D11=[]
+        last_time=time.time()
+        
         for block0 in blocks:
             ref_pt_range = [all_ref_pts[block0], all_ref_pts[np.minimum(len(all_ref_pts)-1, block0+BLOCKSIZE)]]
             print(f'ref_pt_range={ref_pt_range}')
@@ -140,6 +144,10 @@ def main(argv):
                                            GI_files=GI_files, \
                                            hemisphere=args.Hemisphere, \
                                            max_xover_latitude=args.max_xover_latitude, return_list=True) # defined in ATL06_to_ATL11
+            
+            print("completed %d/%d blocks, ref_pt = %d, last %d segments in %2.2f s." %(list(blocks).index(block0), len(blocks), np.nanmax(D6.segment_id), BLOCKSIZE, time.time()-last_time))
+            print(f"memory: {memresource.getrusage(memresource.RUSAGE_SELF).ru_maxrss}")
+            last_time=time.time()
         if len(D11) > 0:
             cycles=[np.nanmin([Pi.cycles for Pi in D11]), np.nanmax([Pi.cycles for Pi in D11])]
             N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in D11])
