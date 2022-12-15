@@ -415,7 +415,8 @@ class point(ATL11.data):
         TOC=dict()
         TOC['poly']=np.arange(S_fit_poly.shape[1], dtype=int)
         last_poly_col=S_fit_poly.shape[1]-1
-        if False: #self.slope_change_t0/self.params_11.t_scale > 1.5/2. and self.ref_surf.deg_x > 0 and self.ref_surf.deg_y > 0:
+        
+        if (self.ref_surf.complex_surface_flag==0) and self.ref_surf.deg_x > 0 and self.ref_surf.deg_y > 0:
             self.calc_slope_change=True
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
@@ -424,6 +425,7 @@ class point(ATL11.data):
             TOC['slope_change']=last_poly_col+1+np.arange(S_fit_slope_change.shape[1], dtype=int)
             TOC['zp']=TOC['slope_change'][-1]+1+np.arange(G_zp.toarray().shape[1], dtype=int)
         else:
+            # calc_slope_change is False by default
             G_surf_zp_original=np.concatenate( (S_fit_poly,G_zp.toarray()),axis=1 ) # G = [S D]
             TOC['slope_change']=np.array([], dtype=int)
             TOC['zp']=last_poly_col+1+np.arange(G_zp.toarray().shape[1], dtype=int)
@@ -501,6 +503,10 @@ class point(ATL11.data):
                 return
             if P>0.025:
                 break
+        
+        if self.ref_surf.complex_surface_flag:
+            self.calc_slope_change=False
+        
         if (n_rows-n_cols)>0:
             self.ref_surf.misfit_chi2r=misfit_chi2/(n_rows-n_cols)
         else:
@@ -530,11 +536,12 @@ class point(ATL11.data):
         # self.ref_surf_poly_coeffs
         self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)]=m_surf_zp[TOC['poly']]
 
-        if self.calc_slope_change:
-            # the slope change rate columns are scaled as delta_t/t_scale, so they should come out in units of
-            # t_scale, or per_year.
-            self.ref_surf.slope_change_rate_x= m_surf_zp[TOC['slope_change'][0]]
-            self.ref_surf.slope_change_rate_y= m_surf_zp[TOC['slope_change'][1]]
+        if self.calc_slope_change:# and len(TOC['slope_change']) > 0:
+            # the slope change rate columns are scaled as delta_t/t_scale/xy_scale, so they should come out in units of
+            # t_scale*xy_scale, or per_year per 100 m.  Divide by xy_scale to get per m
+            self.ref_surf.slope_change_rate_x= m_surf_zp[TOC['slope_change'][0]]/self.params_11.xy_scale
+            self.ref_surf.slope_change_rate_y= m_surf_zp[TOC['slope_change'][1]]/self.params_11.xy_scale
+            
         else:
             self.ref_surf.slope_change_rate_x=np.nan
             self.ref_surf.slope_change_rate_y=np.nan
@@ -608,7 +615,7 @@ class point(ATL11.data):
             self.status['Polynomial_coefficients_with_high_error']=True
             self.ref_surf.fit_quality += 1
 
-        if self.calc_slope_change:
+        if self.calc_slope_change:# and (len(TOC['slope_change'])>0):
             self.ref_surf.slope_change_rate_x_sigma=m_surf_zp_sigma[TOC['slope_change'][0]]
             self.ref_surf.slope_change_rate_y_sigma=m_surf_zp_sigma[TOC['slope_change'][1]]
         else:
@@ -650,8 +657,13 @@ class point(ATL11.data):
         xg, yg  = self.local_atc_coords(E, N)
 
         # evaluate the reference surface at the points in [N,E]
+        if self.calc_slope_change:
+            ref_delta_time=self.slope_change_t0
+        else:
+            ref_delta_time = None
         zg=self.evaluate_reference_surf(xg+self.ref_surf.x_atc, \
-                                         yg+self.ref_surf.y_atc, delta_time=None, \
+                                         yg+self.ref_surf.y_atc, \
+                                         delta_time=ref_delta_time, \
                                          calc_errors=False)
 
         # fitting a plane as a function of N and E
@@ -689,8 +701,8 @@ class point(ATL11.data):
                 xy0=(self.x_atc_ctr, self.y_atc_ctr), \
                 xy_scale=self.params_11.xy_scale).build_fit_matrix(x_atc, y_atc).fit_matrix
         if self.calc_slope_change and (delta_time is not None):
-            x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
-            y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
+            x_term=np.array( [(x_atc.ravel()-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
+            y_term=np.array( [(y_atc.ravel()-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
             G_surf=np.concatenate( (S_fit_poly,S_fit_slope_change),axis=1 ) # G [S St]
             surf_model=np.append(self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)].ravel(),np.array((self.ref_surf.slope_change_rate_x,self.ref_surf.slope_change_rate_y))/self.params_11.t_scale)

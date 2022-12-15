@@ -14,10 +14,8 @@ from osgeo import osr
 import pointCollection as pc
 from ATL11.ATL06_pair import ATL06_pair
 from ATL11.h5util import create_attribute
-import time
 from importlib import resources
 
-import resource as memresource
 
 class data(object):
     # class to hold ATL11 data in ATL11.groups
@@ -615,8 +613,6 @@ class data(object):
         # initialize the xover data cache
         D_xover_cache={}
 
-        last_time=time.time()
-        last_count=0
         # loop over reference points
         P11_list=list()
 
@@ -731,12 +727,7 @@ class data(object):
             if not np.isfinite(P11.ROOT.latitude):
                 continue
             P11_list.append(P11)
-            if count-last_count>1000:
-                print("completed %d/%d segments, ref_pt= %d, last 1000 segments in %2.2f s." %(count, len(ref_pt_numbers), ref_pt, time.time()-last_time))
-                print(f"memory: {memresource.getrusage(memresource.RUSAGE_SELF).ru_maxrss}")
-                #D_xover_cache.clear()
-                last_time=time.time()
-                last_count=count
+
         if return_list:
             return P11_list
         
