@@ -46,7 +46,8 @@ class point(ATL11.data):
         self.calc_slope_change=False
         self.rgt=rgt
         if mission_time_bds is None:
-            mission_time_bds=np.array([0, cycles[1]*91*24*3600])
+            #Under normal circumstances, mission_time_bounds is set by data.py
+            mission_time_bds=np.array((cycles[0]+2, cycles[1]+3))*91*24*3600
         self.slope_change_t0=mission_time_bds[0]+0.5*(mission_time_bds[1]-mission_time_bds[0])
         self.mission_time_bds=mission_time_bds
         self.valid_segs =ATL11.validMask((N_pairs,2), ('data','x_slope' ))  #  2 cols, boolan, all F to start
@@ -582,7 +583,7 @@ class point(ATL11.data):
             W_by_error=h_li_sigma[cycle==ref_cycle]**(-2)/np.sum(h_li_sigma[cycle==ref_cycle]**(-2))
 
             # weighted means:
-            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','dac','h_rms_misfit'): #,'h_rms_misfit'):
+            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','dac','h_rms_misfit', 'dh_geoloc'):
                 self.cycle_stats.__dict__[dataset][0,cc]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
             self.cycle_stats.h_mean[0,cc]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
 

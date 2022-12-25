@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python3 -u
 
 '''
 Executable script to generate ATL11 files based on ATL06 data.
@@ -55,6 +55,7 @@ def main(argv):
     parser.add_argument('--bounds', '-b', type=float, nargs=4, default=None, help="latlon bounds: west, south, east, north")
     parser.add_argument('--max_xover_latitude', type=float, default=90, help="highest latitude for which crossovers will be calculated")
     parser.add_argument('--test_plot', action='store_true', help="plots locations, elevations, and elevation differences between cycles")
+    parser.add_argument('--xy_bias_file', type=str, help="CSV file containing fields delta_time, x_bias, and y_bias")
     parser.add_argument('--Blacklist','-B', action='store_true')
     parser.add_argument('--verbose','-v', action='store_true')
     args=parser.parse_args()
@@ -112,6 +113,8 @@ def main(argv):
         D11=[]
         last_time=time.time()
         
+        atc_shift_table=None
+        
         for block0 in blocks:
             ref_pt_range = [all_ref_pts[block0], all_ref_pts[np.minimum(len(all_ref_pts)-1, block0+BLOCKSIZE)]]
             print(f'ref_pt_range={ref_pt_range}')
@@ -122,6 +125,9 @@ def main(argv):
                                        cycles=args.cycles,
                                        use_blacklist=args.Blacklist,
                                        ATL06_dict=D6_segdata, seg_range = seg_range )
+            
+            atc_shift_table = ATL11.calc_geoloc_bias(D6, args.xy_bias_file, atc_shift_table=atc_shift_table)
+            
             if D6 is None:
                 continue
             #D6, ref_pt_numbers, ref_pt_x = ATL11.select_ATL06_data(D6, \
@@ -145,7 +151,7 @@ def main(argv):
                                            hemisphere=args.Hemisphere, \
                                            max_xover_latitude=args.max_xover_latitude, return_list=True) # defined in ATL06_to_ATL11
             
-            print("completed %d/%d blocks, ref_pt = %d, last %d segments in %2.2f s." %(list(blocks).index(block0), len(blocks), np.nanmax(D6.segment_id), BLOCKSIZE, time.time()-last_time))
+            print("completed %d/%d blocks, ref_pt = %d, last %d segments in %2.2f s." %(list(blocks).index(block0)+1, len(blocks), np.nanmax(D6.segment_id), BLOCKSIZE, time.time()-last_time))
             print(f"memory: {memresource.getrusage(memresource.RUSAGE_SELF).ru_maxrss}")
             last_time=time.time()
         if len(D11) > 0:

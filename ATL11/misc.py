@@ -59,7 +59,7 @@ def default_ATL06_fields():
     field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude',
                       'atl06_quality_summary','segment_id','sigma_geo_h'],
                     'ground_track':['x_atc', 'y_atc','seg_azimuth','sigma_geo_at',
-                                    'sigma_geo_xt'],
+                                    'sigma_geo_xt', 'ref_azimuth','ref_coelv'],
                     'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','h_mean',
                                       'dh_fit_dy','h_rms_misfit','h_robust_sprd',
                                       'n_fit_photons', 'signal_selection_source',

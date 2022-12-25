@@ -599,7 +599,7 @@ class data(object):
         
         params_11=ATL11.defaults()
         if mission_time_bds is None:
-            mission_time_bds=np.array([286.*24*3600, 398.*24*3600])
+            mission_time_bds=np.array((cycles[0]+2, cycles[1]+3))*91*24*3600
 
         # hard code the bin size until there's a good reason to change it
         index_bin_size=1.e4
