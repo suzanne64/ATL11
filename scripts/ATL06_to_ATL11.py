@@ -57,6 +57,7 @@ def main(argv):
     parser.add_argument('--test_plot', action='store_true', help="plots locations, elevations, and elevation differences between cycles")
     parser.add_argument('--xy_bias_file', type=str, help="CSV file containing fields delta_time, x_bias, and y_bias")
     parser.add_argument('--Blacklist','-B', action='store_true')
+    parser.add_argument('--calc_slope_change', action='store_true')
     parser.add_argument('--verbose','-v', action='store_true')
     args=parser.parse_args()
 
@@ -147,6 +148,7 @@ def main(argv):
                                            cycles=args.cycles, \
                                            beam_pair=pair, \
                                            verbose=args.verbose, \
+                                           calc_slope_change=args.calc_slope_change,\
                                            GI_files=GI_files, \
                                            hemisphere=args.Hemisphere, \
                                            max_xover_latitude=args.max_xover_latitude, return_list=True) # defined in ATL06_to_ATL11

@@ -578,6 +578,7 @@ class data(object):
     def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],\
                    ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,\
                    mission_time_bds=None, max_xover_latitude=90, \
+                   calc_slope_change=False,\
                    verbose=False, DOPLOT=None,DEBUG=None, return_list=True):
         """
         Fit a collection of ATL06 files with ATL11 surface models
@@ -636,7 +637,8 @@ class data(object):
                             ref_pt=ref_pt, beam_pair=D6_sub.BP[0, 0],  \
                             x_atc_ctr=x_atc_ctr, \
                             track_azimuth=np.nanmedian(D6_sub.seg_azimuth.ravel()),\
-                            cycles=cycles,  mission_time_bds=mission_time_bds)
+                            cycles=cycles,\
+                            mission_time_bds=mission_time_bds)
 
             P11.DOPLOT=DOPLOT
             # step 2: select pairs, based on reasonable slopes
@@ -675,7 +677,8 @@ class data(object):
                             [x_atc_ctr, P11.y_atc_ctr])
 
             # find the reference surface
-            P11.find_reference_surface(D6_sub, pair_data)
+            P11.find_reference_surface(D6_sub, pair_data, \
+                                       no_slope_change=np.logical_not(calc_slope_change)
 
             if 'inversion failed' in P11.status:
                 #P11_list.append(P11)

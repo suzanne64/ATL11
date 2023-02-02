@@ -346,7 +346,7 @@ class point(ATL11.data):
         G=G[:, fit_columns]
         return G, fit_columns, selected_segs
 
-    def find_reference_surface(self, D6, pair_data):  #5.1.4
+    def find_reference_surface(self, D6, pair_data, no_slope_change=False):  #5.1.4
         # method to calculate the reference surface for a reference point
         # Input:
         # D6: ATL06 data structure
@@ -417,7 +417,7 @@ class point(ATL11.data):
         TOC['poly']=np.arange(S_fit_poly.shape[1], dtype=int)
         last_poly_col=S_fit_poly.shape[1]-1
         
-        if (self.ref_surf.complex_surface_flag==0) and self.ref_surf.deg_x > 0 and self.ref_surf.deg_y > 0:
+        if (self.ref_surf.complex_surface_flag==0) and self.ref_surf.deg_x > 0 and self.ref_surf.deg_y > 0 and not no_slope_change:
             self.calc_slope_change=True
             x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
             y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
