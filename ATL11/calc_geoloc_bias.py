@@ -57,9 +57,9 @@ def calc_geoloc_bias(D, atc_shift_csv_file, atc_shift_table):
     # height, corrected
     h_li_c = H_IS - np.sqrt(R2 - (x_spot_corr**2 + y_spot_corr**2))
     D.assign({'dh_geoloc' :  h_li_c - D.h_li })
-    
-    D.x_atc -= d_atc['x_bias']
-    D.y_atc -= d_atc['y_bias']
+    if 'x_atc' in D.fields:
+        D.x_atc -= d_atc['x_bias']
+        D.y_atc -= d_atc['y_bias']
         
     return atc_shift_table
 
