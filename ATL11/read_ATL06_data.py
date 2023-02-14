@@ -119,7 +119,7 @@ def select_ATL06_data(D6, lonlat_bounds=None, first_ref_pt=None, last_ref_pt=Non
         keep &= (D6.latitude <= lonlat_bounds[3])
         keep = np.any(keep, axis=1)
         if not np.any(keep):
-            return None
+            return None, None, None
         D6.index(keep)
 
     # get list of reference points
