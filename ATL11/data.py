@@ -678,7 +678,7 @@ class data(object):
 
             # find the reference surface
             P11.find_reference_surface(D6_sub, pair_data, \
-                                       no_slope_change=np.logical_not(calc_slope_change)
+                                       no_slope_change=np.logical_not(calc_slope_change))
 
             if 'inversion failed' in P11.status:
                 #P11_list.append(P11)
