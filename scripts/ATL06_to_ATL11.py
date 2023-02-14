@@ -127,7 +127,9 @@ def main(argv):
                                        use_blacklist=args.Blacklist,
                                        ATL06_dict=D6_segdata, seg_range = seg_range )
             
-            atc_shift_table = ATL11.calc_geoloc_bias(D6, args.xy_bias_file, atc_shift_table=atc_shift_table)
+            atc_shift_table = ATL11.calc_geoloc_bias(D6, 
+                                    atc_shift_csv_file=args.xy_bias_file, 
+                                    atc_shift_table=atc_shift_table)
             
             if D6 is None:
                 continue
@@ -144,13 +146,14 @@ def main(argv):
         
             if len(ref_pt_numbers)==0: 
                 continue
-            D11 +=ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
+            D11 += ATL11.data().from_ATL06(D6, ref_pt_numbers=ref_pt_numbers, ref_pt_x=ref_pt_x,\
                                            cycles=args.cycles, \
                                            beam_pair=pair, \
                                            verbose=args.verbose, \
                                            calc_slope_change=args.calc_slope_change,\
                                            GI_files=GI_files, \
                                            hemisphere=args.Hemisphere, \
+                                           atc_shift_table=atc_shift_table,\
                                            max_xover_latitude=args.max_xover_latitude, return_list=True) # defined in ATL06_to_ATL11
             
             print("completed %d/%d blocks, ref_pt = %d, last %d segments in %2.2f s." %(list(blocks).index(block0)+1, len(blocks), np.nanmax(D6.segment_id), BLOCKSIZE, time.time()-last_time))

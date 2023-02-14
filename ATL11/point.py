@@ -648,9 +648,7 @@ class point(ATL11.data):
         return
 
     def characterize_ref_surf(self):
-        """
-        method to calculate the slope and curvature of the reference surface
-        """
+        """Calculate the slope and curvature of the reference surface."""
         # make a grid of northing and easting values
         [N,E]=np.meshgrid(np.arange(-50., 60, 10), np.arange(-50., 60, 10))
 
@@ -687,14 +685,13 @@ class point(ATL11.data):
 
     def evaluate_reference_surf(self, x_atc, y_atc, delta_time=None, calc_errors=True):
         """
-        method to evaluate the reference surface
-
+        Evaluate the reference surface at specified points.
+        
         inputs:
             x_atc, y_atc: location to evaluate, in along-track coordinates
             delta_time: time of measurements.  provide delta_time=None to skip the slope-change calculation
             calc_errors: default = true, if set to false, the error calculation is skipped
         """
-
         poly_mask=np.isfinite(self.ref_surf.poly_coeffs).ravel() 
         x_degree=self.params_11.poly_exponent['x'][poly_mask]
         y_degree=self.params_11.poly_exponent['y'][poly_mask]
@@ -739,10 +736,19 @@ class point(ATL11.data):
         return z_ref_surf, z_ref_surf_sigma
 
     def corr_heights_other_cycles(self, D6):
-        # Calculate corrected heights and other parameters for cycles not included in the reference-surface fit
-        # input:
-        #   D6: ATL06 structure
+        """
+        Calculate corrected heights and other parameters for cycles not included in the reference-surface fit.
 
+        Parameters
+        ----------
+        D6 : pointCollection.data
+            ATL06 data structure.
+
+        Returns
+        -------
+        None.
+
+        """
         # The cycles we are working on are the ones not in ref_surf_cycles
         other_cycles=np.unique(D6.cycle_number.ravel()[~np.in1d(D6.cycle_number.ravel(),self.ref_surf_cycles)])
         # 1. find cycles not in ref_surface_cycles, but have valid_segs.data and valid_segs.x_slope
@@ -818,7 +824,22 @@ class point(ATL11.data):
 
         self.selected_segments = self.selected_segments | non_ref_segments.reshape(self.valid_pairs.all.shape[0],2)
 
-    def corr_xover_heights(self, D):
+    def corr_xover_heights(self, D, atc_shift_table=None):
+        """
+        Select and correct data from crossing tracks.
+
+        Parameters
+        ----------
+        D : pointCollection.data
+            Structure containing data from crossing tracks.
+        atc_shift_table : dict, optional
+            Dictionary specifying the geolocation biases in the data. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
         if not isinstance(D, pc.data):
             return
          # find the segments that are within L_search_XT of the reference point
@@ -829,6 +850,8 @@ class point(ATL11.data):
         dN=dN[in_search_radius]
         dE=dE[in_search_radius]
         Dsub=D[in_search_radius]
+        
+        _ = ATL11.calc_geoloc_bias(Dsub, atc_shift_table=atc_shift_table)
         
         # fix missing Dsub.sigma_geo_r:
         if not hasattr(Dsub, 'sigma_geo_r'):

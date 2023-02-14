@@ -579,6 +579,7 @@ class data(object):
                    ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,\
                    mission_time_bds=None, max_xover_latitude=90, \
                    calc_slope_change=False,\
+                   atc_shift_table=None,
                    verbose=False, DOPLOT=None,DEBUG=None, return_list=True):
         """
         Fit a collection of ATL06 files with ATL11 surface models
@@ -594,6 +595,7 @@ class data(object):
                 max_xover_latitude: calculate crossovers for latitudes lower than this value
                 mission_time_bds: starting and ending times for the mission
                 verbose: write fitting info to stdout if true
+                atc_shift_table: dict giving the along-track bias correction as a function of time
                 DOPLOT: list of plots to make
                 DEBUG: output debugging info
         """
