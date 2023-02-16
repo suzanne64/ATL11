@@ -19,12 +19,12 @@ def calc_xy_spot(D):
     
     return x_spot, y_spot
 
-def calc_geoloc_bias(D, atc_shift_csv_file, atc_shift_table):
+def calc_geoloc_bias(D, atc_shift_csv_file=None, atc_shift_table=None):
     
         
     H_IS=511.e3  # Appropriate value of IS2 height WRT WGS84 for Antarctica
 
-    if atc_shift_csv_file is None:
+    if atc_shift_csv_file is None and atc_shift_table is None:
         D.assign({'dh_geoloc' : np.zeros_like(D.h_li)+np.NaN})
         return
 
@@ -39,12 +39,12 @@ def calc_geoloc_bias(D, atc_shift_csv_file, atc_shift_table):
             atc_shift_table[key]=np.array(val)
 
     x_spot, y_spot = calc_xy_spot(D)
-    
+
     d_atc={}
     for field in ['x_bias','y_bias']:
         d_atc[field] = np.interp(D.delta_time, 
                 atc_shift_table['delta_time'], atc_shift_table[field])
-          
+
     # height difference from the satellite
     H0 = H_IS - D.h_li
     # distance to the satellite

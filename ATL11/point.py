@@ -905,6 +905,7 @@ class point(ATL11.data):
             self.crossing_track_data.tide_ocean.append([Dsub.tide_ocean[best]])
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
+            self.crossing_track_data.dh_geoloc.append([Dsub.dh_geoloc[best]])
             self.crossing_track_data.ref_pt.append([self.ref_pt])
             self.crossing_track_data.latitude.append([self.ROOT.latitude])
             self.crossing_track_data.longitude.append([self.ROOT.longitude])
