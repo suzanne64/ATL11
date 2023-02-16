@@ -106,6 +106,9 @@ def main(argv):
                 continue
             all_ref_pts += [ref_pt_numbers]
             all_ref_pt_x += [ref_pt_x]
+        # skip this pair if no ref points are found
+        if len(all_ref_pts)==0:
+            continue
         all_ref_pts, ind =np.unique(np.concatenate(all_ref_pts), return_index=True)
         all_ref_pt_x = np.concatenate(all_ref_pt_x)[ind]
         
