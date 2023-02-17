@@ -715,10 +715,11 @@ class data(object):
                                           [x_atc_ctr,P11.y_atc_ctr])
             # get the data for the crossover point
             if GI_files is not None and np.abs(P11.ROOT.latitude) < max_xover_latitude:
-                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, \
-                                             D_xover_cache, index_bin_size, params_11, xy_bin=D6_xyB,
+                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, 
+                                             D_xover_cache, index_bin_size, params_11, 
+                                             xy_bin=D6_xyB, 
                                              verbose=verbose)
-                P11.corr_xover_heights(D_xover)
+                P11.corr_xover_heights(D_xover, atc_shift_table=atc_shift_table)
             # if we have read any data for the current bin, run the crossover calculation
             PLOTME=False
             if PLOTME:

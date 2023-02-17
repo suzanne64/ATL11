@@ -25,7 +25,7 @@ def calc_geoloc_bias(D, atc_shift_csv_file=None, atc_shift_table=None):
     H_IS=511.e3  # Appropriate value of IS2 height WRT WGS84 for Antarctica
 
     if atc_shift_csv_file is None and atc_shift_table is None:
-        D.assign({'dh_geoloc' : np.zeros_like(D.h_li)+np.NaN})
+        D.assign({'dh_geoloc' : np.zeros_like(D.h_li)})
         return
 
     if atc_shift_table is None:

@@ -49,8 +49,8 @@ class defaults:
         self.hemisphere=None
         self.ATL06_xover_field_list=['delta_time','h_li','h_li_sigma','latitude',\
                                      'longitude','atl06_quality_summary','segment_id',\
-                                     'x_atc', 'dh_fit_dx', 'rgt','cycle_number',\
-                                     'BP', 'LR', 'spot','sigma_geo_xt','sigma_geo_at', \
+                                     'x_atc', 'y_atc', 'dh_fit_dx', 'rgt','cycle_number',\
+                                     'BP', 'LR', 'ref_azimuth','ref_coelv','seg_azimuth','spot','sigma_geo_xt','sigma_geo_at', \
                                      'sigma_geo_h','dac', 'tide_ocean']
 
 
