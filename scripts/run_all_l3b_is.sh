@@ -5,8 +5,10 @@ set -eu
 # With set -eu, any fail or missing variable will exit with error, including missing (required) arguments.
 
 THIS_SCRIPT=`basename $0`
-ASAS_BIN=/att/nobackup/project/icesat-2/bin
-
+#ASAS_BIN=/att/nobackup/project/icesat-2/bin
+ASAS_BIN=/discover/nobackup/bjelley/bin
+sec_offset=-1
+start_date='2019 03 29'
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         -r|--rgt) rgt="$2"; shift ;;
@@ -21,6 +23,7 @@ while [[ "$#" -gt 0 ]]; do
         -H|--hemisphere) hemisphere="$2"; shift ;;
         -m|--dem_mosaic) dem_mosaic="$2"; shift ;;
         -c|--ctl_file) ctl_file="$2"; shift ;;
+        -t|--sec_offset) sec_offset="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
@@ -39,14 +42,21 @@ logfile=`printf "logs/ATL11_%04d%02d_%02d%02d_%03d_%02d.log" $rgt $region $start
 if [ ! -e logs ]; then
   mkdir logs
 fi
-if [ -e $logfile ]; then
-  rm -f $logfile
-fi
 
-echo "Start processing: `date`" | tee -a $logfile
 ALL_RES=0
 if [ ! -e $atl11_outfile ]; then
-  $PYTHONPATH/ATL11/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" --verbose  | tee -a $logfile
+  if [ -e $logfile ]; then
+    rm -f $logfile
+  fi
+  echo "Start processing: `date`" | tee -a $logfile
+  # Include sec_offset if present
+  if [ $sec_offset -lt 0 ]; then
+    $PYTHONPATH/ATL11/scripts/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" --verbose  | tee -a $logfile
+  else
+#    echo "sec_offset $sec_offset"
+#    echo "start_date $start_date"
+    $PYTHONPATH/ATL11/scripts/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" --sec_offset $sec_offset --start_date $start_date --verbose  | tee -a $logfile
+  fi
   RES=${PIPESTATUS[0]}
   if [ ${RES} -ne 0 ] ; then
     echo "${THIS_SCRIPT} Warning: ATL06_to_ATL11.py did not complete successfully"
@@ -79,7 +89,7 @@ echo " "
 if [ ! -e BRW_template.h5 ]; then
   ln -s $ASAS_BIN/BRW_template.h5 .
 fi
-python3 $PYTHONPATH/ATL11/ATL11_browse_plots.py $atl11_outfile -H $hemisphere -m $dem_mosaic | tee -a $logfile
+python3 $PYTHONPATH/ATL11/scripts/ATL11_browse_plots.py $atl11_outfile -H $hemisphere -m $dem_mosaic | tee -a $logfile
 RES=${PIPESTATUS[0]}
 if [ ${RES} -ne 0 ] ; then
   echo "${THIS_SCRIPT} Warning: ATL11_browse_plots.py did not complete successfully"

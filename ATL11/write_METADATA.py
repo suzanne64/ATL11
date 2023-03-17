@@ -14,7 +14,7 @@ import pyproj
 import shapely
 import shapely.geometry
 from osgeo import osr
-from datetime import datetime
+from datetime import datetime, timedelta
 #from shapely.ops import cascaded_union
 from shapely.ops import unary_union
 from shapely.validation import explain_validity
@@ -25,12 +25,12 @@ from scipy.spatial import ConvexHull
 import pkg_resources
 # import importlib.resources
 
-def write_METADATA(outfile,infiles):
+def write_METADATA(outfile,sec_offset,start_date,infiles):
     if os.path.isfile(outfile):        
 #
 # Call filemeta, copies METADATA group from template
 #
-        filemeta(outfile,infiles)
+        filemeta(outfile,sec_offset,start_date,infiles)
         g = h5py.File(outfile,'r+')
         gf = g.create_group('METADATA/Lineage/ATL06'.encode('ASCII','replace'))
         fname = []
@@ -105,7 +105,7 @@ def write_METADATA(outfile,infiles):
 #if __name__=='__main__':
 #    outfile = write_METADATA(outfile,infiles)
     
-def filemeta(outfile,infiles):
+def filemeta(outfile,sec_offset,start_date,infiles):
 
     orbit_info={'crossing_time':0., 'cycle_number':0, 'lan':0., \
         'orbit_number':0., 'rgt':0, 'sc_orient':0, 'sc_orient_time':0.}
@@ -166,7 +166,21 @@ def filemeta(outfile,infiles):
                 
                 del g['METADATA/Extent']
                 f.copy('METADATA/Extent',g['METADATA'])
-                start_delta_time = f['ancillary_data/start_delta_time'][0]
+                print(sec_offset,start_date)
+                if sec_offset is 0:
+                  start_delta_time = f['ancillary_data/start_delta_time'][0]
+                else:
+# To set all date/time to static across ATL11s, plus n seconds
+                  epoch_time = datetime(2018,1,1)
+                  start_datetime = datetime(start_date[0],start_date[1],start_date[2]) + timedelta(seconds=sec_offset)
+                  start_delta_time_object = start_datetime - epoch_time
+                  start_delta_time = start_delta_time_object.total_seconds()
+                  str_utc = (str(start_datetime.date())+'T'+
+                    start_datetime.strftime("%H:%M:%S.%f")+'Z')
+                  g['ancillary_data/start_delta_time'][...] = start_delta_time
+                  g['ancillary_data/data_start_utc'][...] = str_utc.encode('ASCII','replace')
+                  g['ancillary_data/granule_start_utc'][...] = str_utc.encode('ASCII','replace')
+                  create_attribute(g['METADATA/Extent'].id, 'rangeBeginningDateTime', [], str_utc)
                 create_attribute(g.id, 'short_name', [], 'ATL11')
                 for key, keyval in root_info.items():
                        dsname=key
@@ -185,8 +199,11 @@ def filemeta(outfile,infiles):
                            create_attribute(g['METADATA/SeriesIdentification'].id, 'VersionID', [], series_version())
                            continue
                        if key=='time_coverage_start':
-                           val = f.attrs[key].decode()
-                           create_attribute(g.id, key, [], val)
+                           if sec_offset is 0:
+                             val = f.attrs[key].decode()
+                             create_attribute(g.id, key, [], val)
+                           else:
+                             create_attribute(g.id, 'time_coverage_start', [], str_utc)
                            continue
                        if key=='granule_type':
                            val = 'ATL11'
