@@ -59,6 +59,8 @@ def main(argv):
     parser.add_argument('--Blacklist','-B', action='store_true')
     parser.add_argument('--calc_slope_change', action='store_true')
     parser.add_argument('--verbose','-v', action='store_true')
+    parser.add_argument('--sec_offset','-t', type=int, default=0, help="Seconds added to 00:00:00 of a rigid start date" [0])
+    parser.add_argument('--start_date','-D', nargs='+', type=int, default=None, help="Start date, only for output metadata [YYYY DD MM]")
     args=parser.parse_args()
 
     # output file format is ATL11_RgtSubprod_c1c2_rel_vVer.h5
@@ -70,6 +72,12 @@ def main(argv):
 
     if args.verbose:
         print('ATL11 output filename',out_file)
+    if args.sec_offset != 0:
+        if args.start_date is None:
+            print('Start date [YYYY MM DD] needed with offset seconds')
+            exit(1)
+    print(args.sec_offset,args.start_date)
+
     glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
     files=glob.glob(glob_str)
     if args.verbose:
@@ -184,8 +192,7 @@ def main(argv):
         if D11 is not None:
             D11.write_to_file(out_file)
 
-#    out_file = ATL11.write_METADATA.write_METADATA(out_file,files)
-    out_file = ATL11.write_METADATA(out_file,files)
+    out_file = ATL11.write_METADATA(out_file,args.sec_offset,args.start_date,files)
 
     print("ATL06_to_ATL11: done with "+out_file)
         
