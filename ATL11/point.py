@@ -464,12 +464,15 @@ class point(ATL11.data):
             if np.any(np.all(G_g==0, axis=1)):
                 self.status['inversion failed'] = True
                 return
-
+            
             # inititalize the combined surface and cycle-height model, m_surf_zp
             m_surf_zp=np.zeros(np.size(G_surf_zp_original,1))
             # fill in the columns of m_surf_zp for which we are calculating values
             # the rest are zero
-            m_surf_zp[fit_columns]=np.dot(G_g,h_li[selected_segs])
+            #m_surf_zp[fit_columns]=np.dot(G_g,h_li[selected_segs])
+            # REVISION: use the specialized lstsq function from scipy.linalg
+            m_surf_zp[fit_columns]=\
+                linalg.lstsq(np.sqrt(C_di).dot(G), np.sqrt(C_di).dot(h_li[selected_segs]))[0]
 
             # 3i. Calculate model residuals for all segments
             r_seg=h_li-np.dot(G_surf_zp_original, m_surf_zp)
