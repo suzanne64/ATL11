@@ -462,6 +462,7 @@ class point(ATL11.data):
             # check if any rows of G_g are all-zero (this is in 3h)
             # if so, set the error and return
             if np.any(np.all(G_g==0, axis=1)):
+                #print(f"Bad row in G for ref point {int(self.ref_pt)}, pair {int(self.beam_pair)}")
                 self.status['inversion failed'] = True
                 return
             
