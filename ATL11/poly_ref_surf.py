@@ -8,6 +8,7 @@ Created on Sun Aug 11 21:00:20 2019
 
 import numpy as np
 from ATL11.RDE import RDE
+from scipy.linalg import lstsq
 
 def my_lstsq(A, b):
     return np.linalg.solve(A.T.dot(A), A.T.dot(b))
@@ -90,7 +91,9 @@ class poly_ref_surf(object):
             # compute the LS coefficients
             # note: under broadcasting rules, sigma_inv*G = diags(sigma_inv).dot(G)
             # and  sigma_inv.ravel()*zd.ravel() = diags(sigma_inv)*zd.ravel()
-            msub = my_lstsq(sigma_inv[rows]*(Gsub[:,cols]), sigma_inv[rows].ravel()*(zd.ravel()[rows]))
+            #msub = my_lstsq(sigma_inv[rows]*(Gsub[:,cols]), sigma_inv[rows].ravel()*(zd.ravel()[rows]))
+            msub = lstsq(sigma_inv[rows]*(Gsub[:,cols]), sigma_inv[rows].ravel()*(zd.ravel()[rows]))[0]
+
             msub.shape=(len(msub), 1)
             m[np.where(cols)] = msub  # only takes first three coefficients?
             residual=zd.ravel()-G.dot(m).ravel()
