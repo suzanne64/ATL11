@@ -10,7 +10,7 @@ import re
 import numpy as np
 from importlib import resources
 
-def read_files(hold_dir=None):
+def read_hold_files(hold_dir=None):
     if hold_dir is None:
         hold_dir = str(resources.files('ATL11').joinpath("package_data/held_granules"))
     rgt=[]; cycle=[]; subprod=[];
@@ -30,10 +30,10 @@ def read_files(hold_dir=None):
 
 def check_ATL06_hold_list(filenames, hold_list=None, hold_dir=None):
     if hold_list is None:
-        hold_list=read_files(hold_dir=hold_dir)
+        hold_list=read_hold_files(hold_dir=hold_dir)
     if isinstance(filenames, (str)):
         filenames=list(filenames)
-    
+
     r06=re.compile('ATL.._(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)_(\d\d\d\d)(\d\d)(\d\d)_(\d\d\d)_(\d\d).h5')
     bad=[]
     for filename in filenames:
