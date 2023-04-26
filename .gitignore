@@ -32,6 +32,8 @@ make_ATL11_queue.py
 #plotting_scripts/
 stash/
 tests/
-
-
+Untitled*.ipynb
+\#*
+.egg_info*
+.ipynb_checkpoints
 
