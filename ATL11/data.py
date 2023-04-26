@@ -28,7 +28,7 @@ class data(object):
         attrfile = str(resources.files('ATL11').joinpath("package_data/ATL11_output_attrs.csv") )
         # csv.DictReader should be wrapped in a list to iterate
         reader=list(csv.DictReader(open(attrfile)))
- 
+
         group_names = set([row['group'] for row in reader])
         for group in group_names:
             field_dims=[{k:v for k,v in ii.items()} for ii in reader if ii['group']==group]
@@ -39,7 +39,6 @@ class data(object):
             setattr(self, group, ATL11.group(N_pts, cycles, N_coeffs, per_pt_fields,full_fields,poly_fields, xover_fields))
 
         self.groups=group_names
-        self.slope_change_t0=None
         self.track_num=track_num
         self.beam_pair=beam_pair
         self.pair_num=beam_pair
@@ -136,22 +135,20 @@ class data(object):
                     except ValueError:
                         print("Problem writing %s" %field)
 
-        self.slope_change_t0=P11_list[0].slope_change_t0
-
         return self
 
     def from_list_of_ATL11_data(self, D11_list):
         # Assemble an ATL11 data instance from a list of ATL11 data
         # Input: list of ATL11 data instances
-        # loop over variables in ATL11.data (self), concatenate each with the 
+        # loop over variables in ATL11.data (self), concatenate each with the
         # proper dimensions
 
         # get the point count
         ref_pts=np.concatenate([Di.ROOT.ref_pt for Di in D11_list])
         N_pts=len(ref_pts)
-        self.__init__(N_pts=N_pts, track_num=self.track_num, 
-                      beam_pair=self.beam_pair, 
-                      cycles=D11_list[0].cycles, 
+        self.__init__(N_pts=N_pts, track_num=self.track_num,
+                      beam_pair=self.beam_pair,
+                      cycles=D11_list[0].cycles,
                       N_coeffs=D11_list[0].ref_surf.poly_coeffs.shape[1])
 
         for group in vars(self).keys():
@@ -184,8 +181,6 @@ class data(object):
                         setattr(getattr(self, group), field, np.concatenate(temp_out).ravel())
                     except ValueError:
                         print("Problem writing %s" %field)
-
-        self.slope_change_t0=D11_list[0].slope_change_t0
 
         return self
 
@@ -352,7 +347,7 @@ class data(object):
                     continue
 
         # put groups, fields and associated attributes from .csv file
-        
+
         attrfile=str(resources.files('ATL11').joinpath('package_data/ATL11_output_attrs.csv'))
         with open(attrfile, 'r') as attr_fh:
             reader=list(csv.DictReader(attr_fh))
@@ -443,7 +438,6 @@ class data(object):
 
                     grp.attrs['poly_exponent_x'.encode('ASCII')]=np.array([item[0] for item in params_11.poly_exponent_list], dtype=int)
                     grp.attrs['poly_exponent_y'.encode('ASCII')]=np.array([item[1] for item in params_11.poly_exponent_list], dtype=int)
-                    grp.attrs['slope_change_t0'.encode('ASCII')]=np.mean(self.slope_change_t0).astype('int')
                     g.attrs['N_poly_coeffs'.encode('ASCII')]=int(self.N_coeffs)
 
                 list_vars=getattr(self,group).list_of_fields
@@ -578,7 +572,6 @@ class data(object):
     def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],\
                    ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,\
                    mission_time_bds=None, max_xover_latitude=90, \
-                   calc_slope_change=False,\
                    atc_shift_table=None,
                    verbose=False, DOPLOT=None,DEBUG=None, return_list=True):
         """
@@ -599,7 +592,7 @@ class data(object):
                 DOPLOT: list of plots to make
                 DEBUG: output debugging info
         """
-        
+
         params_11=ATL11.defaults()
         if mission_time_bds is None:
             mission_time_bds=np.array((cycles[0]+2, cycles[1]+3))*91*24*3600
@@ -620,7 +613,7 @@ class data(object):
         P11_list=list()
 
         D6_xyB = make_ATL06_xy_bins(D6, 100)
-        
+
         for count, ref_pt in enumerate(ref_pt_numbers):
 
             x_atc_ctr=ref_pt_x[count]
@@ -679,8 +672,7 @@ class data(object):
                             [x_atc_ctr, P11.y_atc_ctr])
 
             # find the reference surface
-            P11.find_reference_surface(D6_sub, pair_data, \
-                                       no_slope_change=np.logical_not(calc_slope_change))
+            P11.find_reference_surface(D6_sub, pair_data)
 
             if 'inversion failed' in P11.status:
                 #P11_list.append(P11)
@@ -715,9 +707,9 @@ class data(object):
                                           [x_atc_ctr,P11.y_atc_ctr])
             # get the data for the crossover point
             if GI_files is not None and np.abs(P11.ROOT.latitude) < max_xover_latitude:
-                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files, 
-                                             D_xover_cache, index_bin_size, params_11, 
-                                             xy_bin=D6_xyB, 
+                D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files,
+                                             D_xover_cache, index_bin_size, params_11,
+                                             xy_bin=D6_xyB,
                                              verbose=verbose)
                 P11.corr_xover_heights(D_xover, atc_shift_table=atc_shift_table)
             # if we have read any data for the current bin, run the crossover calculation
@@ -736,7 +728,7 @@ class data(object):
 
         if return_list:
             return P11_list
-        
+
         if len(P11_list) > 0:
             cycles=[np.nanmin([Pi.cycles for Pi in P11_list]), np.nanmax([Pi.cycles for Pi in P11_list])]
             N_coeffs=np.nanmax([Pi.N_coeffs  for Pi in P11_list])
@@ -747,14 +739,14 @@ class data(object):
 
 def make_ATL06_xy_bins(D6, bin_size):
     '''
-    Make an array that covers all the rounded locations in D6, plus one bin on either side 
+    Make an array that covers all the rounded locations in D6, plus one bin on either side
     '''
-    
+
     xy0 = pc.unique_by_rows(np.round(np.c_[D6.x.ravel(), D6.y.ravel()]/bin_size)*bin_size)
     dx, dy = np.meshgrid(np.array([-1, 0, 1])*bin_size, np.array([-1, 0, 1])*bin_size)
     xy0 = pc.unique_by_rows(np.c_[(xy0[:,0][:, None]+dx.ravel()[None,:]).ravel(), (xy0[:,1][:, None]+dy.ravel()[None,:]).ravel()])
     return xy0
-    
+
 def shift_lon(lon, lon0=0):
     """
     wrap longitudes to +-180
