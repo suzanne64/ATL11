@@ -385,6 +385,10 @@ class point(ATL11.data):
             self.ref_surf.deg_x = np.minimum(1, self.ref_surf.deg_x)
             self.ref_surf.deg_y = np.minimum(1, self.ref_surf.deg_y)
 
+        #Stored for next version:
+        #if np.nanstd(np.abs(y_atc)) < 2*np.nanmedian(D6.sigma_geo_y[self.valid_pairs.all,:]):
+        #    self.ref_surf.deg_y=1
+
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y.  These are stored in self.default.poly_exponent_list
         degree_x = self.params_11.poly_exponent['x']
