@@ -6,10 +6,6 @@ Created on Thu Oct 26 11:08:33 2017f
 """
 
 import numpy as np
-import scipy.linalg as linalg
-import scipy.sparse as sparse
-from ATL11.RDE import RDE
-
 
 class defaults:
     def __init__(self):
@@ -72,3 +68,14 @@ def default_ATL06_fields():
                                'min_along_track_dh', 'sigma_geo_r']}
     return field_dict
 
+def apply_release_bias(D6, release_bias_dict):
+    """Subtract an estimated bias based on release and spot values"""
+    D6.assign(release_bias=np.zeros_like(D6.h_li))
+    for release, spot_dict in release_bias_dict.items():
+        i_rel=np.flatnonzero(D6.release==float(release))
+        for spot, bias in spot_dict.items():
+            if bias==0:
+                continue
+            i_spot=i_rel[D6.spot.ravel()[i_rel] == float(spot)]
+            D6.release_bias.ravel()[i_spot]=bias
+    D6.h_li -= D6.release_bias

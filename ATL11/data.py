@@ -572,7 +572,7 @@ class data(object):
     def from_ATL06(self, D6, GI_files=None, beam_pair=1, cycles=[1, 12],\
                    ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,\
                    mission_time_bds=None, max_xover_latitude=90, \
-                   atc_shift_table=None,
+                   atc_shift_table=None, release_bias_dict=None,\
                    verbose=False, DOPLOT=None,DEBUG=None, return_list=True):
         """
         Fit a collection of ATL06 files with ATL11 surface models
@@ -613,6 +613,9 @@ class data(object):
         P11_list=list()
 
         D6_xyB = make_ATL06_xy_bins(D6, 100)
+
+        if release_bias_dict is not None:
+            ATL11.apply_release_bias(D6, release_bias_dict)
 
         for count, ref_pt in enumerate(ref_pt_numbers):
 
@@ -709,7 +712,7 @@ class data(object):
             if GI_files is not None and np.abs(P11.ROOT.latitude) < max_xover_latitude:
                 D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files,
                                              D_xover_cache, index_bin_size, params_11,
-                                             xy_bin=D6_xyB,
+                                             xy_bin=D6_xyB, release_bias_dict=release_bias_dict,
                                              verbose=verbose)
                 P11.corr_xover_heights(D_xover, atc_shift_table=atc_shift_table)
             # if we have read any data for the current bin, run the crossover calculation

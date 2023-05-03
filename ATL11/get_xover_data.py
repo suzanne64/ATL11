@@ -12,6 +12,7 @@ import numpy as np
 import pointCollection as pc
 import h5py
 import re
+from ATL11 import apply_release_bias
 
 def get_ATL06_release(D6):
     #Get the release number for ATL06 data from the tile files
@@ -27,7 +28,9 @@ def get_ATL06_release(D6):
         release.shape = D6i.h_li.shape
         D6i.assign({'release' : release})
 
-def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11, verbose=False, xy_bin=None):
+def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11,
+                   release_bias_dict=None,
+                   verbose=False, xy_bin=None):
     """
     Read the data from other tracks.
 
@@ -39,7 +42,6 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
         xover_cache: data cache (dict)
         index_bin_size: size of the bins in the index
         params_11: default parameter values for the ATL11 fit
-
     """
 
     # identify the crossover centers
@@ -73,7 +75,9 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
             if len(temp) == 0:
                 xover_cache[this_key]=None
                 continue
-            temp=pc.data(fields=params_11.ATL06_xover_field_list).from_list(temp)
+            temp=pc.data(fields=params_11.ATL06_xover_field_list + ['release']).from_list(temp)
+            if release_bias_dict is not None:
+                apply_release_bias(temp, release_bias_dict)
             xover_cache[this_key]={'D':temp}
             # remove the current rgt from data in the cache
             temp.index(~np.in1d(xover_cache[this_key]['D'].rgt, [rgt]))

@@ -58,6 +58,7 @@ def main(argv):
     parser.add_argument('--test_plot', action='store_true', help="plots locations, elevations, and elevation differences between cycles")
     parser.add_argument('--xy_bias_file', type=str, help="CSV file containing fields delta_time, x_bias, and y_bias")
     parser.add_argument('--use_hold_list',  action='store_true')
+    parser.add_argument('--release_bias_file', type=str, help="json file specifying a bias value to be added to each spot in each data relase")
     parser.add_argument('--verbose','-v', action='store_true')
     parser.add_argument('--sec_offset','-t', type=int, default=0, help="Seconds added to 00:00:00 of a rigid start date" [0])
     parser.add_argument('--start_date','-D', nargs='+', type=int, default=None, help="Start date, only for output metadata [YYYY DD MM]")
@@ -82,6 +83,11 @@ def main(argv):
     files=glob.glob(glob_str)
     if args.verbose:
         print("found ATL06 files:" + str(files))
+
+    release_bias_dict=None
+    if args.release_bias_file:
+        with open(args.release_bias_file,'r') as fh:
+            release_bias_dict = json.load(fh)
 
     if args.pair is None:
         pairs=[1, 2, 3]
@@ -159,7 +165,9 @@ def main(argv):
                                            GI_files=GI_files, \
                                            hemisphere=args.Hemisphere, \
                                            atc_shift_table=atc_shift_table,\
-                                           max_xover_latitude=args.max_xover_latitude, return_list=True) # defined in ATL06_to_ATL11
+                                           release_bias_dict=release_bias_dict,\
+                                           max_xover_latitude=args.max_xover_latitude,
+                                           return_list=True) # defined in ATL06_to_ATL11
 
             print("completed %d/%d blocks, ref_pt = %d, last %d segments in %2.2f s." %(list(blocks).index(block0)+1, len(blocks), np.nanmax(D6.segment_id), BLOCKSIZE, time.time()-last_time))
             print(f"memory: {memresource.getrusage(memresource.RUSAGE_SELF).ru_maxrss}")
