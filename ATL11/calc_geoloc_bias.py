@@ -9,6 +9,23 @@ import numpy as np
 import csv
 
 def calc_xy_spot(D):
+    """
+    Calculate the along-track and across-track position of spots WRT nadir.
+
+    Parameters
+    ----------
+    D : pointCollection.data
+        ATL06 data structure, containing ref_azimuth, seg_azimuth, and
+        ref_coelv fields.
+
+    Returns
+    -------
+    x_spot : numpy array
+        Along-track spot offset WRT nadir.
+    y_spot : numpy array
+        Across-track spot offset WRT nadir.
+
+    """
 
     H_IS = 511.e3  # Appropriate value of IS2 height WRT WGS84 for Antarctica
 
@@ -16,12 +33,33 @@ def calc_xy_spot(D):
 
     x_spot = -rho * np.cos(-np.pi/180*(D.ref_azimuth-D.seg_azimuth))
     y_spot = -rho * np.sin(-np.pi/180*(D.ref_azimuth-D.seg_azimuth))
-    
+
     return x_spot, y_spot
 
 def calc_geoloc_bias(D, atc_shift_csv_file=None, atc_shift_table=None):
-    
-        
+    """
+    Calculate and apply vertical bias corrections based on estimated xy errors.
+
+    Parameters
+    ----------
+    D : pointCollection.data
+        ATL06 data structure
+    atc_shift_csv_file : str, optional
+        Filename for a csv file specifying the estimated x and y shifts to
+        apply to the data to correct for geolocation errors. If atc_shift_table
+        is specified, the file will not be read. The default is None.
+    atc_shift_table : dict, optional
+        Table of x and y shifts as a function of delta_time. If this parameter
+        is passed, the values in it will be used instead of rereading the
+        csv file.  The default is None.
+
+    Returns
+    -------
+    atc_shift_table : dict
+        Table of x and y shifts as a function of delta_time.
+
+    """
+
     H_IS=511.e3  # Appropriate value of IS2 height WRT WGS84 for Antarctica
 
     if atc_shift_csv_file is None and atc_shift_table is None:
@@ -42,7 +80,7 @@ def calc_geoloc_bias(D, atc_shift_csv_file=None, atc_shift_table=None):
 
     d_atc={}
     for field in ['x_bias','y_bias']:
-        d_atc[field] = np.interp(D.delta_time, 
+        d_atc[field] = np.interp(D.delta_time,
                 atc_shift_table['delta_time'], atc_shift_table[field])
 
     # height difference from the satellite
@@ -53,14 +91,13 @@ def calc_geoloc_bias(D, atc_shift_csv_file=None, atc_shift_table=None):
     # shifted spot location in ATC
     x_spot_corr = x_spot - d_atc['x_bias']
     y_spot_corr = y_spot - d_atc['y_bias']
-  
+
     # height, corrected
     h_li_c = H_IS - np.sqrt(R2 - (x_spot_corr**2 + y_spot_corr**2))
     D.assign({'dh_geoloc' :  h_li_c - D.h_li })
     if 'x_atc' in D.fields:
         D.x_atc -= d_atc['x_bias']
         D.y_atc -= d_atc['y_bias']
-        
+
+    D.h_li += D.dh_geoloc
     return atc_shift_table
-
-
