@@ -556,7 +556,7 @@ class point(ATL11.data):
             W_by_error=h_li_sigma[cycle==ref_cycle]**(-2)/np.sum(h_li_sigma[cycle==ref_cycle]**(-2))
 
             # weighted means:
-            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','dac','h_rms_misfit', 'dh_geoloc'):
+            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','dac','h_rms_misfit', 'dh_geoloc','release_bias'):
                 self.cycle_stats.__dict__[dataset][0,cc]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
             self.cycle_stats.h_mean[0,cc]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
 
@@ -742,7 +742,7 @@ class point(ATL11.data):
             best_seg=np.argmin(z_kc_sigma[cycle==non_ref_cycle])
             # index into D6:
             best_seg_ind=non_ref_cycle_ind[cycle==non_ref_cycle][best_seg]
-            for dataset in ('x_atc','y_atc','bsnow_h','r_eff','tide_ocean','dac', 'sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
+            for dataset in ('x_atc','y_atc','bsnow_h','r_eff','tide_ocean','dac', 'sigma_geo_h','sigma_geo_xt','sigma_geo_at', 'release_bias'):
                 self.cycle_stats.__dict__[dataset][0,cc]=getattr(D6, dataset).ravel()[best_seg_ind]
             if z_kc_sigma[cycle==non_ref_cycle][best_seg] < 15:
                 # edit out errors larger than 15 m
@@ -855,6 +855,7 @@ class point(ATL11.data):
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
             self.crossing_track_data.dh_geoloc.append([Dsub.dh_geoloc[best]])
+            self.crossing_track_data.release_bias.append([Dsub.release_bias[best]])
             self.crossing_track_data.ref_pt.append([self.ref_pt])
             self.crossing_track_data.latitude.append([self.ROOT.latitude])
             self.crossing_track_data.longitude.append([self.ROOT.longitude])
