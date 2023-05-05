@@ -15,8 +15,12 @@ import re
 from ATL11 import apply_release_bias
 
 def get_ATL06_release(D6):
+    if D6 is None:
+        return
     #Get the release number for ATL06 data from the tile files
     for D6i in D6:
+        if D6i is None:
+            continue
         u_file, i_file = np.unique(D6i.source_file_num, return_inverse=True)
         u_release=np.zeros_like(u_file)
         ATL06_re = re.compile('ATL06_\d+_\d+_(\d{3})_\d{2}.h5')
