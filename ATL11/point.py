@@ -385,14 +385,16 @@ class point(ATL11.data):
             self.ref_surf.deg_x = np.minimum(1, self.ref_surf.deg_x)
             self.ref_surf.deg_y = np.minimum(1, self.ref_surf.deg_y)
 
-        #Stored for next version:
-        #if np.nanstd(np.abs(y_atc)) < 2*np.nanmedian(D6.sigma_geo_y[self.valid_pairs.all,:]):
-        #    self.ref_surf.deg_y=1
+        #If the distribution of pair y coordinates is not larger than the geolocation error, do not fit for
+        # cross-track quadratic
+        if np.nanstd(pair_data.y[self.valid_pairs.all]) < 2*np.nanmedian(D6.sigma_geo_xt[self.valid_pairs.all,:]):
+            self.ref_surf.deg_y = np.minimum(1, self.ref_surf.deg_y)
 
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y.  These are stored in self.default.poly_exponent_list
         degree_x = self.params_11.poly_exponent['x']
         degree_y = self.params_11.poly_exponent['y']
+        
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
         self.poly_mask = (degree_x + degree_y) <= np.maximum(self.ref_surf.deg_x,self.ref_surf.deg_y)
         self.poly_mask &= (degree_x <= self.ref_surf.deg_x)
