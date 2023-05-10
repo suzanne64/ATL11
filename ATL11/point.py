@@ -92,6 +92,9 @@ class point(ATL11.data):
         else:
             self.N_cycles_avail=valid_cycle_count_ATL06_flag
 
+        # mark data with invalid h_li as bad
+        self.valid_segs.data[np.where(~np.isfinite(D6.h_li))] = False
+
         for cc in range(self.cycles[0], self.cycles[1]+1):
             if np.sum(D6.cycle_number==cc) > 0:
                 self.cycle_stats.atl06_summary_zero_count[0,cc-self.cycles[0]]=np.sum(self.valid_segs.data[D6.cycle_number==cc])
@@ -456,8 +459,12 @@ class point(ATL11.data):
             # the rest are zero
             #m_surf_zp[fit_columns]=np.dot(G_g,h_li[selected_segs])
             # REVISION: use the specialized lstsq function from scipy.linalg
-            m_surf_zp[fit_columns]=\
-                linalg.lstsq(np.sqrt(C_di).dot(G), np.sqrt(C_di).dot(h_li[selected_segs]))[0]
+            try:
+                m_surf_zp[fit_columns]=\
+                        linalg.lstsq(np.sqrt(C_di).dot(G), np.sqrt(C_di).dot(h_li[selected_segs]))[0]
+            except:
+                self.status['inversion failed'] = True
+                return
 
             # 3i. Calculate model residuals for all segments
             r_seg=h_li-np.dot(G_surf_zp_original, m_surf_zp)
