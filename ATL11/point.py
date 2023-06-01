@@ -16,7 +16,8 @@ import ATL11
 
 class point(ATL11.data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
-    def __init__(self, N_pairs=1, ref_pt=None, beam_pair=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], cycles=[1,12],  rgt=None, mission_time_bds=None, params_11=None):
+    def __init__(self, N_pairs=1, ref_pt=None, beam_pair=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN,
+                 max_poly_degree=[1, 1], cycles=[1,12],  rgt=None, mission_time_bds=None, params_11=None, use_release_bias=False):
         # input variables:
         # N_pairs: Number of distinct pairs in the ATL06 data
         # ref_pt: the reference-point number for the ATL11 fit.  This is the geoseg number for the central segment of the fit
@@ -51,6 +52,7 @@ class point(ATL11.data):
         self.valid_segs =ATL11.validMask((N_pairs,2), ('data','x_slope' ))  #  2 cols, boolan, all F to start
         self.valid_pairs=ATL11.validMask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
+        self.use_release_bias = use_release_bias
         self.status=dict()
         self.ref_surf.x_atc=x_atc_ctr
         self.ref_surf.rgt_azimuth=track_azimuth
@@ -244,7 +246,6 @@ class point(ATL11.data):
         # pair_data: ATL06_pair structure
 
         cycle=D6.cycle_number[self.valid_pairs.all,:]
-        y_atc=D6.y_atc[self.valid_pairs.all,:]
         # December 10 2015 version:
         y0 = np.nanmedian(np.unique(np.round(pair_data.y)))
         # 1: define a range of y centers, select the center with the best score
@@ -344,6 +345,13 @@ class point(ATL11.data):
         """ Calculate the reference surface for a reference point."""
         # Input:
         # D6: ATL06 data structure
+
+        # weighted means are calculated for these fields.  If the release bias
+        # is used, add it to the list
+        weighted_mean_fields = ['x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean'
+                                ,'dac','h_rms_misfit', 'dh_geoloc']
+        if self.use_relase_bias:
+            weighted_mean_fields += ['release_bias']
 
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
@@ -565,7 +573,7 @@ class point(ATL11.data):
             W_by_error=h_li_sigma[cycle==ref_cycle]**(-2)/np.sum(h_li_sigma[cycle==ref_cycle]**(-2))
 
             # weighted means:
-            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','dac','h_rms_misfit', 'dh_geoloc','release_bias'):
+            for dataset in weighted_mean_fields:
                 self.cycle_stats.__dict__[dataset][0,cc]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
             self.cycle_stats.h_mean[0,cc]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
 
@@ -708,6 +716,11 @@ class point(ATL11.data):
         None.
 
         """
+
+        non_ref_cycle_fields =['x_atc','y_atc','bsnow_h','r_eff','tide_ocean','dac', 'sigma_geo_h','sigma_geo_xt','sigma_geo_at']
+        if self.use_release_bias:
+            non_ref_cycle_fields +=  ['release_bias']
+
         # The cycles we are working on are the ones not in ref_surf_cycles
         other_cycles=np.unique(D6.cycle_number.ravel()[~np.in1d(D6.cycle_number.ravel(),self.ref_surf_cycles)])
         # 1. find cycles not in ref_surface_cycles, but have valid_segs.data and valid_segs.x_slope
@@ -751,7 +764,7 @@ class point(ATL11.data):
             best_seg=np.argmin(z_kc_sigma[cycle==non_ref_cycle])
             # index into D6:
             best_seg_ind=non_ref_cycle_ind[cycle==non_ref_cycle][best_seg]
-            for dataset in ('x_atc','y_atc','bsnow_h','r_eff','tide_ocean','dac', 'sigma_geo_h','sigma_geo_xt','sigma_geo_at', 'release_bias'):
+            for dataset in non_ref_cycle_fields:
                 self.cycle_stats.__dict__[dataset][0,cc]=getattr(D6, dataset).ravel()[best_seg_ind]
             if z_kc_sigma[cycle==non_ref_cycle][best_seg] < 15:
                 # edit out errors larger than 15 m
