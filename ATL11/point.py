@@ -16,7 +16,8 @@ import ATL11
 
 class point(ATL11.data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
-    def __init__(self, N_pairs=1, ref_pt=None, beam_pair=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN, max_poly_degree=[1, 1], cycles=[1,12],  rgt=None, mission_time_bds=None, params_11=None):
+    def __init__(self, N_pairs=1, ref_pt=None, beam_pair=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN,
+                 max_poly_degree=[1, 1], cycles=[1,12],  rgt=None, mission_time_bds=None, params_11=None, use_release_bias=False):
         # input variables:
         # N_pairs: Number of distinct pairs in the ATL06 data
         # ref_pt: the reference-point number for the ATL11 fit.  This is the geoseg number for the central segment of the fit
@@ -43,15 +44,15 @@ class point(ATL11.data):
         self.track_azimuth=track_azimuth
         self.ref_surf_slope_x=np.NaN
         self.ref_surf_slope_y=np.NaN
-        self.calc_slope_change=False
         self.rgt=rgt
         if mission_time_bds is None:
-            mission_time_bds=np.array([0, cycles[1]*91*24*3600])
-        self.slope_change_t0=mission_time_bds[0]+0.5*(mission_time_bds[1]-mission_time_bds[0])
+            #Under normal circumstances, mission_time_bounds is set by data.py
+            mission_time_bds=np.array((cycles[0]+2, cycles[1]+3))*91*24*3600
         self.mission_time_bds=mission_time_bds
         self.valid_segs =ATL11.validMask((N_pairs,2), ('data','x_slope' ))  #  2 cols, boolan, all F to start
         self.valid_pairs=ATL11.validMask((N_pairs,1), ('data','x_slope','y_slope', 'all','ysearch'))  # 1 col, boolean
         self.unselected_cycle_segs=np.zeros((N_pairs,2), dtype='bool')
+        self.use_release_bias = use_release_bias
         self.status=dict()
         self.ref_surf.x_atc=x_atc_ctr
         self.ref_surf.rgt_azimuth=track_azimuth
@@ -69,7 +70,7 @@ class point(ATL11.data):
         self.y_atc_ctr=self.ref_surf.y_atc
         self.params_11.poly_exponent=D11.poly_exponent
         return self
-    
+
     def select_ATL06_pairs(self, D6, pair_data):
         # Select ATL06 data based on data-quality flags in ATL06 data, and based on
         # consistency checks on the along-track and across-track slope.
@@ -79,11 +80,11 @@ class point(ATL11.data):
 
         # ATBD section 5.1.2: select "valid pairs" for reference-surface calculation
         # step 1a:  Select segs by data quality
-        if not self.ref_surf.complex_surface_flag:            
+        if not self.ref_surf.complex_surface_flag:
             self.valid_segs.data[np.where(D6.atl06_quality_summary==0)]=True
         else:
-            self.valid_segs.data[np.where((D6.SNR_significance<0.01) & (D6.min_along_track_dh < 10) & np.isfinite(D6.h_li))]=True
-            
+            self.valid_segs.data[np.where((D6.snr_significance<0.01) & (D6.min_along_track_dh < 10) & np.isfinite(D6.h_li))]=True
+
         valid_cycle_count_ATL06_flag=np.unique(D6.cycle_number[np.all(D6.atl06_quality_summary==0, axis=1),:]).size
         min_cycles=np.maximum((np.max(D6.cycle_number) - np.min(D6.cycle_number) +1)/3, 1)
         if (valid_cycle_count_ATL06_flag < min_cycles) or self.ref_surf.complex_surface_flag:
@@ -92,6 +93,9 @@ class point(ATL11.data):
             self.N_cycles_avail=np.unique(D6.cycle_number[np.all(self.valid_segs.data, axis=1),:]).size
         else:
             self.N_cycles_avail=valid_cycle_count_ATL06_flag
+
+        # mark data with invalid h_li as bad
+        self.valid_segs.data[np.where(~np.isfinite(D6.h_li))] = False
 
         for cc in range(self.cycles[0], self.cycles[1]+1):
             if np.sum(D6.cycle_number==cc) > 0:
@@ -184,7 +188,7 @@ class point(ATL11.data):
         # if points are colinear, reduce the y degree to zero
         if len(uY)==2 and len(uX)==2:
             mx_regression_y_degree=0
-            
+
         #4c: Calculate along-track slope regression tolerance
         mx_regression_tol=np.maximum(0.01, 3*np.median(D6.dh_fit_dx_sigma[pairs_valid_for_x_fit,:].flatten()))
         x_slope_threshold=0
@@ -242,7 +246,6 @@ class point(ATL11.data):
         # pair_data: ATL06_pair structure
 
         cycle=D6.cycle_number[self.valid_pairs.all,:]
-        y_atc=D6.y_atc[self.valid_pairs.all,:]
         # December 10 2015 version:
         y0 = np.nanmedian(np.unique(np.round(pair_data.y)))
         # 1: define a range of y centers, select the center with the best score
@@ -265,7 +268,7 @@ class point(ATL11.data):
         count_kernel = np.ones(np.ceil(self.params_11.L_search_XT*2-self.params_11.beam_spacing).astype(int))
         score = np.convolve(N_sel_cycles,count_kernel, mode='same')
         score += np.convolve(N_unsel_cycles, count_kernel, mode='same')/100
-        
+
         # 3: identify the y0_shift value that corresponds to the best score, y_best, formally y_atc_ctr
         best = np.argwhere(score == np.amax(score))
         self.y_atc_ctr=np.median(y0_shifts[best])+0.5*(y0_shifts[1]-y0_shifts[0])
@@ -293,13 +296,12 @@ class point(ATL11.data):
         return
 
     def select_fit_columns(self, G_original, selected_segs, deg_wt_sum, TOC):
-        
-        '''
-        Remove design-matrix columns that are uniform (except special cases)
-        
-        ...also perform a complex-surface check, and force the fit to be 
+        """
+        Remove design-matrix columns that are uniform (except special cases).
+
+        ...also perform a complex-surface check, and force the fit to be
         overdetermined.
-        '''
+        """
         # copy the original design matrix
         G=G_original[selected_segs,:]
         # use columns by default
@@ -319,17 +321,11 @@ class point(ATL11.data):
         # are redundant to the diagonal.  Delete whichever has the larger degree
         redundant_rows, redundant_cols = np.where(np.triu(Gcorr>0.99, k=1))
         if len(redundant_rows) > 0:
-            redundant_cols=redundant_cols[ deg_wt_sum[fit_col_ind][redundant_cols] 
+            redundant_cols=redundant_cols[ deg_wt_sum[fit_col_ind][redundant_cols]
                                           > deg_wt_sum[fit_col_ind][redundant_rows] ]
             if len(redundant_cols) > 0:
                 fit_columns[fit_col_ind[redundant_cols]]=False
-        
-        ## 2. check other columns (polynomial and slope-change)
-        #columns_to_check=np.setdiff1d(np.arange(G.shape[1], dtype=int), TOC['zp'])
-        #columns_to_check=columns_to_check[::-1]
-        #for c in columns_to_check:   # check last col first, do in reverse order
-        #    if np.max(np.abs(G[:,c]-G[0,c])) < 0.0001:
-        #            fit_columns[c]=False
+
         # if three or more cycle columns are lost, use planar fit in x and y (end of section 3.3)
         if np.sum(np.logical_not(fit_columns[TOC['zp']])) > 2:
             self.ref_surf.complex_surface_flag=True
@@ -346,10 +342,17 @@ class point(ATL11.data):
         return G, fit_columns, selected_segs
 
     def find_reference_surface(self, D6, pair_data):  #5.1.4
-        # method to calculate the reference surface for a reference point
+        """ Calculate the reference surface for a reference point."""
         # Input:
         # D6: ATL06 data structure
- 
+
+        # weighted means are calculated for these fields.  If the release bias
+        # is used, add it to the list
+        weighted_mean_fields = ['x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean'
+                                ,'dac','h_rms_misfit', 'dh_geoloc']
+        if self.use_release_bias:
+            weighted_mean_fields += ['release_bias']
+
         # in this section we only consider segments in valid pairs
         self.selected_segments=np.column_stack( (self.valid_pairs.all,self.valid_pairs.all) )
         # Table 4-2
@@ -358,11 +361,10 @@ class point(ATL11.data):
         # establish new boolean arrays for selecting
         selected_pairs=np.ones( (np.sum(self.valid_pairs.all),),dtype=bool)
         selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
-        
+
         # Subset some variables for shorthand
         x_atc      =D6.x_atc[self.valid_pairs.all,:].ravel()
         y_atc      =D6.y_atc[self.valid_pairs.all,:].ravel()
-        delta_time =D6.delta_time[self.valid_pairs.all,:].ravel()
         cycle      =D6.cycle_number[self.valid_pairs.all,:].ravel()
         h_li_sigma =D6.h_li_sigma[self.valid_pairs.all,:].ravel()
         h_li       =D6.h_li[self.valid_pairs.all,:].ravel()
@@ -387,17 +389,23 @@ class point(ATL11.data):
                                np.unique(np.round(x_atc[ii]/20).astype(int)).size )
         y_atcU = np.unique(np.round((pair_data.y[self.valid_pairs.all]-self.ref_surf.y_atc)/20).astype(int))
         #np.unique(np.round((y_atc-self.ref_surf.y_atc)/20)) # np.unique orders the unique values
-        # Table 4-4   
+        # Table 4-4
         self.ref_surf.deg_x = np.maximum(0, np.minimum(self.params_11.poly_max_degree_AT,max_nx_per_cycle-1) )
         self.ref_surf.deg_y = np.maximum(0, np.minimum(self.params_11.poly_max_degree_XT, len(y_atcU)) )
         if self.ref_surf.complex_surface_flag > 0:
             self.ref_surf.deg_x = np.minimum(1, self.ref_surf.deg_x)
             self.ref_surf.deg_y = np.minimum(1, self.ref_surf.deg_y)
 
+        #If the distribution of pair y coordinates is not larger than the geolocation error, do not fit for
+        # cross-track quadratic
+        if np.nanstd(pair_data.y[self.valid_pairs.all]) < 2*np.nanmedian(D6.sigma_geo_xt[self.valid_pairs.all,:]):
+            self.ref_surf.deg_y = np.minimum(1, self.ref_surf.deg_y)
+
         # 3. perform an iterative fit for the across track polynomial
         # 3a. define degree_list_x and degree_list_y.  These are stored in self.default.poly_exponent_list
         degree_x = self.params_11.poly_exponent['x']
         degree_y = self.params_11.poly_exponent['y']
+        
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
         self.poly_mask = (degree_x + degree_y) <= np.maximum(self.ref_surf.deg_x,self.ref_surf.deg_y)
         self.poly_mask &= (degree_x <= self.ref_surf.deg_x)
@@ -410,25 +418,15 @@ class point(ATL11.data):
                                        xy0=(self.x_atc_ctr, self.y_atc_ctr), xy_scale=self.params_11.xy_scale)\
                                         .build_fit_matrix(x_atc, y_atc).fit_matrix
 
-        # 3c. define slope-change matrix
         # TOC is a table-of-contents dict identifying the meaning of the columns of G_surf_zp_original
         TOC=dict()
         TOC['poly']=np.arange(S_fit_poly.shape[1], dtype=int)
         last_poly_col=S_fit_poly.shape[1]-1
-        if False: #self.slope_change_t0/self.params_11.t_scale > 1.5/2. and self.ref_surf.deg_x > 0 and self.ref_surf.deg_y > 0:
-            self.calc_slope_change=True
-            x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
-            y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
-            S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
-            G_surf_zp_original=np.concatenate( (S_fit_poly,S_fit_slope_change,G_zp.toarray()),axis=1 ) # G = [S St D]
-            TOC['slope_change']=last_poly_col+1+np.arange(S_fit_slope_change.shape[1], dtype=int)
-            TOC['zp']=TOC['slope_change'][-1]+1+np.arange(G_zp.toarray().shape[1], dtype=int)
-        else:
-            G_surf_zp_original=np.concatenate( (S_fit_poly,G_zp.toarray()),axis=1 ) # G = [S D]
-            TOC['slope_change']=np.array([], dtype=int)
-            TOC['zp']=last_poly_col+1+np.arange(G_zp.toarray().shape[1], dtype=int)
-        # 3d. build the fitting matrix    
-        TOC['surf']=np.concatenate((TOC['poly'], TOC['slope_change']), axis=0)
+
+        G_surf_zp_original=np.concatenate( (S_fit_poly,G_zp.toarray()),axis=1 ) # G = [S D]
+        TOC['zp']=last_poly_col+1+np.arange(G_zp.toarray().shape[1], dtype=int)
+        # 3d. build the fitting matrix
+        TOC['surf']=TOC['poly']
 
         # fit_columns is a boolean array identifying those columns of zp_original
         # that survive the fitting process
@@ -437,18 +435,18 @@ class point(ATL11.data):
         # shape of G changes
         deg_wt_sum=np.zeros_like(fit_columns, dtype=float)
         deg_wt_sum[TOC['poly']]=self.degree_list_x+self.degree_list_y + 0.1*self.degree_list_y
-        
+
         # iterate to remove remaining outlier segments
         for iteration in range(self.params_11.max_fit_iterations):
-            #  Make G a copy of G_surf_zp_original, containing only the 
+            #  Make G a copy of G_surf_zp_original, containing only the
             # selected segs, then:
-            
+
             G, fit_columns, selected_segs = self.select_fit_columns(\
                   G_surf_zp_original, selected_segs, deg_wt_sum, TOC)
             if G.shape[1]==0:
                 self.status['inversion failed']=True
                 return
-            
+
             # 3g, 3h. generate the data-covariance matrix, its inverse, and
             # the generalized inverse of G
             try:
@@ -459,6 +457,7 @@ class point(ATL11.data):
             # check if any rows of G_g are all-zero (this is in 3h)
             # if so, set the error and return
             if np.any(np.all(G_g==0, axis=1)):
+                #print(f"Bad row in G for ref point {int(self.ref_pt)}, pair {int(self.beam_pair)}")
                 self.status['inversion failed'] = True
                 return
 
@@ -466,7 +465,14 @@ class point(ATL11.data):
             m_surf_zp=np.zeros(np.size(G_surf_zp_original,1))
             # fill in the columns of m_surf_zp for which we are calculating values
             # the rest are zero
-            m_surf_zp[fit_columns]=np.dot(G_g,h_li[selected_segs])
+            #m_surf_zp[fit_columns]=np.dot(G_g,h_li[selected_segs])
+            # REVISION: use the specialized lstsq function from scipy.linalg
+            try:
+                m_surf_zp[fit_columns]=\
+                        linalg.lstsq(np.sqrt(C_di).dot(G), np.sqrt(C_di).dot(h_li[selected_segs]))[0]
+            except:
+                self.status['inversion failed'] = True
+                return
 
             # 3i. Calculate model residuals for all segments
             r_seg=h_li-np.dot(G_surf_zp_original, m_surf_zp)
@@ -489,28 +495,29 @@ class point(ATL11.data):
             selected_segs_prev=selected_segs.copy()
             if P<0.025 and iteration < self.params_11.max_fit_iterations-1:
                 selected_segs = np.abs(r_seg/h_li_sigma) < r_tol # boolean
-            
+
             # make selected_segs pair-wise consistent
             selected_pairs=selected_segs.reshape((len(selected_pairs),2)).all(axis=1)
             selected_segs=np.column_stack((selected_pairs,selected_pairs)).ravel()
             if np.all( selected_segs_prev==selected_segs ):
                 break
-           
+
             if not np.any(selected_segs):
                 self.status['inversion failed']=True
                 return
             if P>0.025:
                 break
+
         if (n_rows-n_cols)>0:
             self.ref_surf.misfit_chi2r=misfit_chi2/(n_rows-n_cols)
         else:
             self.ref_surf.misfit_chi2r=np.NaN
-        
-        # identify the ref_surf cycles that survived the fit  
+
+        # identify the ref_surf cycles that survived the fit
         self.ref_surf_cycles=self.ref_surf_cycles[fit_columns[TOC['zp']]]
-       
+
         # map the columns remaining into a TOC that gives the location of each
-        # field in the subsetted fitting matrix and a TOC that gives the 
+        # field in the subsetted fitting matrix and a TOC that gives the
         # destination of each output column
         TOC_sub, TOC_out=remap_TOC(TOC, fit_columns, self.ref_surf_cycles, self.cycles[0])
         self.ref_surf.misfit_RMS = np.sqrt(np.mean(r_fit**2))
@@ -530,15 +537,6 @@ class point(ATL11.data):
         # self.ref_surf_poly_coeffs
         self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)]=m_surf_zp[TOC['poly']]
 
-        if self.calc_slope_change:
-            # the slope change rate columns are scaled as delta_t/t_scale, so they should come out in units of
-            # t_scale, or per_year.
-            self.ref_surf.slope_change_rate_x= m_surf_zp[TOC['slope_change'][0]]
-            self.ref_surf.slope_change_rate_y= m_surf_zp[TOC['slope_change'][1]]
-        else:
-            self.ref_surf.slope_change_rate_x=np.nan
-            self.ref_surf.slope_change_rate_y=np.nan
-
         # 3l. propagate the errors
         # calculate the data covariance matrix including the scatter component
         h_li_sigma = D6.h_li_sigma[self.selected_segments]
@@ -546,7 +544,7 @@ class point(ATL11.data):
         C_dp = sparse.diags(np.maximum(h_li_sigma**2,(ATL11.RDE(r_fit))**2))
         # calculate the model covariance matrix
         C_m = np.dot(np.dot(G_g,C_dp.toarray()),np.transpose(G_g))
- 
+
         # check for really excessive errors (also in 3l)
         if np.any(np.diagonal(C_m)>1.e4):
             self.status['inversion failed']=True
@@ -559,12 +557,12 @@ class point(ATL11.data):
         cycle_ind=np.zeros(m_surf_zp.shape, dtype=int)-1
         if len(self.ref_surf_cycles) >0:
             cycle_ind[TOC_out['zp']]=self.ref_surf_cycles.astype(int)-self.cycles[0]
-        
+
         # write out the zp
         zp_nan_mask=np.ones_like(TOC_out['zp'], dtype=float)
         zp_nan_mask[m_surf_zp_sigma[TOC_out['zp']]>15]=np.NaN
         self.ROOT.h_corr[0,TOC_out['cycle_ind']]=m_surf_zp[TOC_out['zp']]*zp_nan_mask
-       
+
         # get the square of h_corr_sigma_systematic, equation 12
         sigma_systematic_squared=((D6.dh_fit_dx * D6.sigma_geo_at)**2 + \
             (D6.dh_fit_dy * D6.sigma_geo_xt)**2 + (D6.sigma_geo_r)**2).ravel()
@@ -575,7 +573,7 @@ class point(ATL11.data):
             W_by_error=h_li_sigma[cycle==ref_cycle]**(-2)/np.sum(h_li_sigma[cycle==ref_cycle]**(-2))
 
             # weighted means:
-            for dataset in ('x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean','dac','h_rms_misfit'): #,'h_rms_misfit'):
+            for dataset in weighted_mean_fields:
                 self.cycle_stats.__dict__[dataset][0,cc]=np.sum(W_by_error * getattr(D6, dataset).ravel()[cycle_segs])
             self.cycle_stats.h_mean[0,cc]=np.sum(W_by_error * D6.h_li.ravel()[cycle_segs])
 
@@ -600,20 +598,13 @@ class point(ATL11.data):
         self.surf_mask=TOC_sub['surf']
         # write out the part of the covariance matrix corresponding to the surface model  C_m already corresponds to fit_columns
         self.C_m_surf=C_m[self.surf_mask,:][:,self.surf_mask]
- 
+
 
         # write out the errors to the data parameters
         self.ref_surf.poly_coeffs_sigma[0,np.where(self.poly_mask)]=m_surf_zp_sigma[TOC['poly']]
         if np.any(self.ref_surf.poly_coeffs_sigma > 10):
             self.status['Polynomial_coefficients_with_high_error']=True
             self.ref_surf.fit_quality += 1
-
-        if self.calc_slope_change:
-            self.ref_surf.slope_change_rate_x_sigma=m_surf_zp_sigma[TOC['slope_change'][0]]
-            self.ref_surf.slope_change_rate_y_sigma=m_surf_zp_sigma[TOC['slope_change'][1]]
-        else:
-            self.ref_surf.slope_change_rate_x_sigma= np.nan
-            self.ref_surf.slope_change_rate_y_sigma= np.nan
 
         # write out the errors in h_corr
         self.ROOT.h_corr_sigma[0,TOC_out['cycle_ind']]=m_surf_zp_sigma[TOC_out['zp']]*zp_nan_mask
@@ -640,18 +631,16 @@ class point(ATL11.data):
         return
 
     def characterize_ref_surf(self):
-        """
-        method to calculate the slope and curvature of the reference surface
-        """
+        """Calculate the slope and curvature of the reference surface."""
         # make a grid of northing and easting values
         [N,E]=np.meshgrid(np.arange(-50., 60, 10), np.arange(-50., 60, 10))
 
         # calculate the corresponding values in the ATC system
         xg, yg  = self.local_atc_coords(E, N)
 
-        # evaluate the reference surface at the points in [N,E]
+
         zg=self.evaluate_reference_surf(xg+self.ref_surf.x_atc, \
-                                         yg+self.ref_surf.y_atc, delta_time=None, \
+                                         yg+self.ref_surf.y_atc, \
                                          calc_errors=False)
 
         # fitting a plane as a function of N and E
@@ -672,31 +661,22 @@ class point(ATL11.data):
         self.ref_surf_slope_y=msub_xy[1]
 
 
-    def evaluate_reference_surf(self, x_atc, y_atc, delta_time=None, calc_errors=True):
+    def evaluate_reference_surf(self, x_atc, y_atc, calc_errors=True):
         """
-        method to evaluate the reference surface
+        Evaluate the reference surface at specified points.
 
         inputs:
             x_atc, y_atc: location to evaluate, in along-track coordinates
-            delta_time: time of measurements.  provide delta_time=None to skip the slope-change calculation
             calc_errors: default = true, if set to false, the error calculation is skipped
         """
-
-        poly_mask=np.isfinite(self.ref_surf.poly_coeffs).ravel() 
+        poly_mask=np.isfinite(self.ref_surf.poly_coeffs).ravel()
         x_degree=self.params_11.poly_exponent['x'][poly_mask]
         y_degree=self.params_11.poly_exponent['y'][poly_mask]
-        S_fit_poly=ATL11.poly_ref_surf(exp_xy=(x_degree, y_degree),\
+        G_surf = ATL11.poly_ref_surf(exp_xy=(x_degree, y_degree),\
                 xy0=(self.x_atc_ctr, self.y_atc_ctr), \
                 xy_scale=self.params_11.xy_scale).build_fit_matrix(x_atc, y_atc).fit_matrix
-        if self.calc_slope_change and (delta_time is not None):
-            x_term=np.array( [(x_atc-self.x_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
-            y_term=np.array( [(y_atc-self.y_atc_ctr)/self.params_11.xy_scale * (delta_time-self.slope_change_t0)/self.params_11.t_scale] )
-            S_fit_slope_change=np.concatenate((x_term.T,y_term.T),axis=1)
-            G_surf=np.concatenate( (S_fit_poly,S_fit_slope_change),axis=1 ) # G [S St]
-            surf_model=np.append(self.ref_surf.poly_coeffs[0,np.where(self.poly_mask)].ravel(),np.array((self.ref_surf.slope_change_rate_x,self.ref_surf.slope_change_rate_y))/self.params_11.t_scale)
-        else:
-            G_surf=S_fit_poly  #  G=[S]
-            surf_model=np.transpose(self.ref_surf.poly_coeffs.ravel()[np.where(poly_mask)])
+
+        surf_model=np.transpose(self.ref_surf.poly_coeffs.ravel()[np.where(poly_mask)])
 
         G_surf=G_surf[:, self.surf_mask]
         surf_model=surf_model[self.surf_mask]
@@ -712,10 +692,7 @@ class point(ATL11.data):
             C_m_surf=self.C_m_surf
         else:
             # if self.C_m_surf is not defined, use the data-product values
-            if self.calc_slope_change:
-                surf_model_sigma=np.append(self.ref_surf.poly_coeffs_sigma.ravel()[np.where(poly_mask)].ravel(),np.array((self.ref_surf.slope_change_rate_x_sigma,self.ref_surf.slope_change_rate_y_sigma))/self.params_11.t_scale)
-            else:
-                surf_model_sigma=np.transpose(self.ref_surf.poly_coeffs_sigma.ravel()[np.where(poly_mask)[0]])
+            surf_model_sigma=np.transpose(self.ref_surf.poly_coeffs_sigma.ravel()[np.where(poly_mask)[0]])
             C_m_surf=sparse.diags(surf_model_sigma**2)
         #C_m_surf may be sparse or full -- if sparse, convert to full
         try:
@@ -726,9 +703,23 @@ class point(ATL11.data):
         return z_ref_surf, z_ref_surf_sigma
 
     def corr_heights_other_cycles(self, D6):
-        # Calculate corrected heights and other parameters for cycles not included in the reference-surface fit
-        # input:
-        #   D6: ATL06 structure
+        """
+        Calculate corrected heights and other parameters for cycles not included in the reference-surface fit.
+
+        Parameters
+        ----------
+        D6 : pointCollection.data
+            ATL06 data structure.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        non_ref_cycle_fields =['x_atc','y_atc','bsnow_h','r_eff','tide_ocean','dac', 'sigma_geo_h','sigma_geo_xt','sigma_geo_at']
+        if self.use_release_bias:
+            non_ref_cycle_fields +=  ['release_bias']
 
         # The cycles we are working on are the ones not in ref_surf_cycles
         other_cycles=np.unique(D6.cycle_number.ravel()[~np.in1d(D6.cycle_number.ravel(),self.ref_surf_cycles)])
@@ -749,13 +740,12 @@ class point(ATL11.data):
 
         x_atc=D6.x_atc.ravel()[non_ref_segments]
         y_atc=D6.y_atc.ravel()[non_ref_segments]
-        delta_time=D6.delta_time.ravel()[non_ref_segments]
         h_li      =D6.h_li.ravel()[non_ref_segments]
         h_li_sigma=D6.h_li_sigma.ravel()[non_ref_segments]
         cycle=D6.cycle_number.ravel()[non_ref_segments]
-        #2. build design matrix, G_other, for non selected segments (poly and slope-change parts only)
-        z_ref_surf, z_ref_surf_sigma = self.evaluate_reference_surf(x_atc, y_atc, delta_time)
-       
+        #2. build design matrix, G_other, for non selected segments (poly only)
+        z_ref_surf, z_ref_surf_sigma = self.evaluate_reference_surf(x_atc, y_atc)
+
         self.non_ref_surf_cycles=np.unique(cycle)
         # section 3.5
         # calculate corrected heights, z_kc, with non selected segs design matrix and surface shape polynomial from selected segments
@@ -774,10 +764,10 @@ class point(ATL11.data):
             best_seg=np.argmin(z_kc_sigma[cycle==non_ref_cycle])
             # index into D6:
             best_seg_ind=non_ref_cycle_ind[cycle==non_ref_cycle][best_seg]
-            for dataset in ('x_atc','y_atc','bsnow_h','r_eff','tide_ocean','dac', 'sigma_geo_h','sigma_geo_xt','sigma_geo_at'):
+            for dataset in non_ref_cycle_fields:
                 self.cycle_stats.__dict__[dataset][0,cc]=getattr(D6, dataset).ravel()[best_seg_ind]
             if z_kc_sigma[cycle==non_ref_cycle][best_seg] < 15:
-                # edit out errors larger than 15 m                
+                # edit out errors larger than 15 m
                 self.ROOT.h_corr[0,cc]      =z_kc[cycle==non_ref_cycle][best_seg]
                 self.ROOT.h_corr_sigma[0,cc]= z_kc_sigma[cycle==non_ref_cycle][best_seg]
                 self.ROOT.h_corr_sigma_systematic[0,cc] = \
@@ -805,7 +795,22 @@ class point(ATL11.data):
 
         self.selected_segments = self.selected_segments | non_ref_segments.reshape(self.valid_pairs.all.shape[0],2)
 
-    def corr_xover_heights(self, D):
+    def corr_xover_heights(self, D, atc_shift_table=None):
+        """
+        Select and correct data from crossing tracks.
+
+        Parameters
+        ----------
+        D : pointCollection.data
+            Structure containing data from crossing tracks.
+        atc_shift_table : dict, optional
+            Dictionary specifying the geolocation biases in the data. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
         if not isinstance(D, pc.data):
             return
          # find the segments that are within L_search_XT of the reference point
@@ -816,7 +821,9 @@ class point(ATL11.data):
         dN=dN[in_search_radius]
         dE=dE[in_search_radius]
         Dsub=D[in_search_radius]
-        
+
+        _ = ATL11.calc_geoloc_bias(Dsub, atc_shift_table=atc_shift_table)
+
         # fix missing Dsub.sigma_geo_r:
         if not hasattr(Dsub, 'sigma_geo_r'):
             Dsub.assign({'sigma_geo_r': np.zeros_like(Dsub.delta_time)+0.03})
@@ -855,7 +862,7 @@ class point(ATL11.data):
             # if the along-trac RSS is too large, do not report a value
             if np.sqrt(ss_atc_diff[0]) > 10:
                 continue
-            
+
             sigma_systematic = np.sqrt((ref_surf_slope_mag**2 * (Dsub.sigma_geo_xt**2+\
                                                          Dsub.sigma_geo_at**2)) +\
                                                          Dsub.sigma_geo_r**2)
@@ -869,14 +876,18 @@ class point(ATL11.data):
             self.crossing_track_data.tide_ocean.append([Dsub.tide_ocean[best]])
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
+            self.crossing_track_data.dh_geoloc.append([Dsub.dh_geoloc[best]])
             self.crossing_track_data.ref_pt.append([self.ref_pt])
             self.crossing_track_data.latitude.append([self.ROOT.latitude])
             self.crossing_track_data.longitude.append([self.ROOT.longitude])
             self.crossing_track_data.along_track_rss.append([np.sqrt(ss_atc_diff[0])])
             self.crossing_track_data.h_corr_sigma_systematic.append([sigma_systematic[best]])
+            if self.use_release_bias:
+                self.crossing_track_data.release_bias.append([Dsub.release_bias[best]])
         return
 
     def local_NE_coords(self, lat, lon):
+        """Calculate local northing and easting."""
         WGS84a=6378137.0
         WGS84b=6356752.31424
         d2r=np.pi/180
@@ -888,6 +899,7 @@ class point(ATL11.data):
         return dE, dN
 
     def local_atc_coords(self, dE, dN):
+        """Calculate local xy."""
         cos_az=np.cos(self.ref_surf.rgt_azimuth*np.pi/180)
         sin_az=np.sin(self.ref_surf.rgt_azimuth*np.pi/180)
         dx= dN*cos_az + dE*sin_az
@@ -896,7 +908,7 @@ class point(ATL11.data):
         return dx, dy
 
 def gen_inv(self,G,sigma):
-    # calculate the generalized inverse of matrix G
+    """Calculate the generalized inverse of matrix G"""
     # inputs:
     #  G: (NxM) design matrix with one row per data point and one column per parameter
     #  sigma: N-vector of per-data-point errors
@@ -934,5 +946,5 @@ def remap_TOC(TOC, fit_columns, ref_surf_cycles, first_cycle):
         TOC_out['cycle_ind']=ref_surf_cycles.astype(int)-int(first_cycle)
     else:
         TOC_out['cycle_ind']=None
-        
+
     return TOC_sub, TOC_out

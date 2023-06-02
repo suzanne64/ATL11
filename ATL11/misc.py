@@ -6,10 +6,6 @@ Created on Thu Oct 26 11:08:33 2017f
 """
 
 import numpy as np
-import scipy.linalg as linalg
-import scipy.sparse as sparse
-from ATL11.RDE import RDE
-
 
 class defaults:
     def __init__(self):
@@ -49,8 +45,8 @@ class defaults:
         self.hemisphere=None
         self.ATL06_xover_field_list=['delta_time','h_li','h_li_sigma','latitude',\
                                      'longitude','atl06_quality_summary','segment_id',\
-                                     'x_atc', 'dh_fit_dx', 'rgt','cycle_number',\
-                                     'BP', 'LR', 'spot','sigma_geo_xt','sigma_geo_at', \
+                                     'x_atc', 'y_atc', 'dh_fit_dx', 'rgt','cycle_number',\
+                                     'BP', 'LR', 'ref_azimuth','ref_coelv','seg_azimuth','spot','sigma_geo_xt','sigma_geo_at', \
                                      'sigma_geo_h','dac', 'tide_ocean']
 
 
@@ -59,7 +55,7 @@ def default_ATL06_fields():
     field_dict={None:['delta_time','h_li','h_li_sigma','latitude','longitude',
                       'atl06_quality_summary','segment_id','sigma_geo_h'],
                     'ground_track':['x_atc', 'y_atc','seg_azimuth','sigma_geo_at',
-                                    'sigma_geo_xt'],
+                                    'sigma_geo_xt', 'ref_azimuth','ref_coelv'],
                     'fit_statistics':['dh_fit_dx','dh_fit_dx_sigma','h_mean',
                                       'dh_fit_dy','h_rms_misfit','h_robust_sprd',
                                       'n_fit_photons', 'signal_selection_source',
@@ -72,3 +68,14 @@ def default_ATL06_fields():
                                'min_along_track_dh', 'sigma_geo_r']}
     return field_dict
 
+def apply_release_bias(D6, release_bias_dict):
+    """Subtract an estimated bias based on release and spot values"""
+    D6.assign(release_bias=np.zeros_like(D6.h_li))
+    for release, spot_dict in release_bias_dict.items():
+        i_rel=np.flatnonzero(D6.release==float(release))
+        for spot, bias in spot_dict.items():
+            if bias==0:
+                continue
+            i_spot=i_rel[D6.spot.ravel()[i_rel] == float(spot)]
+            D6.release_bias.ravel()[i_spot]=bias
+    D6.h_li -= D6.release_bias
