@@ -350,7 +350,7 @@ class point(ATL11.data):
         # is used, add it to the list
         weighted_mean_fields = ['x_atc','y_atc', 'bsnow_h','r_eff','tide_ocean'
                                 ,'dac','h_rms_misfit', 'dh_geoloc']
-        if self.use_relase_bias:
+        if self.use_release_bias:
             weighted_mean_fields += ['release_bias']
 
         # in this section we only consider segments in valid pairs
@@ -877,12 +877,13 @@ class point(ATL11.data):
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
             self.crossing_track_data.dh_geoloc.append([Dsub.dh_geoloc[best]])
-            self.crossing_track_data.release_bias.append([Dsub.release_bias[best]])
             self.crossing_track_data.ref_pt.append([self.ref_pt])
             self.crossing_track_data.latitude.append([self.ROOT.latitude])
             self.crossing_track_data.longitude.append([self.ROOT.longitude])
             self.crossing_track_data.along_track_rss.append([np.sqrt(ss_atc_diff[0])])
             self.crossing_track_data.h_corr_sigma_systematic.append([sigma_systematic[best]])
+            if self.use_release_bias:
+                self.crossing_track_data.release_bias.append([Dsub.release_bias[best]])
         return
 
     def local_NE_coords(self, lat, lon):
