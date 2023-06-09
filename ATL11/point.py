@@ -659,7 +659,8 @@ class point(ATL11.data):
         msub_xy, rr, rankxy, singxy=linalg.lstsq(G_xy, zg.ravel())
         self.ref_surf_slope_x=msub_xy[0]
         self.ref_surf_slope_y=msub_xy[1]
-
+        self.ref_surf.at_slope=msub_xy[0]
+        self.ref_surf.xt_slope=msub_xy[1]
 
     def evaluate_reference_surf(self, x_atc, y_atc, calc_errors=True):
         """
