@@ -10,8 +10,31 @@ import numpy as np
 #from PointDatabase.point_data import point_data
 #from PointDatabase import geo_index
 import pointCollection as pc
+import h5py
+import re
+from ATL11 import apply_release_bias
 
-def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11):
+def get_ATL06_release(D6):
+    if D6 is None:
+        return
+    #Get the release number for ATL06 data from the tile files
+    for D6i in D6:
+        if D6i is None:
+            continue
+        u_file, i_file = np.unique(D6i.source_file_num, return_inverse=True)
+        u_release=np.zeros_like(u_file)
+        ATL06_re = re.compile('ATL06_\d+_\d+_(\d{3})_\d{2}.h5')
+        with h5py.File(D6i.filename) as h5f:
+            for ii, file_num in enumerate(u_file):
+                source_file=h5f['source_files'].attrs[f'file_{int(file_num)}']
+                u_release[ii]=int(ATL06_re.search(source_file).group(1))
+        release = u_release[i_file]
+        release.shape = D6i.h_li.shape
+        D6i.assign({'release' : release})
+
+def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11,
+                   release_bias_dict=None,
+                   verbose=False, xy_bin=None):
     """
     Read the data from other tracks.
 
@@ -23,31 +46,42 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
         xover_cache: data cache (dict)
         index_bin_size: size of the bins in the index
         params_11: default parameter values for the ATL11 fit
-
     """
 
     # identify the crossover centers
     x0_ctrs = buffered_bins(x0, y0, 2*params_11.L_search_XT, index_bin_size)
     D_xover=[]
-
-    this_field_dict=params_11.ATL06_field_dict.copy()
-    this_field_dict.pop('dem')
+    ATL06_fields = ['delta_time', 'latitude','longitude', 'h_li', 'h_li_sigma',
+                    'atl06_quality_summary', 'segment_id', 'sigma_geo_h',
+                    'x_atc', 'y_atc',
+                    'sigma_geo_at','sigma_geo_xt', 'sigma_geo_r',
+                    'ref_azimuth', 'ref_coelv',
+                    'tide_ocean', 'dac',
+                    'rgt', 'cycle_number', 'BP',  'spot',
+                    'source_file_num']
 
     for x0_ctr in x0_ctrs:
         this_key=(np.real(x0_ctr), np.imag(x0_ctr))
         # check if we have already read in the data for this bin
         if this_key not in xover_cache:
-            #print(f"reading {this_key}")
+            if verbose > 1:
+                print(f"reading {this_key}")
             # if we haven't already read in the data, read it in.  These data will be in xover_cache[this_key]
             temp=[]
             for GI_file in GI_files:
-                new_data = pc.geoIndex().from_file(GI_file).query_xy(this_key, fields=this_field_dict);
-                if new_data is not None:
-                    temp += new_data
+                new_data = pc.geoIndex().from_file(GI_file).query_xy(this_key, fields=ATL06_fields)
+                get_ATL06_release(new_data)
+                if new_data is None:
+                    continue
+                if xy_bin is not None:
+                    subset_data_to_bins(new_data, xy_bin, EPSG=params_11.EPSG)
+                temp += new_data
             if len(temp) == 0:
                 xover_cache[this_key]=None
                 continue
-            temp=pc.data(fields=params_11.ATL06_xover_field_list).from_list(temp)
+            temp=pc.data(fields=params_11.ATL06_xover_field_list + ['release']).from_list(temp)
+            if release_bias_dict is not None:
+                apply_release_bias(temp, release_bias_dict)
             xover_cache[this_key]={'D':temp}
             # remove the current rgt from data in the cache
             temp.index(~np.in1d(xover_cache[this_key]['D'].rgt, [rgt]))
@@ -75,9 +109,16 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
 
     # cleanup the cache if it is too large
     if len(xover_cache.keys()) > 5:
-        cleanup_xover_cache(xover_cache, x0, y0, 2e4)
+        cleanup_xover_cache(xover_cache, x0, y0, 2e4, verbose=verbose)
 
     return D_xover
+
+def subset_data_to_bins(D, xy_bin, bin_size=100, EPSG=None):
+    if D is None:
+        return
+    for Di in D:
+        Di.get_xy(EPSG=EPSG)
+        Di.index(np.in1d(np.round((Di.x+1j*Di.y)/bin_size)*bin_size, xy_bin[:,0]+1j*xy_bin[:,1]))
 
 def sort_data_bin(D, bin_W):
     """
@@ -94,13 +135,14 @@ def sort_data_bin(D, bin_W):
     return D.index(ind)
 
 
-def cleanup_xover_cache(cache, x0, y0, W):
+def cleanup_xover_cache(cache, x0, y0, W, verbose=False):
     """
     delete entries in xover cache that are too far from the current point
     """
     for xy_bin in list(cache.keys()):
         if np.abs(x0+1j*y0 - (xy_bin[0]+1j*xy_bin[1])) > W:
-            #print(f"cleaning up {xy_bin}")
+            if verbose > 1:
+                print(f"cleaning up {xy_bin}")
             del(cache[xy_bin])
 
 
