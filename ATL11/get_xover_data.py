@@ -53,11 +53,12 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
     D_xover=[]
     ATL06_fields = ['delta_time', 'latitude','longitude', 'h_li', 'h_li_sigma',
                     'atl06_quality_summary', 'segment_id', 'sigma_geo_h',
-                    'x_atc', 'y_atc',
+                    'x_atc', 'y_atc', 'dh_fit_dx',
                     'sigma_geo_at','sigma_geo_xt', 'sigma_geo_r',
                     'ref_azimuth', 'ref_coelv',
                     'tide_ocean', 'dac',
-                    'rgt', 'cycle_number', 'BP',  'spot',
+                    'rgt', 'cycle_number',
+                    'BP',  'spot', 'LR',
                     'source_file_num']
 
     for x0_ctr in x0_ctrs:
