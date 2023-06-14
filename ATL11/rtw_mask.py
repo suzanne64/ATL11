@@ -24,12 +24,15 @@ def read_rtw_from_excel(xls_file=None, to_csv=False, last_cycle=8):
         print(f'cycle= {cycle}')
         df = pd.read_excel(xls_file, sheet_name=f'ATLAS Activities Cycle {cycle}', header=1)
         for row in range(len(df['DETAILS'])):
-            if rtw_re.search(df['DETAILS'][row]):
-                rtw_rows.append(row)
-                rtw_times.append((df['ATL03 DELTA_TIME START (seconds)'][row], df['ATL03 DELTA_TIME END (seconds)'][row]))
-                rtw_orb.append((df['BEG ORBIT'][row], df['END ORBIT'][row]))
-                rtw_rgt.append((df['BEG RGT'][row], df['END RGT'][row]))
-                rtw_cycle.append(cycle)
+            try:
+                if rtw_re.search(df['DETAILS'][row]):
+                    rtw_rows.append(row)
+                    rtw_times.append((df['ATL03 DELTA_TIME START (seconds)'][row], df['ATL03 DELTA_TIME END (seconds)'][row]))
+                    rtw_orb.append((df['BEG ORBIT'][row], df['END ORBIT'][row]))
+                    rtw_rgt.append((df['BEG RGT'][row], df['END RGT'][row]))
+                    rtw_cycle.append(cycle)
+            except Exception:
+                pass
     if to_csv:
         print('writing!')
         csv_file=xls_file.replace('.xlsx','_RTWs.csv')
@@ -75,3 +78,13 @@ def rtw_mask_for_orbit(orb, rtw_times=None, csv_file=None):
     for rtw_orb in rtw_orbs:
         valid &= ~((orb>=rtw_orb[0]) & (orb <= rtw_orb[1]))
     return valid
+
+def __main__():
+    
+    import sys
+    xls_file=sys.argv[1]
+    last_cycle=int(sys.argv[2])
+    read_rtw_from_excel(xls_file=xls_file, to_csv=True, last_cycle=last_cycle)
+    
+if __name__=='__main__':
+    __main__()
