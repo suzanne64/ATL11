@@ -334,6 +334,8 @@ class data(object):
 
         # write each variable in params_11 as an attribute
         for param, val in  vars(params_11).items():
+            if param=="poly_exponent_list":
+                continue
             if not isinstance(val,(dict,type(None))):
                 try:
                     if param == 'ATL06_xover_field_list':
