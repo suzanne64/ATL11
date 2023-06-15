@@ -242,79 +242,84 @@ def calc_biases_xy(d, v, h_sat, ind=None, field='h_li', b_est=None, max_iteratio
             't_range': [np.min(v1.delta_time), np.max(v1.delta_time)], 
             'fit_index': fit_index}
 
-parser=argparse.ArgumentParser(description="script to estimate time-varying crossover biases", \
-                                   fromfile_prefix_chars="@")
-parser.add_argument('--glob_str','-g', type=str, help="glob string that matches the crossover bin files")
-parser.add_argument('--DEM_file', '-D', type=str, help="DEM geotif for selecting crossovers")
-parser.add_argument('--delta_t','-d',  type=float, default=3,  help="maximum time interval for crossover differences, days")
-parser.add_argument('--r_range','-r', type=float, nargs=2, default=[100, 800], help="range of radii around the pole for which bin centers will be read, in km.")
-parser.add_argument('--min_h', type=float, default=1800, help="minimum DEM elevation for which to read crossover bins")
-parser.add_argument('--out_csv', type=str, required=True, help="output csv filename")
-args=parser.parse_args()
-  
-min_r=args.r_range[0]*1000
-min_h=args.min_h
-max_r=args.r_range[1]*1000
-bin_t_tol = args.delta_t*24*3600
-ctr_t_tol = bin_t_tol/2
+def main():
+    parser=argparse.ArgumentParser(description="script to estimate time-varying crossover biases", \
+                                       fromfile_prefix_chars="@")
+    parser.add_argument('--glob_str','-g', type=str, help="glob string that matches the crossover bin files")
+    parser.add_argument('--DEM_file', '-D', type=str, help="DEM geotif for selecting crossovers")
+    parser.add_argument('--delta_t','-d',  type=float, default=3,  help="maximum time interval for crossover differences, days")
+    parser.add_argument('--r_range','-r', type=float, nargs=2, default=[100, 800], help="range of radii around the pole for which bin centers will be read, in km.")
+    parser.add_argument('--min_h', type=float, default=1800, help="minimum DEM elevation for which to read crossover bins")
+    parser.add_argument('--out_csv', type=str, required=True, help="output csv filename")
+    args=parser.parse_args()
 
-DEM=None
-if args.DEM_file is not None:
-    DEM=pc.grid.data().from_geotif(args.DEM_file)
+    min_r=args.r_range[0]*1000
+    min_h=args.min_h
+    max_r=args.r_range[1]*1000
+    bin_t_tol = args.delta_t*24*3600
+    ctr_t_tol = bin_t_tol/2
 
-v = collect_xovers(args.glob_str, DEM=DEM, max_delta_t = 2*bin_t_tol, min_r=min_r, min_h=min_h, max_r=max_r) 
-print(v)
-uT, t_bins = pc.unique_by_rows(np.round(np.mean(v.delta_time, axis=1)/ctr_t_tol)*ctr_t_tol, return_dict=True)
-  
-v.assign({field:val for field, val in zip(['x_sp','y_sp'], ATL11.calc_xy_spot(v))})
-d=pc.data().from_dict({field:np.diff(getattr(v, field), axis=1) for field in v.fields})
+    DEM=None
+    if args.DEM_file is not None:
+        DEM=pc.grid.data().from_geotif(args.DEM_file)
 
-h_is = 511e3
+    v = collect_xovers(args.glob_str, DEM=DEM, max_delta_t = 2*bin_t_tol, min_r=min_r, min_h=min_h, max_r=max_r) 
+    print(v)
+    uT, t_bins = pc.unique_by_rows(np.round(np.mean(v.delta_time, axis=1)/ctr_t_tol)*ctr_t_tol, return_dict=True)
 
-out_spot=[]
-out_xy=[]
-out_spot_residual = []
-count=-1
-bin_ctrs=list(t_bins.keys())
-for count, this_t in enumerate(bin_ctrs):
-    ind=[]
-    # collect the crossovers from three subsequent bins, 
-    # then subset them to get only the crossovers within t_bin/2 of the bin
-    # center
-    for ii in [-2, -1, 0, 1, 2]:
-        if (count+ii > 0) & (count+ii < len(bin_ctrs)):
-            ind += [t_bins[bin_ctrs[count+ii]]]
-    ind=np.concatenate(ind)
-        
-    #print(len(ind))
-    ind_sub = ind[np.all(np.abs(v.delta_time[ind,:]-this_t) < bin_t_tol/2, axis=1) &
-             np.all(np.isfinite(v.x_sp[ind,:]), axis=1)]    
-    if len(ind_sub) < 100:
-        continue
-    # final fit: run one iteration with the common elements of the two solutions
-    out_xy += [calc_biases_xy(d, v, h_is, ind=ind_sub, max_iterations=20)]
-    if np.mod(count, 50)==0:
-        print(f'{count} out of {len(t_bins)}')
-        
-x_biases = np.c_[[oi['b_x'] for oi in out_xy]]
-y_biases = np.c_[[oi['b_y'] for oi in out_xy]]
-xy_times = np.c_[[np.mean(oi['t_range']) for oi in out_xy]]
-xy_R2 = np.c_[[(oi['sigma_corr']/oi['sigma_uncorr'])**2 for oi in out_xy]]
-x_spot = np.c_[[oi['x_spot'] for oi in out_xy]]
-y_spot = np.c_[[oi['y_spot'] for oi in out_xy]]
+    v.assign({field:val for field, val in zip(['x_sp','y_sp'], ATL11.calc_xy_spot(v))})
+    d=pc.data().from_dict({field:np.diff(getattr(v, field), axis=1) for field in v.fields})
 
-xy_sigma_u = np.c_[[oi['sigma_uncorr'] for oi in out_xy]]
-xy_sigma_c = np.c_[[oi['sigma_corr'] for oi in out_xy]]
-xy_sigma_d = np.c_[[oi['sigma_data'] for oi in out_xy]]
+    h_is = 511e3
 
-temp={'delta_time': xy_times}
-temp.update({'x_bias':x_biases,'y_bias':y_biases})
+    out_spot=[]
+    out_xy=[]
+    out_spot_residual = []
+    count=-1
+    bin_ctrs=list(t_bins.keys())
+    for count, this_t in enumerate(bin_ctrs):
+        ind=[]
+        # collect the crossovers from three subsequent bins, 
+        # then subset them to get only the crossovers within t_bin/2 of the bin
+        # center
+        for ii in [-2, -1, 0, 1, 2]:
+            if (count+ii > 0) & (count+ii < len(bin_ctrs)):
+                ind += [t_bins[bin_ctrs[count+ii]]]
+        ind=np.concatenate(ind)
+
+        #print(len(ind))
+        ind_sub = ind[np.all(np.abs(v.delta_time[ind,:]-this_t) < bin_t_tol/2, axis=1) &
+                 np.all(np.isfinite(v.x_sp[ind,:]), axis=1)]    
+        if len(ind_sub) < 100:
+            continue
+        # final fit: run one iteration with the common elements of the two solutions
+        out_xy += [calc_biases_xy(d, v, h_is, ind=ind_sub, max_iterations=20)]
+        if np.mod(count, 50)==0:
+            print(f'{count} out of {len(t_bins)}')
+
+    x_biases = np.c_[[oi['b_x'] for oi in out_xy]]
+    y_biases = np.c_[[oi['b_y'] for oi in out_xy]]
+    xy_times = np.c_[[np.mean(oi['t_range']) for oi in out_xy]]
+    xy_R2 = np.c_[[(oi['sigma_corr']/oi['sigma_uncorr'])**2 for oi in out_xy]]
+    x_spot = np.c_[[oi['x_spot'] for oi in out_xy]]
+    y_spot = np.c_[[oi['y_spot'] for oi in out_xy]]
+
+    xy_sigma_u = np.c_[[oi['sigma_uncorr'] for oi in out_xy]]
+    xy_sigma_c = np.c_[[oi['sigma_corr'] for oi in out_xy]]
+    xy_sigma_d = np.c_[[oi['sigma_data'] for oi in out_xy]]
+
+    temp={'delta_time': xy_times}
+    temp.update({'x_bias':x_biases,'y_bias':y_biases})
 
 
-temp.update({'total_sigma':xy_sigma_d,
-            'rgt_corr_sigma':xy_sigma_u,            
-            'xy_corr_sigma':xy_sigma_c})
-for field in temp:
-    temp[field]=temp[field].ravel()
-df=pd.DataFrame(temp)
-df.to_csv(args.out_csv, index=False)
+    temp.update({'total_sigma':xy_sigma_d,
+                'rgt_corr_sigma':xy_sigma_u,            
+                'xy_corr_sigma':xy_sigma_c})
+    for field in temp:
+        temp[field]=temp[field].ravel()
+    df=pd.DataFrame(temp)
+    df.to_csv(args.out_csv, index=False)
+
+
+if __name__=="__main__":
+    main()
