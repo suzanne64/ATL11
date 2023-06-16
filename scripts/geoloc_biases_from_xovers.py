@@ -38,7 +38,7 @@ def read_xovers(file, fields=None, get_data=False):
     if fields is None:
         fields=['x','y','delta_time','h_li','h_li_sigma','h_mean','spot', 'rgt', 
                 'dh_fit_dx','dh_fit_dy','atl06_quality_summary', 'latitude',
-                'seg_azimuth','ref_azimuth','ref_coelv']
+                'seg_azimuth','ref_azimuth','ref_coelv', 'cycle_number']
     
     m = pc.data().from_h5(file, field_dict={None:['grounded','x','y','slope_x','slope_y']})
     v=pc.data(columns=2)
@@ -267,6 +267,17 @@ def main():
     print(v)
     uT, t_bins = pc.unique_by_rows(np.round(np.mean(v.delta_time, axis=1)/ctr_t_tol)*ctr_t_tol, return_dict=True)
 
+    v.cycle_number=np.round(v.cycle_number).astype(int)
+    v.rgt=np.round(v.rgt).astype(int)
+
+    hold_arr=np.c_[ATL11.read_hold_files()]
+
+    bad=np.zeros_like(v.rgt[:,0], dtype=bool)
+    for col in [0, 1]:
+        bad |= np.in1d(v.cycle_number[:,col]+1j*v.rgt[:,col], hold_arr[:,0]+1j*hold_arr[:,1])
+    good =~bad
+    v.index(good)
+    
     v.assign({field:val for field, val in zip(['x_sp','y_sp'], ATL11.calc_xy_spot(v))})
     d=pc.data().from_dict({field:np.diff(getattr(v, field), axis=1) for field in v.fields})
 
