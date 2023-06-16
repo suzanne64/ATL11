@@ -271,12 +271,12 @@ def main():
     v.rgt=np.round(v.rgt).astype(int)
 
     hold_arr=np.c_[ATL11.read_hold_files()]
-
-    bad=np.zeros_like(v.rgt[:,0], dtype=bool)
-    for col in [0, 1]:
-        bad |= np.in1d(v.cycle_number[:,col]+1j*v.rgt[:,col], hold_arr[:,0]+1j*hold_arr[:,1])
-    good =~bad
-    v.index(good)
+    if hold_arr.size > 0:
+        bad=np.zeros_like(v.rgt[:,0], dtype=bool)
+        for col in [0, 1]:
+            bad |= np.in1d(v.cycle_number[:,col]+1j*v.rgt[:,col], hold_arr[:,0]+1j*hold_arr[:,1])
+            good =~bad
+        v.index(good)
     
     v.assign({field:val for field, val in zip(['x_sp','y_sp'], ATL11.calc_xy_spot(v))})
     d=pc.data().from_dict({field:np.diff(getattr(v, field), axis=1) for field in v.fields})
