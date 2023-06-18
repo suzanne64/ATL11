@@ -31,11 +31,29 @@ def read_hold_files(hold_dir=None):
     return hold_list
 
 
-def check_ATL06_hold_list(filenames, hold_list=None, hold_dir=None):
-    if hold_list is None:
-        hold_list=read_hold_files(hold_dir=hold_dir)
+def check_ATL06_hold_list(filenames, hold_list=None):
+    """
+    Check if files should be held.
+
+    Parameters
+    ----------
+    filenames : list or string
+        Filenames to check against the hold list
+    hold_list : list of iterables, optional
+        list of cycle, rgt, subproducts to hole. The default is None.
+
+    Returns
+    -------
+    list of booleans
+        Boolean for each file: True=skip, False=use.
+
+    """
+
     if isinstance(filenames, (str)):
         filenames=list(filenames)
+
+    if hold_list is None:
+        return [False]*len(filenames)
 
     r06=re.compile('ATL.._(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)_(\d\d\d\d)(\d\d)(\d\d)_(\d\d\d)_(\d\d).h5')
     bad=[]
