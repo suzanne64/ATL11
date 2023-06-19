@@ -57,7 +57,7 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
                     'atl06_quality_summary', 'segment_id', 'sigma_geo_h',
                     'x_atc', 'y_atc', 'dh_fit_dx',
                     'sigma_geo_at','sigma_geo_xt', 'sigma_geo_r',
-                    'ref_azimuth', 'ref_coelv',
+                    'ref_azimuth', 'ref_coelv', 'seg_azimuth',
                     'tide_ocean', 'dac',
                     'rgt', 'cycle_number',
                     'BP',  'spot', 'LR',

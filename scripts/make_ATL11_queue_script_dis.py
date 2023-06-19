@@ -9,6 +9,7 @@ import argparse
 import os
 import glob
 import re
+from importlib import resources
 
 parser=argparse.ArgumentParser()
 parser.add_argument('--list_file','-l', type=str)
@@ -22,10 +23,12 @@ parser.add_argument('--Release','-R', type=str, default='000')
 parser.add_argument('--cycles','-c', type=str, nargs=2, default=[3, 4])
 parser.add_argument('--replace', action='store_true')
 parser.add_argument('--same_date', action='store_true', help="Using this sets all ATL11s to claim 2019-03-29 as their start date")
+parser.add_argument('--xy_bias', action='store_true', help="Triggers the inclusion of xy_bias correction")
 parser.add_argument('--Hemisphere', '-H', type=int, help='hemisphere, -1 = Antarctic, 1=arctic', required=True)
 args=parser.parse_args()
 
 project_bin="/discover/nobackup/bjelley/bin"
+xy_bias_csv =  str(resources.files('ATL11').joinpath("package_data/xy_biases_rel006_c1_19_plateau__0_800km_3day.csv"))
 
 # Greenland current best version--- user the list of ATL06 files in /home/ben/git_repos/ATL11/Greenland_ATL06_list.txt
 #python3 ~/git_repos/ATL11/make_ATL11_queue.py  -H 1 -i "/Volumes/ice2/ben/scf/GL_06/003/tiles/*/GeoIndex.h5" -A "/Volumes/ice2/ben/scf/GL_06/003/cycle_*/" -l /home/ben/git_repos/ATL11/Greenland_ATL06_list.txt -o /Volumes/ice2/ben/scf/GL_11/U07 -V U07 -c 3 7 > ~/temp/ATL11_run/GL_queue.txt
@@ -73,6 +76,8 @@ for file in ATL06_list:
     cmd=f''+os.path.join(os.path.dirname(os.path.realpath(__file__)),'run_all_l3b_is.sh')+f' --rgt {rgt} --region {subproduct} --output_path {args.out_dir} --atl06_datapath \'{args.ATL06_dir}\' --version {args.Version} --start_cycle {args.cycles[0]} --end_cycle {args.cycles[1]} --hemisphere {args.Hemisphere} --release {args.Release}'
     if args.same_date:
         cmd +=f' --sec_offset {seconds_offset}'
+    if args.xy_bias:
+        cmd +=f' --xy_bias {xy_bias_csv}'
     if args.index_glob is not None:
         cmd +=f' -G "{args.index_glob}"'
     if args.Hemisphere == 1:    
