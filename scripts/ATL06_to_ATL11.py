@@ -147,13 +147,12 @@ def main(argv):
                                        cycles=args.cycles,
                                        hold_list=hold_list,
                                        ATL06_dict=D6_segdata, seg_range = seg_range )
+            if D6 is None:
+                continue
 
             atc_shift_table = ATL11.calc_geoloc_bias(D6,
                                     atc_shift_csv_file=args.xy_bias_file,
                                     atc_shift_table=atc_shift_table)
-
-            if D6 is None:
-                continue
 
             ref_pt_ind=(all_ref_pts >= ref_pt_range[0]) & \
                                    (all_ref_pts <= ref_pt_range[1])
