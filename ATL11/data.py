@@ -334,6 +334,8 @@ class data(object):
 
         # write each variable in params_11 as an attribute
         for param, val in  vars(params_11).items():
+            if param=="poly_exponent_list":
+                continue
             if not isinstance(val,(dict,type(None))):
                 try:
                     if param == 'ATL06_xover_field_list':
@@ -573,6 +575,7 @@ class data(object):
                    ref_pt_numbers=None, ref_pt_x=None, hemisphere=-1,\
                    mission_time_bds=None, max_xover_latitude=90, \
                    atc_shift_table=None, release_bias_dict=None,\
+                   hold_list=None,\
                    verbose=False, DOPLOT=None,DEBUG=None, return_list=True):
         """
         Fit a collection of ATL06 files with ATL11 surface models
@@ -589,6 +592,7 @@ class data(object):
                 mission_time_bds: starting and ending times for the mission
                 verbose: write fitting info to stdout if true
                 atc_shift_table: dict giving the along-track bias correction as a function of time
+                hold_list: list of cycle, rgt, subproduct combinations to exclude
                 DOPLOT: list of plots to make
                 DEBUG: output debugging info
         """
@@ -713,6 +717,7 @@ class data(object):
                 D_xover=ATL11.get_xover_data(x0, y0, P11.rgt, GI_files,
                                              D_xover_cache, index_bin_size, params_11,
                                              xy_bin=D6_xyB, release_bias_dict=release_bias_dict,
+                                             hold_list=hold_list,
                                              verbose=verbose)
                 P11.corr_xover_heights(D_xover, atc_shift_table=atc_shift_table)
             # if we have read any data for the current bin, run the crossover calculation

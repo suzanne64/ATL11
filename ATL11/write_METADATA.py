@@ -22,9 +22,7 @@ import ATL11
 from ATL11.h5util import create_attribute, duplicate_group
 from ATL11.version import softwareVersion,softwareDate,softwareTitle,identifier,series_version
 from scipy.spatial import ConvexHull
-#import pkg_resources
 from importlib import resources
-# import importlib.resources
 
 def write_METADATA(outfile,sec_offset,start_date,infiles):
     if os.path.isfile(outfile):        
@@ -79,8 +77,8 @@ def write_METADATA(outfile,sec_offset,start_date,infiles):
 #
 # Use create_attribute for strings to get ASCII and NULLTERM
 #
-        create_attribute(gf.id, 'fileName', [2], fname)
-        create_attribute(gf.id, 'shortName', [2], sname)
+        create_attribute(gf.id, 'fileName', [len(fname)], fname)
+        create_attribute(gf.id, 'shortName', [len(sname)], sname)
         
         gf.attrs['start_orbit'] = np.ravel(sorbit)
         gf.attrs['end_orbit'] = np.ravel(eorbit)
@@ -97,7 +95,7 @@ def write_METADATA(outfile,sec_offset,start_date,infiles):
         gf.attrs['start_geoseg'] = np.repeat(sgeoseg,np.size(sregion))
         gf.attrs['end_geoseg'] = np.repeat(egeoseg,np.size(sregion))
                 
-        create_attribute(gf.id, 'uuid', [2], uuid)
+        create_attribute(gf.id, 'uuid', [len(uuid)], uuid)
         gf.attrs['version'] = np.ravel(version)
 
         g.close()
@@ -124,9 +122,11 @@ def filemeta(outfile,sec_offset,start_date,infiles):
     template_file =  str(resources.files('ATL11').joinpath("package_data/atl11_metadata_template.h5"))
     if os.path.isfile(outfile):
         g = h5py.File(outfile,'r+')
+        firstfile = False
         for ii,infile in enumerate(sorted(infiles)):
             m = h5py.File(template_file,'r')
-            if ii==0:
+#            if ii==0:
+            if not firstfile:
               if 'METADATA' in list(g['/'].keys()):
                   del g['METADATA']
               # get all METADATA groups except Lineage, which we set to zero
@@ -150,13 +150,21 @@ def filemeta(outfile,sec_offset,start_date,infiles):
               create_attribute(g['METADATA/ProcessStep/PGE'].id, 'identifier', [], identifier())
               create_attribute(g['METADATA/ProcessStep/PGE'].id, 'softwareDate', [], softwareDate())
               create_attribute(g['METADATA/ProcessStep/PGE'].id, 'softwareTitle', [], softwareTitle())
+              if 'quality_assessment' in list(g['/'].keys()):
+                  del g['quality_assessment']
               gf = g.create_group('quality_assessment'.encode('ASCII','replace'))
 
               if os.path.isfile(infile):
                 f = h5py.File(infile,'r')
+#                print('infile: ',infile)
+#                print('infile passfail: ',f['quality_assessment/qa_granule_pass_fail'][0])
+                if f['quality_assessment/qa_granule_pass_fail'][0] != 1:
+                    firstfile = True
                 f.copy('quality_assessment/qa_granule_fail_reason',g['quality_assessment'])
                 f.copy('quality_assessment/qa_granule_pass_fail',g['quality_assessment'])
 # ancillary_data adjustments
+                if 'ancillary_data' in list(g['/'].keys()):
+                    del g['ancillary_data']
                 f.copy('ancillary_data',g)
                 del g['ancillary_data/land_ice']
                 gf = g['METADATA']['Lineage']['Control'].attrs['control'].decode()
@@ -166,7 +174,7 @@ def filemeta(outfile,sec_offset,start_date,infiles):
                 
                 del g['METADATA/Extent']
                 f.copy('METADATA/Extent',g['METADATA'])
-                print(sec_offset,start_date)
+#                print(sec_offset,start_date)
                 if sec_offset is 0:
                   start_delta_time = f['ancillary_data/start_delta_time'][0]
                 else:
@@ -229,6 +237,8 @@ def filemeta(outfile,sec_offset,start_date,infiles):
 
 #
 # Read the datasets from orbit_info
+                if 'orbit_info' in list(g['/'].keys()):
+                    del g['orbit_info']
                 g.create_group('orbit_info'.encode('ASCII','replace'))
 #                duplicate_group(f, g, 'orbit_info')
 #                g['orbit_info/cycle_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
@@ -289,7 +299,11 @@ def poly_buffered_linestring(outfile):
                 lonlat_11 += [np.c_[h5f[pair+'/longitude'], h5f[pair+'/latitude']]]
             except Exception as e:
                 print(e)
-    print('avg lat lonlat_11[0]',np.sum(lonlat_11[0][:,1])/len(lonlat_11[0]))
+#    print('avg lat lonlat_11[0]',np.sum(lonlat_11[0][:,1])/len(lonlat_11[0]))
+#    print('min lat lonlat_11',np.min(lonlat_11[0][:,1]))
+#    print('max lat lonlat_11',np.max(lonlat_11[0][:,1]))
+#    print('min lon lonlat_11',np.min(lonlat_11[0][:,0]))
+#    print('max lon lonlat_11',np.max(lonlat_11[0][:,0]))
     if np.sum(lonlat_11[0][:,1])/len(lonlat_11[0]) >= 0.0:
       polarEPSG=3413
     else:
@@ -307,12 +321,21 @@ def poly_buffered_linestring(outfile):
     for line in lines:
         line_simp += [line.simplify(tolerance=100)]
     all_lines=shapely.geometry.MultiLineString(line_simp)
+#    print('all_lines',all_lines)
     common_buffer=all_lines.buffer(3000, 4)
     common_buffer=common_buffer.simplify(tolerance=500)
-
-    xpol, ypol = np.array(common_buffer.exterior.coords.xy)
+#    print('common_buffer.geom_type:',common_buffer.geom_type)
+    if (common_buffer.geom_type == 'MultiPolygon'):
+#      xpol=[]
+#      ypol=[]
+      for i,g in enumerate(common_buffer.geoms):
+        xpol, ypol = np.array(g.exterior.coords.xy)
+#        xpol.append(xp)
+#        ypol.append(yp)
+    else:
+      xpol, ypol = np.array(common_buffer.exterior.coords.xy)
     y1, x1 = xformer_pol2ll.transform(xpol, ypol)
-    print("polygon size:",len(x1))
+#    print("polygon size:",len(x1))
 
     with h5py.File(outfile,'r+') as h5f:
       if '/orbit_info/bounding_polygon_dim1' in h5f:

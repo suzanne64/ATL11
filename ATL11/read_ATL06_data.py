@@ -10,7 +10,7 @@ import ATL11
 import numpy as np
 import re
 import pointCollection as pc
-from ATL11.check_ATL06_hold_list import check_ATL06_hold_list, read_hold_files
+from ATL11.check_ATL06_hold_list import check_ATL06_hold_list
 
 
 def get_seg_index(seg_range, D6):
@@ -35,7 +35,8 @@ def get_ATL06_release(D6_list):
         release=int(ATL06_re.search(D6i.filename).group(1))
         D6i.assign({'release':np.zeros_like(D6i.delta_time)+release})
 
-def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_hold_list=False, minimal=False, ATL06_dict=None, seg_range=None):
+def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12],
+                    hold_list=None, minimal=False, ATL06_dict=None, seg_range=None):
     '''
     Read ATL06 data from a list of files for a specific beam pair
 
@@ -46,11 +47,6 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12], use_hold_list=Fals
     '''
     params_11=ATL11.defaults()
     ATL06_re=re.compile('ATL06_\d+_\d\d\d\d(\d\d)\d\d_')
-
-    if use_hold_list:
-        hold_list = read_hold_files()
-    else:
-        hold_list = None
 
     # check the files against cycle bounds
     for filename in ATL06_files.copy():

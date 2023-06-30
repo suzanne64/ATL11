@@ -19,8 +19,7 @@ import sys
 import matplotlib.pyplot as plt
 import resource as memresource
 import json
-
-
+from ATL11.check_ATL06_hold_list import read_hold_files
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5"
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5"
 
@@ -101,11 +100,16 @@ def main(argv):
     if args.verbose:
         print("found GI files:"+str(GI_files))
 
+    if args.use_hold_list:
+        hold_list=read_hold_files()
+    else:
+        hold_list=None
+
     for pair in pairs:
         # read the lat, lon, segment_id data for each segment
         D6_segdata = ATL11.read_ATL06_data(files, beam_pair=pair,
                                            cycles=args.cycles,
-                                           use_hold_list=args.use_hold_list,
+                                           hold_list=hold_list,
                                            minimal=True)
         all_ref_pts=[]
         all_ref_pt_x=[]
@@ -141,15 +145,14 @@ def main(argv):
 
             D6 = ATL11.read_ATL06_data(files, beam_pair=pair,
                                        cycles=args.cycles,
-                                       use_hold_list=args.use_hold_list,
+                                       hold_list=hold_list,
                                        ATL06_dict=D6_segdata, seg_range = seg_range )
+            if D6 is None:
+                continue
 
             atc_shift_table = ATL11.calc_geoloc_bias(D6,
                                     atc_shift_csv_file=args.xy_bias_file,
                                     atc_shift_table=atc_shift_table)
-
-            if D6 is None:
-                continue
 
             ref_pt_ind=(all_ref_pts >= ref_pt_range[0]) & \
                                    (all_ref_pts <= ref_pt_range[1])
@@ -167,6 +170,7 @@ def main(argv):
                                            atc_shift_table=atc_shift_table,\
                                            release_bias_dict=release_bias_dict,\
                                            max_xover_latitude=args.max_xover_latitude,
+                                           hold_list=hold_list,
                                            return_list=True) # defined in ATL06_to_ATL11
 
             print("completed %d/%d blocks, ref_pt = %d, last %d segments in %2.2f s." %(list(blocks).index(block0)+1, len(blocks), np.nanmax(D6.segment_id), BLOCKSIZE, time.time()-last_time))
