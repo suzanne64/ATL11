@@ -13,6 +13,7 @@ import pointCollection as pc
 import h5py
 import re
 from ATL11 import apply_release_bias
+from ATL11.check_ATL06_hold_list import check_ATL06_data_against_hold_list
 
 def get_ATL06_release(D6):
     if D6 is None:
@@ -34,6 +35,7 @@ def get_ATL06_release(D6):
 
 def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11,
                    release_bias_dict=None,
+                   hold_list=None,
                    verbose=False, xy_bin=None):
     """
     Read the data from other tracks.
@@ -53,11 +55,12 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
     D_xover=[]
     ATL06_fields = ['delta_time', 'latitude','longitude', 'h_li', 'h_li_sigma',
                     'atl06_quality_summary', 'segment_id', 'sigma_geo_h',
-                    'x_atc', 'y_atc',
+                    'x_atc', 'y_atc', 'dh_fit_dx',
                     'sigma_geo_at','sigma_geo_xt', 'sigma_geo_r',
-                    'ref_azimuth', 'ref_coelv',
+                    'ref_azimuth', 'ref_coelv', 'seg_azimuth',
                     'tide_ocean', 'dac',
-                    'rgt', 'cycle_number', 'BP',  'spot',
+                    'rgt', 'cycle_number',
+                    'BP',  'spot', 'LR',
                     'source_file_num']
 
     for x0_ctr in x0_ctrs:
@@ -106,6 +109,8 @@ def get_xover_data(x0, y0, rgt, GI_files, xover_cache, index_bin_size, params_11
                     D_xover.append(xover_cache[this_key]['D'][np.arange(i0, i1+1, dtype=int)])
     if len(D_xover) > 0:
         D_xover=pc.data().from_list(D_xover)
+        if hold_list is not None:
+            check_ATL06_data_against_hold_list(D_xover, hold_list)
 
     # cleanup the cache if it is too large
     if len(xover_cache.keys()) > 5:

@@ -9,6 +9,7 @@ THIS_SCRIPT=`basename $0`
 ASAS_BIN=/discover/nobackup/bjelley/bin
 sec_offset=-1
 start_date='2019 03 29'
+xy_bias_file='None'
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         -r|--rgt) rgt="$2"; shift ;;
@@ -24,6 +25,7 @@ while [[ "$#" -gt 0 ]]; do
         -m|--dem_mosaic) dem_mosaic="$2"; shift ;;
         -c|--ctl_file) ctl_file="$2"; shift ;;
         -t|--sec_offset) sec_offset="$2"; shift ;;
+        -x|--xy_bias) xy_bias_file="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
@@ -49,14 +51,20 @@ if [ ! -e $atl11_outfile ]; then
     rm -f $logfile
   fi
   echo "Start processing: `date`" | tee -a $logfile
-  # Include sec_offset if present
-  if [ $sec_offset -lt 0 ]; then
-    $PYTHONPATH/ATL11/scripts/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" --verbose  | tee -a $logfile
+  # Include xy_bias_file if relevant
+  if [ $xy_bias_file != 'None' ]; then
+    xy_bias_arg="--xy_bias_file "$xy_bias_file
   else
-#    echo "sec_offset $sec_offset"
-#    echo "start_date $start_date"
-    $PYTHONPATH/ATL11/scripts/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" --sec_offset $sec_offset --start_date $start_date --verbose  | tee -a $logfile
+    xy_bias_arg=''
   fi
+  # Include stipulated start date and seconds offset if relevant
+  if [ $sec_offset -lt 0 ]; then
+    sec_offset_arg=''
+  else
+    sec_offset_arg="--sec_offset "${sec_offset}" --start_date "${start_date}
+  fi
+  # Call ATL06_to_ATL11
+  $PYTHONPATH/ATL11/scripts/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" $xy_bias_arg $sec_offset_arg --verbose  | tee -a $logfile
   RES=${PIPESTATUS[0]}
   if [ ${RES} -ne 0 ] ; then
     echo "${THIS_SCRIPT} Warning: ATL06_to_ATL11.py did not complete successfully"
