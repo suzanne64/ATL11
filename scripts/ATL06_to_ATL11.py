@@ -153,9 +153,9 @@ def main(argv):
             atc_shift_table = ATL11.calc_geoloc_bias(D6,
                                     atc_shift_csv_file=args.xy_bias_file,
                                     atc_shift_table=atc_shift_table)
-
+            # BUGFIX: changed "(all_ref_pts <= ref_pt_range[1])" to (all_ref_pts < ref_pt_range[1])
             ref_pt_ind=(all_ref_pts >= ref_pt_range[0]) & \
-                                   (all_ref_pts <= ref_pt_range[1])
+                                   (all_ref_pts < ref_pt_range[1])
             ref_pt_numbers=all_ref_pts[ref_pt_ind]
             ref_pt_x = all_ref_pt_x[ref_pt_ind]
 
