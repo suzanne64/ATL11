@@ -9,7 +9,7 @@ import scipy.sparse as sp
 import ATL11
 import pandas as pd
 import argparse
-    
+from ATL11.check_ATL06_hold_list import read_hold_files    
 
 def RDE(x):
     xs=x.copy()
@@ -270,8 +270,9 @@ def main():
     v.cycle_number=np.round(v.cycle_number).astype(int)
     v.rgt=np.round(v.rgt).astype(int)
 
-    hold_arr=np.c_[ATL11.read_hold_files()]
-    if hold_arr.size > 0:
+    hold_info=read_hold_files()
+    if hold_info is not None:
+        hold_arr=np.c_[hold_info]
         bad=np.zeros_like(v.rgt[:,0], dtype=bool)
         for col in [0, 1]:
             bad |= np.in1d(v.cycle_number[:,col]+1j*v.rgt[:,col], hold_arr[:,0]+1j*hold_arr[:,1])

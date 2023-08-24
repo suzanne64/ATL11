@@ -631,6 +631,12 @@ class data(object):
                     print("not enough data at ref pt=%d" % ref_pt)
                 continue
 
+            # fix for bad regressions in x_atc for latitude: reject if there are not two distinct x_atc values
+            if np.nanmax(D6_sub.x_atc)-np.nanmin(D6_sub.x_atc) < 20:
+                if verbose:
+                    print("not enough distinct x_atc values at ref_pt=%d" % ref_pt)
+                continue
+
             #2a. define representative x and y values for the pairs
             pair_data=ATL06_pair().from_ATL06(D6_sub, datasets=['x_atc','y_atc','delta_time','dh_fit_dx','dh_fit_dy','segment_id','cycle_number','h_li', 'h_li_sigma'])   # this might go, similar to D6_sub
             if ~np.any(np.isfinite(pair_data.y)):
