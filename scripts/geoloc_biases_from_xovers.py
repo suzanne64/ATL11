@@ -9,6 +9,7 @@ import scipy.sparse as sp
 import ATL11
 import pandas as pd
 import argparse
+from ATL11.check_ATL06_hold_list import read_hold_files    
 
 def RDE(x):
     xs=x.copy()
