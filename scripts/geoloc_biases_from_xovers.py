@@ -127,6 +127,7 @@ def collect_xovers(xover_glob, bin_size=100e3, DEM=None, min_h=1500,
                 D0 += [DD[0]]
                 D1 += [DD[1]]
         except Exception as e:
+            print(f"problem reading {file} :"
             print(e)
             pass
     if get_bins_only:
@@ -265,7 +266,6 @@ def main():
 
     v = collect_xovers(args.glob_str, DEM=DEM, max_delta_t = 2*bin_t_tol, min_r=min_r, min_h=min_h, max_r=max_r) 
     print(v)
-    uT, t_bins = pc.unique_by_rows(np.round(np.mean(v.delta_time, axis=1)/ctr_t_tol)*ctr_t_tol, return_dict=True)
 
     v.cycle_number=np.round(v.cycle_number).astype(int)
     v.rgt=np.round(v.rgt).astype(int)
@@ -278,7 +278,8 @@ def main():
             bad |= np.in1d(v.cycle_number[:,col]+1j*v.rgt[:,col], hold_arr[:,0]+1j*hold_arr[:,1])
             good =~bad
         v.index(good)
-    
+    uT, t_bins = pc.unique_by_rows(np.round(np.mean(v.delta_time, axis=1)/ctr_t_tol)*ctr_t_tol, return_dict=True)
+
     v.assign({field:val for field, val in zip(['x_sp','y_sp'], ATL11.calc_xy_spot(v))})
     d=pc.data().from_dict({field:np.diff(getattr(v, field), axis=1) for field in v.fields})
 
