@@ -69,11 +69,11 @@ def filter_xovers(v, m, data,
     '''
     Filter the crossovers based on field values
     '''
-
+    #print( f"grounded_fraction: {np.nanmean(m.grounded):2.2f}")
     good=np.all(v.atl06_quality_summary < 0.01, axis=1)
     for di in data:
         good &= np.abs(di.delta_time[:,1]-di.delta_time[:,0]) < 0.005
-    good &= m.grounded > grounded_tol
+    #good &= m.grounded > grounded_tol
     if slope_max is not None:
         good &= np.all(np.abs(np.c_[v.dh_fit_dx, v.dh_fit_dy])< slope_max, axis=1)
     
@@ -99,7 +99,7 @@ def collect_xovers(xover_glob, bin_size=100e3, DEM=None, min_h=1500,
     files=[]
     for this_glob in xover_glob.split(' '):
         files += glob.glob(this_glob)
-    print(len(files))
+
     xys=[]
     for file in files:
         try:
@@ -120,20 +120,20 @@ def collect_xovers(xover_glob, bin_size=100e3, DEM=None, min_h=1500,
                 continue
             vv, mm, DD = read_xovers(file)
             filter_xovers(vv, mm, DD, min_h=min_h)
-
+            
             v += [vv]
             
             if get_data:
                 D0 += [DD[0]]
                 D1 += [DD[1]]
         except Exception as e:
-            print(f"problem reading {file} :"
+            print(f"problem reading {file} :")
             print(e)
             pass
     if get_bins_only:
         return xys
     v=pc.data(columns=2).from_list(v)
-    
+
     if get_data:
         D0=pc.data(columns=2).from_list(D0)
         D1=pc.data(columns=2).from_list(D1)
@@ -265,7 +265,6 @@ def main():
         DEM=pc.grid.data().from_geotif(args.DEM_file)
 
     v = collect_xovers(args.glob_str, DEM=DEM, max_delta_t = 2*bin_t_tol, min_r=min_r, min_h=min_h, max_r=max_r) 
-    print(v)
 
     v.cycle_number=np.round(v.cycle_number).astype(int)
     v.rgt=np.round(v.rgt).astype(int)
