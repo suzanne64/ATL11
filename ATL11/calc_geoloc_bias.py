@@ -36,7 +36,8 @@ def calc_xy_spot(D):
 
     return x_spot, y_spot
 
-def calc_geoloc_bias(D, atc_shift_csv_file=None, atc_shift_table=None):
+def calc_geoloc_bias(D, atc_shift_csv_file=None, atc_shift_table=None,
+                     move_points=False, EPSG=None):
     """
     Calculate and apply vertical bias corrections based on estimated xy errors.
 
@@ -100,4 +101,21 @@ def calc_geoloc_bias(D, atc_shift_csv_file=None, atc_shift_table=None):
         D.y_atc -= d_atc['y_bias']
 
     D.h_li += D.dh_geoloc
+
+    if move_points:
+        import pyproj
+        #if EPSG is None:
+        #    if np.mean(D.latitude) > 0:
+        #        EPSG=3413
+        #    else:
+        #        EPSG=3031
+        lonlat=np.array(pyproj.proj.Proj(EPSG)(D.x, D.y, inverse=True)).T
+        lonlat[:,1] += 1.e-3
+        xy1=np.array(pyproj.proj.Proj(EPSG)(lonlat[:,0], lonlat[:,1])).T
+        N_hat = (xy1[:,0]-D.x) + 1j*(xy1[:,1]-D.y)
+        N_hat /= np.abs(N_hat)
+        x_hat = np.exp(-1j*D.seg_azimuth)*N_hat
+        y_hat = 1j*x_hat
+        D.x -= (d_atc['x_bias']*np.real(x_hat) + d_atc['y_bias'] * np.real(y_hat))
+        D.y -= (d_atc['x_bias']*np.imag(x_hat) + d_atc['y_bias'] * np.imag(y_hat))
     return atc_shift_table
