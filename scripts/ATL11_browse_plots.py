@@ -229,11 +229,16 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     h0 = ax1[0].scatter(x/1000, y/1000, c=h_corr[:,ccl]/1000, s=2, cmap=cm, marker='.', vmin=h05/1000, vmax=h95/1000)   
     ax1[0].set_title('Heights, Cycle {}, km'.format(int(cycle_number[ccl])), fontdict={'fontsize':10});
     h1 = ax1[1].scatter(x/1000, y/1000, c=np.count_nonzero(~np.isnan(h_corr),axis=1), s=2, marker='.', cmap=cmCount, vmin=0-0.5, vmax=num_cycles+0.5)
-    h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95)
+    if np.all(np.isnan(dHdt)):
+      h2 = ax1[2].scatter(x/1000, y/1000, s=2, marker='.', vmin=-1.0, vmax=1.0, plotnonfinite=True)
+    else:
+      h2 = ax1[2].scatter(x/1000, y/1000, c=dHdt, s=2, marker='.', cmap=cm, vmin=dHdt05, vmax=dHdt95, plotnonfinite=True)
+
     cbar = fig1.colorbar(h2, ax=ax1[2]) 
     if np.all(np.isnan(dHdt)):
         cbar.ax.set_yticklabels('')
-        cbar.set_ticks([],update_ticks=True)
+#        cbar.set_ticks([],update_ticks=True)
+        cbar.set_ticks([])
         ax1[2].legend(['No Data'], loc='best') 
     if hemisphere==1:
         plt.figtext(0.1,0.01,'Figure 1. Height data, in km, from cycle {0} (1st panel). Number of cycles with valid height data (2nd panel). Change in height over time, in meters/year, cycle {0} from cycle {1} (3rd panel). All overlaid on gradient of DEM. x, y in km. Maps are plotted in a polar-stereographic projection with a central longitude of 45W and a standard latitude of 70N.'.format(int(cycle_number[ccl]),int(cycle_number[ccf])),wrap=True)
