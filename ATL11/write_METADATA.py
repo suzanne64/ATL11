@@ -146,6 +146,7 @@ def filemeta(outfile,sec_offset,start_date,infiles):
 # handle METADATA attributes
               create_attribute(g['METADATA/DatasetIdentification'].id, 'fileName', [], os.path.basename(outfile))
               create_attribute(g['METADATA/DatasetIdentification'].id, 'uuid', [], str(uuid.uuid4()))
+              create_attribute(g['METADATA/DatasetIdentification'].id, 'VersionID', [], infile.split('/')[-1].split('_')[3])
               create_attribute(g['METADATA/ProcessStep/PGE'].id, 'runTimeParameters', [], ' '.join(sys.argv))
               create_attribute(g['METADATA/ProcessStep/PGE'].id, 'identifier', [], identifier())
               create_attribute(g['METADATA/ProcessStep/PGE'].id, 'softwareDate', [], softwareDate())
@@ -203,7 +204,7 @@ def filemeta(outfile,sec_offset,start_date,infiles):
                            val=softwareVersion()
                            create_attribute(g.id, key, [], val)
                            create_attribute(g['METADATA/ProcessStep/PGE'].id, 'softwareVersion', [], val)
-                           create_attribute(g['METADATA/DatasetIdentification'].id, 'VersionID', [], val)
+#                           create_attribute(g['METADATA/DatasetIdentification'].id, 'VersionID', [], val)
                            create_attribute(g['METADATA/SeriesIdentification'].id, 'VersionID', [], series_version())
                            continue
                        if key=='time_coverage_start':

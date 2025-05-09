@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -vx
 exec 2>&1
 set -eu
 # Executes l3b_is algorithm, atlas_meta, atl11_qa_util, ATL11 browse programming
@@ -10,6 +10,7 @@ ASAS_BIN=/discover/nobackup/bjelley/bin
 sec_offset=-1
 start_date='2019 03 29'
 xy_bias_file='None'
+scratch='F'
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         -r|--rgt) rgt="$2"; shift ;;
@@ -24,6 +25,7 @@ while [[ "$#" -gt 0 ]]; do
         -H|--hemisphere) hemisphere="$2"; shift ;;
         -m|--dem_mosaic) dem_mosaic="$2"; shift ;;
         -c|--ctl_file) ctl_file="$2"; shift ;;
+        -b|--scratch) scratch="$2"; shift ;;
         -t|--sec_offset) sec_offset="$2"; shift ;;
         -x|--xy_bias) xy_bias_file="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
@@ -63,8 +65,14 @@ if [ ! -e $atl11_outfile ]; then
   else
     sec_offset_arg="--sec_offset "${sec_offset}" --start_date "${start_date}
   fi
+  # Include toggle to duplicate input files in scratch storage
+  if [ $scratch == 'T' ]; then
+    scratch='--scratch'
+  else
+    scratch=''
+  fi
   # Call ATL06_to_ATL11
-  $PYTHONPATH/ATL11/scripts/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" $xy_bias_arg $sec_offset_arg --verbose  | tee -a $logfile
+  $PYTHONPATH/ATL11/scripts/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" $xy_bias_arg $sec_offset_arg $scratch --verbose  | tee -a $logfile
   RES=${PIPESTATUS[0]}
   if [ ${RES} -ne 0 ] ; then
     echo "${THIS_SCRIPT} Warning: ATL06_to_ATL11.py did not complete successfully"

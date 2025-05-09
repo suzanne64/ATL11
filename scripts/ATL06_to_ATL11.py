@@ -1,4 +1,4 @@
-#! /usr/bin/env python3 -u
+#! /usr/bin/env python3
 
 '''
 Executable script to generate ATL11 files based on ATL06 data.
@@ -16,9 +16,13 @@ import ATL11
 import time
 import glob
 import sys
+import os
+import hashlib
+import shutil
 import matplotlib.pyplot as plt
 import resource as memresource
 import json
+#from time import gmtime, strftime
 from ATL11.check_ATL06_hold_list import read_hold_files
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -b -101. -76. -90. -74.5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5"
 #591 10 -F /Volumes/ice2/ben/scf/AA_06/001/cycle_02/ATL06_20190205041106_05910210_001_01.h5 -o test.h5 -G "/Volumes/ice2/ben/scf/AA_06/001/cycle*/index/GeoIndex.h5"
@@ -59,6 +63,7 @@ def main(argv):
     parser.add_argument('--use_hold_list',  action='store_true')
     parser.add_argument('--release_bias_file', type=str, help="json file specifying a bias value to be added to each spot in each data relase")
     parser.add_argument('--verbose','-v', action='store_true')
+    parser.add_argument('--scratch','-s', action='store_true')
     parser.add_argument('--sec_offset','-t', type=int, default=0, help="Seconds added to 00:00:00 of a rigid start date" [0])
     parser.add_argument('--start_date','-D', nargs='+', type=int, default=None, help="Start date, only for output metadata [YYYY DD MM]")
     args=parser.parse_args()
@@ -78,10 +83,41 @@ def main(argv):
             exit(1)
     print(f'ATL06_to_ATL11.py: applying offset of {args.sec_offset} sec to start date {args.start_date}')
 
+
     glob_str='%s/*ATL06*_*_%04d??%02d_*.h5' % (args.directory, args.rgt, args.subproduct)
     files=glob.glob(glob_str)
     if args.verbose:
         print("found ATL06 files:" + str(files))
+# bpj, here, copy files to /scratch?
+    if args.scratch:
+        scratchpath = os.getenv('TSE_TMPDIR')
+#        print(scratchpath)
+        if scratchpath is not None:
+            goodcopy = np.empty(len(files), dtype=bool)
+            goodcopy.fill(0)
+#            print("0 goodcopy check:",goodcopy)
+        
+            for file in files:
+                scratchfile = scratchpath+'/'+os.path.basename(file)
+                try:
+                    shutil.copyfile(file,scratchfile)
+                except:
+                    break
+                with open(file,"rb") as f:
+                    bytes = f.read()
+                    md5_source = hashlib.md5(bytes).hexdigest()
+                with open(scratchfile,"rb") as f:
+                    bytes = f.read()
+                    md5_scratch = hashlib.md5(bytes).hexdigest()
+                if md5_scratch == md5_source:
+                    goodcopy[list(not x for x in goodcopy).index(True)] = 1
+#            print('md5s:', md5_source,' ',md5_scratch)
+#            print("goodcopy check:",goodcopy)
+            if all(x for x in goodcopy):
+                files = [scratchpath+'/'+os.path.basename(file) for file in files]
+                print("ATL06 files duplicated to scratch ",scratchpath)
+#        print(files)
+#    exit()
 
     release_bias_dict=None
     if args.release_bias_file:
@@ -105,6 +141,9 @@ def main(argv):
     else:
         hold_list=None
 
+    elapsed_read_ATL06_data = 0
+    elapsed_ATL11_data_from_ATL06 = 0
+    elapsed_ATL11_data_write = 0
     for pair in pairs:
         # read the lat, lon, segment_id data for each segment
         D6_segdata = ATL11.read_ATL06_data(files, beam_pair=pair,
@@ -142,7 +181,6 @@ def main(argv):
             print(f'ref_pt_range={ref_pt_range}')
             seg_range=[np.maximum(0, ref_pt_range[0]-ATL11.defaults().N_search),
                        ref_pt_range[1]+ATL11.defaults().N_search]
-
             D6 = ATL11.read_ATL06_data(files, beam_pair=pair,
                                        cycles=args.cycles,
                                        hold_list=hold_list,
@@ -199,6 +237,16 @@ def main(argv):
             D11.write_to_file(out_file)
 
     out_file = ATL11.write_METADATA(out_file,args.sec_offset,args.start_date,files)
+
+    if args.scratch:
+      if all(x for x in goodcopy):
+          for file in files:
+              scratchfile = scratchpath+'/'+os.path.basename(file)
+              try:
+                os.remove(scratchfile)
+              except:
+                print('scratch file ',file,' already removed')
+          print("ATL06 files removed from scratch ",scratchpath)
 
     print("ATL06_to_ATL11: done with "+out_file)
 
