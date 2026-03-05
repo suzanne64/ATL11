@@ -44,7 +44,7 @@ for file in $cycle_dir/*ATL06*.h5; do
     this_file_index=$cycle_dir/index/`basename $file`
     [ -f $this_file_index ] && continue
     echo $file
-    echo "${script_path}/pointCollection/scripts/index_glob.py -t ATL06 -H $hemisphere --index_file $this_file_index -g $file --dir_root `pwd`/$dir/" >> file_queue_${cycle}.txt
+    echo "index_glob.py -t ATL06 -H $hemisphere --index_file $this_file_index -g $file --dir_root `pwd`/$dir/" >> file_queue_${cycle}.txt
 done
 
 
@@ -86,7 +86,7 @@ cat tile_queue.txt | parallel --ssh "ssh -q" --workdir . --env PYTHONPATH -S ice
 echo "tile generation done time `date`"
 echo "indexing tiles for $cycle_dir"
 pushd $cycle_tile_dir
-${script_path}/pointCollection/scripts/index_glob.py -H $hemisphere -t indexed_h5 --index_file GeoIndex.h5 -g "E*.h5" --dir_root `pwd` -v 
+${script_path}/pointCollection/scripts/index_glob.py -H $hemisphere -t indexed_h5 --index_file GeoIndex.h5 -g "E*.h5" --dir_root `pwd` -v
 popd
 
 

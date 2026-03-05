@@ -20,7 +20,7 @@ def phDensityFilter(D6, minDensity={'weak':1, 'strong':4}, setValid=True, toNaN=
         D6.valid=D6.valid & mask
     
     if toNaN:
-        D6.h_li[mask==0]=np.NaN
+        D6.h_li[mask==0]=np.nan
     if subset:
         D6.index(np.any(mask==1, axis=1))
 
@@ -41,7 +41,7 @@ def segDifferenceFilter(D6, tol=2, setValid=True, toNaN=False, subset=False):
     if setValid:
         D6.valid=D6.valid & mask
     if toNaN:
-        D6.h_li[mask==0]=np.NaN
+        D6.h_li[mask==0]=np.nan
     if subset:
         D6.index(np.all(mask==1, axis=1))
 
@@ -60,7 +60,7 @@ def qualitySummary(D6, includeDensity=False, setValid=True, includeSigSource=Fal
     if setValid:
         D6.valid = D6.valid & atl06QualitySummary==0
     if toNaN: 
-        D6.h_li[atl06QualitySummary > 0]=np.NaN
+        D6.h_li[atl06QualitySummary > 0]=np.nan
     if subset:
         D6.subset(np.all(atl06QualitySummary, axis=1))
 

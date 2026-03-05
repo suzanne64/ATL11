@@ -9,7 +9,7 @@ import scipy.sparse as sp
 import ATL11
 import pandas as pd
 import argparse
-from ATL11.check_ATL06_hold_list import read_hold_files    
+from ATL11.check_ATL06_hold_list import read_hold_files
 
 def RDE(x):
     xs=x.copy()
@@ -76,12 +76,12 @@ def filter_xovers(v, m, data,
     #good &= m.grounded > grounded_tol
     if slope_max is not None:
         good &= np.all(np.abs(np.c_[v.dh_fit_dx, v.dh_fit_dy])< slope_max, axis=1)
-    
+
     if max_delta_t is not None:
         good &= (v.delta_t[:,1]-v.delta_t[:,0]) < max_delta_t
     if min_h is not None:
-        min_h &= (np.all(v.h_li > min_h, axis=1))
-    
+        good &= (np.all(v.h_li > min_h, axis=1))
+
     v.index(good)
     m.index(good)
     for di in data:
@@ -90,15 +90,18 @@ def filter_xovers(v, m, data,
 def collect_xovers(xover_glob, bin_size=100e3, DEM=None, min_h=1500, 
                         min_r = 250e3,max_r=2.5e6,
                         asc_minus_desc=None, max_delta_t=24*3600*10, 
-                        get_bins_only=False, get_data=False):
+                        get_bins_only=False, get_data=False, verbose=False):
     tile_re=re.compile('E(.*)_N(.*).h5')
-        
+
     pad_0=np.arange(-bin_size/2, bin_size/2*1.25, bin_size/4)
     x_pad, y_pad = np.meshgrid(pad_0, pad_0)
     v, d, m, D0, D1 = [[], [], [], [], []]
     files=[]
     for this_glob in xover_glob.split(' '):
         files += glob.glob(this_glob)
+
+    if verbose:
+        print(f"collect_xovers: for glob_str {xover_glob}, found {len(files)} files")
 
     xys=[]
     for file in files:
@@ -113,16 +116,15 @@ def collect_xovers(xover_glob, bin_size=100e3, DEM=None, min_h=1500,
                 if np.all(np.sqrt((xy[0]+x_pad.ravel())**2+ (xy[1]+y_pad.ravel())**2)<min_r):
                     continue
             if max_r is not None:
-                if np.any(np.sqrt((xy[0]+x_pad.ravel())**2+ (xy[1]+y_pad.ravel())**2)>max_r):
+                if np.all(np.sqrt((xy[0]+x_pad.ravel())**2+ (xy[1]+y_pad.ravel())**2)>max_r):
                     continue
             xys += [xy]
             if get_bins_only:
                 continue
             vv, mm, DD = read_xovers(file)
             filter_xovers(vv, mm, DD, min_h=min_h)
-            
+
             v += [vv]
-            
             if get_data:
                 D0 += [DD[0]]
                 D1 += [DD[1]]
@@ -252,8 +254,11 @@ def main():
     parser.add_argument('--r_range','-r', type=float, nargs=2, default=[100, 800], help="range of radii around the pole for which bin centers will be read, in km.")
     parser.add_argument('--min_h', type=float, default=1800, help="minimum DEM elevation for which to read crossover bins")
     parser.add_argument('--out_csv', type=str, required=True, help="output csv filename")
+    parser.add_argument('--verbose','-v', action="store_true")
     args=parser.parse_args()
 
+
+    print(args)
     min_r=args.r_range[0]*1000
     min_h=args.min_h
     max_r=args.r_range[1]*1000
@@ -264,7 +269,7 @@ def main():
     if args.DEM_file is not None:
         DEM=pc.grid.data().from_geotif(args.DEM_file)
 
-    v = collect_xovers(args.glob_str, DEM=DEM, max_delta_t = 2*bin_t_tol, min_r=min_r, min_h=min_h, max_r=max_r) 
+    v = collect_xovers(args.glob_str, DEM=DEM, max_delta_t = 2*bin_t_tol, min_r=min_r, min_h=min_h, max_r=max_r, verbose=args.verbose) 
 
     v.cycle_number=np.round(v.cycle_number).astype(int)
     v.rgt=np.round(v.rgt).astype(int)
@@ -319,14 +324,15 @@ def main():
     xy_sigma_u = np.c_[[oi['sigma_uncorr'] for oi in out_xy]]
     xy_sigma_c = np.c_[[oi['sigma_corr'] for oi in out_xy]]
     xy_sigma_d = np.c_[[oi['sigma_data'] for oi in out_xy]]
-
+    N_pts = np.c_[[len(oi['fit_index']) for oi in out_xy]]
     temp={'delta_time': xy_times}
     temp.update({'x_bias':x_biases,'y_bias':y_biases})
 
 
     temp.update({'total_sigma':xy_sigma_d,
                 'rgt_corr_sigma':xy_sigma_u,            
-                'xy_corr_sigma':xy_sigma_c})
+                 'xy_corr_sigma':xy_sigma_c,
+                 'N_pts':N_pts})
     for field in temp:
         temp[field]=temp[field].ravel()
     df=pd.DataFrame(temp)

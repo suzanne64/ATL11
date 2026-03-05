@@ -34,7 +34,7 @@ class poly_ref_surf(object):
             self.exp_x=np.array(exp_xy[0]).ravel()
             self.exp_y=np.array(exp_xy[1]).ravel()
         # establish arrays for fitting
-        self.poly_vals=np.NaN+np.zeros(self.exp_x.shape)
+        self.poly_vals=np.nan+np.zeros(self.exp_x.shape)
         self.model_cov_matrix=None
         self.xy_scale=xy_scale
         self.skip_constant=skip_constant
@@ -66,8 +66,8 @@ class poly_ref_surf(object):
             self.build_fit_matrix(xd, yd)
         G=self.fit_matrix
         #initialize outputs
-        m=np.zeros(G.shape[1])+np.NaN
-        residual=np.zeros_like(xd)+np.NaN
+        m=np.zeros(G.shape[1])+np.nan
+        residual=np.zeros_like(xd)+np.nan
         rows=np.ones_like(xd, dtype=bool)
         # build a sparse covariance matrix
         if sigma_d is None:
@@ -81,7 +81,7 @@ class poly_ref_surf(object):
         for k_it in np.arange(max_iterations):
             rows=mask
             if rows.sum()==0:
-                chi2r=np.NaN
+                chi2r=np.nan
                 break
             Gsub=G[rows,:]
             cols=(np.amax(Gsub,axis=0)-np.amin(Gsub,axis=0))>0

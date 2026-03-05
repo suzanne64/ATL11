@@ -36,7 +36,8 @@ def get_ATL06_release(D6_list):
         D6i.assign({'release':np.zeros_like(D6i.delta_time)+release})
 
 def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12],
-                    hold_list=None, minimal=False, ATL06_dict=None, seg_range=None):
+                    hold_list=None, minimal=False, read_latlon=False,
+                    ATL06_dict=None, seg_range=None):
     '''
     Read ATL06 data from a list of files for a specific beam pair
 
@@ -66,7 +67,9 @@ def read_ATL06_data(ATL06_files, beam_pair=2, cycles=[1, 12],
 
     if minimal:
         # only read in the segment_id, latitude, and longitude fields, return in a dictionary
-        minimal_field_dict={None:['segment_id','latitude','longitude'],'ground_track':['x_atc', 'y_atc']}
+        minimal_field_dict={None:['segment_id'],'ground_track':['x_atc', 'y_atc']}
+        if read_latlon:
+            minimal_field_dict[None] += ['latitude', 'longitude']
         D6_dict={}
         for filename in ATL06_files:
             temp=pc.ATL06.data(field_dict=minimal_field_dict, beam_pair=beam_pair).from_h5(filename)

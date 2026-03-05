@@ -5,8 +5,9 @@ hemisphere=$1
 
 cycle_dir=$2
 release=$3
-script_path=$PYTHONPATH
 
+#script_path=$PYTHONPATH
+script_path=/discover/nobackup/bjelley/python
 echo "Start time `date`"
 
 cycle=`echo $cycle_dir | awk -F '/' '{print $(NF)}' | awk -F '_' '{print $2}'`
@@ -71,7 +72,7 @@ cycle_tile_dir=tiles/$trimcycle_dir
 [ -d $cycle_tile_dir ] || mkdir -p $cycle_tile_dir
 echo "making a queue of indexing commands for $cycle_dir"
 # make a queue of tiles
-${script_path}/pointCollection/scripts/make_tiles.py -H $hemisphere -i $cycle_dir/index/GeoIndex.h5 -W 100000 -t ATL06 -o $cycle_tile_dir -q tile_queue_${cycle}.txt -j ${script_path}/ATL11/ATL06_field_dict.json
+make_tiles.py -H $hemisphere -i $cycle_dir/index/GeoIndex.h5 -W 100000 -t ATL06 -o $cycle_tile_dir -q tile_queue_${cycle}.txt -j ${script_path}/ATL11/ATL06_field_dict.json
 # run the queue
 
 exit
@@ -92,7 +93,7 @@ done
 echo "tile generation done time `date`"
 echo "indexing tiles for $cycle_dir"
 pushd $cycle_tile_dir
-${script_path}/pointCollection/scripts/index_glob.py -H $hemisphere -t indexed_h5 --index_file GeoIndex.h5 -g "E*.h5" --dir_root `pwd` -v 
+${script_path}/pointCollection/scripts/index_glob.py -H $hemisphere -t indexed_h5 --index_file GeoIndex.h5 -g "E*.h5" --dir_root `pwd` -v
 popd
 
 

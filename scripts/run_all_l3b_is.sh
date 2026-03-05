@@ -17,6 +17,7 @@ while [[ "$#" -gt 0 ]]; do
         -n|--region) region="$2"; shift ;;
         -a|--atl06_datapath) atl06_datapath="$2"; shift ;;
         -G|--geoindex_path) geoindex_path="$2"; shift ;;
+        -T|--tile_path) tile_path="$2"; shift ;;
         -R|--release) release="$2"; shift ;;
         -V|--version) version="$2"; shift ;;
         -o|--output_path) output_path="$2"; shift ;;
@@ -28,6 +29,7 @@ while [[ "$#" -gt 0 ]]; do
         -b|--scratch) scratch="$2"; shift ;;
         -t|--sec_offset) sec_offset="$2"; shift ;;
         -x|--xy_bias) xy_bias_file="$2"; shift ;;
+        -X|--xover_output_dir) xover_output_dir="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
@@ -72,7 +74,8 @@ if [ ! -e $atl11_outfile ]; then
     scratch=''
   fi
   # Call ATL06_to_ATL11
-  $PYTHONPATH/ATL11/scripts/ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere -G "$geoindex_path" $xy_bias_arg $sec_offset_arg $scratch --verbose  | tee -a $logfile
+  ATL06_to_ATL11.py $rgt $region --cycles $start_cycle $end_cycle -d "$atl06_datapath" -R $release -V $version -o $output_path -H $hemisphere --tile_dir_glob "$tile_path" $xy_bias_arg $sec_offset_arg $scratch --xover_output_dir $xover_output_dir --verbose  | tee -a $logfile
+
   RES=${PIPESTATUS[0]}
   if [ ${RES} -ne 0 ] ; then
     echo "${THIS_SCRIPT} Warning: ATL06_to_ATL11.py did not complete successfully"
@@ -105,7 +108,8 @@ echo " "
 if [ ! -e BRW_template.h5 ]; then
   ln -s $ASAS_BIN/BRW_template.h5 .
 fi
-python3 $PYTHONPATH/ATL11/scripts/ATL11_browse_plots.py $atl11_outfile -H $hemisphere -m $dem_mosaic | tee -a $logfile
+#python3 $PYTHONPATH/ATL11/scripts/ATL11_browse_plots.py $atl11_outfile -H $hemisphere -m $dem_mosaic | tee -a $logfile
+ATL11_browse_plots.py $atl11_outfile -H $hemisphere -m $dem_mosaic | tee -a $logfile
 RES=${PIPESTATUS[0]}
 if [ ${RES} -ne 0 ] ; then
   echo "${THIS_SCRIPT} Warning: ATL11_browse_plots.py did not complete successfully"
@@ -129,4 +133,3 @@ echo " "
 echo "End processing: `date`" | tee -a $logfile
 echo "Exit code: "$ALL_RES | tee -a $logfile
 exit $ALL_RES
-

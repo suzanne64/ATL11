@@ -16,7 +16,7 @@ import ATL11
 
 class point(ATL11.data):
     # ATL11_point is a class with methods for calculating ATL11 from ATL06 data
-    def __init__(self, N_pairs=1, ref_pt=None, beam_pair=None, x_atc_ctr=np.NaN,  track_azimuth=np.NaN,
+    def __init__(self, N_pairs=1, ref_pt=None, beam_pair=None, x_atc_ctr=np.nan,  track_azimuth=np.nan,
                  max_poly_degree=[1, 1], cycles=[1,12],  rgt=None, mission_time_bds=None, params_11=None, use_release_bias=False):
         # input variables:
         # N_pairs: Number of distinct pairs in the ATL06 data
@@ -42,8 +42,8 @@ class point(ATL11.data):
         self.beam_pair=beam_pair
         self.ref_pt=ref_pt
         self.track_azimuth=track_azimuth
-        self.ref_surf_slope_x=np.NaN
-        self.ref_surf_slope_y=np.NaN
+        self.ref_surf_slope_x=np.nan
+        self.ref_surf_slope_y=np.nan
         self.rgt=rgt
         if mission_time_bds is None:
             #Under normal circumstances, mission_time_bounds is set by data.py
@@ -405,7 +405,7 @@ class point(ATL11.data):
         # 3a. define degree_list_x and degree_list_y.  These are stored in self.default.poly_exponent_list
         degree_x = self.params_11.poly_exponent['x']
         degree_y = self.params_11.poly_exponent['y']
-        
+
         # keep only degrees > 0 and degree_x+degree_y <= max(max_x_degree, max_y_degree)
         self.poly_mask = (degree_x + degree_y) <= np.maximum(self.ref_surf.deg_x,self.ref_surf.deg_y)
         self.poly_mask &= (degree_x <= self.ref_surf.deg_x)
@@ -468,8 +468,11 @@ class point(ATL11.data):
             #m_surf_zp[fit_columns]=np.dot(G_g,h_li[selected_segs])
             # REVISION: use the specialized lstsq function from scipy.linalg
             try:
-                m_surf_zp[fit_columns]=\
-                        linalg.lstsq(np.sqrt(C_di).dot(G), np.sqrt(C_di).dot(h_li[selected_segs]))[0]
+                m_surf_zp[fit_columns], _, rank, __ = linalg.lstsq(np.sqrt(C_di).dot(G), np.sqrt(C_di).dot(h_li[selected_segs]), lapack_driver='gelsy')
+                if rank < G.shape[1]:
+                    print(f'\t ATL11.point.find_reference_surface: found design matrix with rank {rank} for {G.shape[1]} columns at ref point {self.ref_pt}')
+                    self.status['inversion failed'] = True
+                    return
             except:
                 self.status['inversion failed'] = True
                 return
@@ -511,7 +514,7 @@ class point(ATL11.data):
         if (n_rows-n_cols)>0:
             self.ref_surf.misfit_chi2r=misfit_chi2/(n_rows-n_cols)
         else:
-            self.ref_surf.misfit_chi2r=np.NaN
+            self.ref_surf.misfit_chi2r=np.nan
 
         # identify the ref_surf cycles that survived the fit
         self.ref_surf_cycles=self.ref_surf_cycles[fit_columns[TOC['zp']]]
@@ -560,7 +563,7 @@ class point(ATL11.data):
 
         # write out the zp
         zp_nan_mask=np.ones_like(TOC_out['zp'], dtype=float)
-        zp_nan_mask[m_surf_zp_sigma[TOC_out['zp']]>15]=np.NaN
+        zp_nan_mask[m_surf_zp_sigma[TOC_out['zp']]>15]=np.nan
         self.ROOT.h_corr[0,TOC_out['cycle_ind']]=m_surf_zp[TOC_out['zp']]*zp_nan_mask
 
         # get the square of h_corr_sigma_systematic, equation 12
@@ -858,7 +861,7 @@ class point(ATL11.data):
                 if len(this)==1:
                     ss_atc_diff += (Dsub.h_li[best]+Dsub.dh_fit_dx[best]*(Dsub.x_atc[best]-Dsub.x_atc[this])-Dsub.h_li[this])**2
             if ss_atc_diff==0:
-                ss_atc_diff=[np.NaN]
+                ss_atc_diff=[np.nan]
 
             # if the along-trac RSS is too large, do not report a value
             if np.sqrt(ss_atc_diff[0]) > 10:
@@ -869,7 +872,7 @@ class point(ATL11.data):
                                                          Dsub.sigma_geo_r**2)
 
             self.crossing_track_data.rgt.append([Dsub.rgt[best]])
-            self.crossing_track_data.spot_crossing.append([Dsub.spot[best]])
+            self.crossing_track_data.spot.append([Dsub.spot[best]])
             self.crossing_track_data.cycle_number.append([Dsub.cycle_number[best]])
             self.crossing_track_data.h_corr.append([z_xover[best]])
             self.crossing_track_data.h_corr_sigma.append([z_xover_sigma[best]])
@@ -878,6 +881,8 @@ class point(ATL11.data):
             self.crossing_track_data.delta_time.append([Dsub.delta_time[best]])
             self.crossing_track_data.atl06_quality_summary.append([Dsub.atl06_quality_summary[best]])
             self.crossing_track_data.dh_geoloc.append([Dsub.dh_geoloc[best]])
+            self.crossing_track_data.segment_id.append([Dsub.segment_id[best]])
+            self.crossing_track_data.beam_pair.append([Dsub.BP[best]])
             self.crossing_track_data.ref_pt.append([self.ref_pt])
             self.crossing_track_data.latitude.append([self.ROOT.latitude])
             self.crossing_track_data.longitude.append([self.ROOT.longitude])

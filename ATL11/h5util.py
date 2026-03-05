@@ -73,7 +73,7 @@ def create_attribute(_id, _name, _dims, _value):
 
   if _classtype == h5t.STRING:
     if isinstance(_value, list):
-      _value = np.array(_value, dtype=np.string_)
+      _value = np.array(_value, dtype=np.bytes_)
     else:
       _value = np.array(str_to_h5(_value))
 #   endif

@@ -1,0 +1,10 @@
+name: ATL11
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.11
+  - pip
+  - gdal
+  - libnetcdf
+  - pip:
+    - -e .[dev,all]  # includes optional deps from pyproject.toml

@@ -1,0 +1,39 @@
+﻿group,field,units,dimensions,datatype,description,long_name,source,coordinates,valid_min,valid_max
+ROOT,,,,,Data common to datum track and crossing track,,,,,
+ROOT,xo_index,counts,"NXO,1",int64,Order of points within the file,data index,"Derived, ATL11 algorithm",,0,
+ROOT,latitude,degrees,"NXO,1",float64,latitude of the reference point,reference point latitude,"Derived, ATL11 algorithm",xo_index,-90,90
+ROOT,longitude,degrees,"NXO,1",float64,longitude of the reference point,reference point longitude,"Derived, ATL11 algorithm",xo_index,-180,180
+ROOT,x,meters,"NXO,1",float64,Projected x coordinate of the reference point,reference point projected x,"Derived, ATL11 algorithm",xo_index,-5000000,5000000
+ROOT,y,meters,"NXO,1",float64,Projected y coordinate of the reference point,reference point projected y,"Derived, ATL11 algorithm",xo_index,-5000000,5000000
+ROOT,dem_h,meters,"NXO,1",float32,DEM height at the reference point,DEM height,ATL06,xo_index,-460,8400
+ROOT,geoid_h,meters,"NXO,1",float32,geoid height at the reference point,Geoid height,ATL06,xo_index,,
+ROOT,n_slope,unitless,"NXO,1",float32,Local north component of the reference surface slope,north component of reference surface slope,"Derived, ATL11 algorithm",xo_index,,
+ROOT,e_slope,unitless,"NXO,1",float32,Local east component of the reference surface slope,east component of reference surface slope,"Derived, ATL11 algorithm",xo_index,,
+ROOT,fit_quality,counts,"NXO,1",int8,Reference point fit quality,reference point fit quality,"Derived, ATL11 algorithm",xo_index,0,32
+,,,,,,,,,,
+datum_track,,,,,Data from the track for which the along-track calculation was performed in ATL11,,,,,
+datum_track,ref_pt,counts,"NXO,1",int32,the reference-point number for the datum track,reference point,ATL06,../xo_index,0,2000000
+datum_track,rgt,counts,"NXO,1",int32,RGT number for the datum track,datum RGT number,ATL06,../xo_index,1,1378
+datum_track,pair_track,counts,"NXO,1",int8,Pair track number for the datum track,datum pair track number,ATL06,../xo_index,1,3
+datum_track,delta_time,seconds,"NXO,1",float64,time relative to the ICESat-2 reference epoch ,datum delta time,ATL06,../xo_index,0,
+datum_track,dh_geoloc,meters,"NXO,1",float32,Correction applied to Antarctic heights based on estimates of the geolocation bias ,datum geolocation height bias,"Derived, ATL11 algorithm",../xo_index,-50,50
+datum_track,h_corr,meters,"NXO,1",float32,"WGS-84 height, corrected for the ATL11 surface shape for the datum track",datum corrected height,"Derived, ATL11 algorithm",../xo_index,-460,8400
+datum_track,h_corr_sigma,meters,"NXO,1",float32,error in the height estimate,datum height uncertainty,"Derived, ATL11 algorithm",../xo_index,0,100
+datum_track,h_corr_sigma_systematic,meters,"NXO,1",float32,systematic error in the height estimate,datum systematic height uncertainty,"Derived, ATL11 algorithm",../xo_index,0,100
+datum_track,tide_ocean,meters,"NXO,1",float32,Ocean-tide estimate ,datum ocean tide,ATL06,../xo_index,-40,40
+datum_track,dac,meters,"NXO,1",float32,Dynamic atmosphere correction ,datum dynamic atmosphere correction,ATL06,../xo_index,-40,40
+,,,,,,,,,,
+crossing_track,,,,,Data derived from tracks crossing the ATL11 reference tracks,,,,,
+crossing_track,delta_time,seconds,"NXO,1",float64,time relative to the ICESat-2 reference epoch,crossing track delta time,ATL06,../xo_index,0,
+crossing_track,rgt,counts,"NXO,1",int32,Reference ground track number ,crossing track RGT number,ATL06,../xo_index,1,1387
+crossing_track,pair_track,counts,"NXO,1",int8,Pair track number,crossing track pair track number,ATL06,../xo_index,1,3
+crossing_track,segment_id,counts,"NXO,1",int64,Segment ID ,crossing track segment id,ATL06,../xo_index,1,2000000
+crossing_track,spot,counts,"NXO,1",int8,Spot number ,crossing track spot number,ATL06,../xo_index,1,6
+crossing_track,h_corr,meters,"NXO,1",float32,"WGS-84 height, corrected for the ATL11 surface shape",crossing track corrected surface height,"Derived, ATL11 algorithm",../xo_index,-460,8400
+crossing_track,h_corr_sigma,meters,"NXO,1",float32,error in the height estimate,crossing track corrected surface height uncertainty,"Derived, ATL11 algorithm",../xo_index,0,100
+crossing_track,h_corr_sigma_systematic,meters,"NXO,1",float32,systematic error in the height estimate,crossing track corrected surface height systematic uncertainty,"Derived, ATL11 algorithm",../xo_index,0,100
+crossing_track,dh_geoloc,meters,"NXO,1",float32,Correction applied to Antarctic heights based on estimates of the geolocation bias. ,crossing track geolocation height bias,"Derived, ATL11 algorithm",../xo_index,-50,50
+crossing_track,tide_ocean,meters,"NXO,1",float32,Ocean-tide estimate ,crossing track ocean tide,ATL06,../xo_index,-40,40
+crossing_track,dac,meters,"NXO,1",float32,Dynamic atmosphere correction ,crossing track dynamic atmosphere correction,ATL06,../xo_index,-40,40
+crossing_track,atl06_quality_summary,counts,"NXO,1",int8,"Quality flag derived from ATL06.  0 indicates no problems detected, 1 indicates potential problems",crossing track ATL06 quality summary,ATL06,../xo_index,0,16
+crossing_track,along_track_rss,meters,"NXO,1",float32,Root sum of the squared differences between the heights of the endpoints for the crossing-track segment and the centers of the previous and next segments,root sum of squared differences in crosing-track heights,,../xo_index,0,100

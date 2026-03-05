@@ -36,7 +36,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     ATL11_file_str = os.path.basename(ATL11_file).split('.')[0]
     if out_path is None:
         out_path = os.path.dirname(ATL11_file)
-    if not args.nolog:        
+    if not nolog:        
         log_file = '{}/ATL11_BrowsePlots_{}.log'.format(out_path, dt.datetime.now().date())
         fhlog = open(log_file,'a')
     cycle_number = np.arange(int(ATL11_file_str.split('_')[2][:2]),int(ATL11_file_str.split('_')[2][2:])+1)
@@ -413,47 +413,47 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
         if pair == 3:
             fig7.savefig('{0}/{1}_Figure7_dHdt_hist.png'.format(out_path,ATL11_file_str),format='png')
         
-        if pair==1:
-            fig8, ax8 = plt.subplots(2, 3, sharey='row', sharex=True)
-            plt.figtext(0.1,0.01,'Figure 8. Top row: Heights from crossing track data, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus crossing track heights. Y-axis limits are scores at 5% and 95%. Color coded by cycle number. Plotted against reference point number/1000.',wrap=True)
-        if np.any(~np.isnan(xo_h_corr)): 
-            if np.any(~np.isnan(xo_h_corr[xo_pair_number==pair])):
-                for ii, cyc in enumerate(cycle_number):
-                    cc=np.flatnonzero((xo_cycle_number[xo_pair_number==pair]==cyc))
-                    ax8[0,pr].plot(xo_ref_pt[xo_pair_number==pair][cc]/1000,xo_h_corr[xo_pair_number==pair][cc],'x',color=colorslist[int(cyc)], markersize=1, label='cycle {:d}'.format(int(cyc)));
-                    ax8[0,pr].grid(linestyle='--')
-                    ccc=np.flatnonzero((xo_cycle_number[xo_pair_number==pair]==cyc) & (ref_cycle_number[xo_pair_number==pair]==cyc))  
-                    ax8[1,pr].plot(xo_ref_pt[xo_pair_number==pair][ccc]/1000,ref_h_corr[xo_pair_number==pair][ccc]-xo_h_corr[xo_pair_number==pair][ccc], '.', color=colorslist[int(cyc)], markersize=1, label=None);
-                    ax8[1,pr].grid(linestyle='--')
-            else:
-                ax8[0,pr].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
-                ax8[1,pr].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
-                ax8[0,pr].plot(xo_ref_pt[xo_pair_number==pair]/1000,xo_h_corr[xo_pair_number==pair],'x',color=colorslist[int(cyc)], markersize=1, label='cycle {:d}'.format(int(cyc)));
-                ax8[0,pr].grid(linestyle='--')
-                ax8[1,pr].plot(xo_ref_pt[xo_pair_number==pair]/1000,ref_h_corr[xo_pair_number==pair]-xo_h_corr[xo_pair_number==pair], '.', color=colorslist[int(cyc)], markersize=1, label=None);
-                ax8[1,pr].grid(linestyle='--')
-            ax8[0,0].set_ylim((h05, h95))
-            ax8[0,0].set_ylabel('meters')
-            ax8[0,1].set_title('crossing_track_data/h_corr', fontdict={'fontsize':10})
-            ax8[1,0].set_ylabel('meters')
-            ax8[1,0].set_ylim((dxo05,dxo95))
-            ax8[1,1].set_title('h_corr minus crossing_track_data/h_corr', fontdict={'fontsize':10})
-        else:
-            ax8[0,0].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
-        if pair == 3:
-            fig8.subplots_adjust(bottom=0.2,right=0.8)
-            cbar_ax = fig8.add_axes([0.85, 0.2, 0.02, 0.67])
-            cmap = plt.get_cmap(cmCycles,num_cycles+1)
-            norm = mpl.colors.Normalize(vmin=start_cycle, vmax=end_cycle)
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])
-            deltac=(end_cycle-start_cycle)/(num_cycles)
-            cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle,deltac), cax=cbar_ax)
-            cbar.set_ticklabels(np.arange(int(start_cycle),int(end_cycle)+1))
-            cbar.set_label('Cycle Number')
-            plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
-            fig8.savefig('{0}/{1}_Figure8_h_corr_CrossOver.png'.format(out_path,ATL11_file_str),format='png')
-#    plt.show()
+#        if pair==1:
+#            fig8, ax8 = plt.subplots(2, 3, sharey='row', sharex=True)
+#            plt.figtext(0.1,0.01,'Figure 8. Top row: Heights from crossing track data, in meters, plotted for each beam pair: 1 (left), 2 (center), 3 (right). Bottom row: Heights minus crossing track heights. Y-axis limits are scores at 5% and 95%. Color coded by cycle number. Plotted against reference point number/1000.',wrap=True)
+#        if np.any(~np.isnan(xo_h_corr)): 
+#            if np.any(~np.isnan(xo_h_corr[xo_pair_number==pair])):
+#                for ii, cyc in enumerate(cycle_number):
+#                    cc=np.flatnonzero((xo_cycle_number[xo_pair_number==pair]==cyc))
+#                    ax8[0,pr].plot(xo_ref_pt[xo_pair_number==pair][cc]/1000,xo_h_corr[xo_pair_number==pair][cc],'x',color=colorslist[int(cyc)], markersize=1, label='cycle {:d}'.format(int(cyc)));
+#                    ax8[0,pr].grid(linestyle='--')
+#                    ccc=np.flatnonzero((xo_cycle_number[xo_pair_number==pair]==cyc) & (ref_cycle_number[xo_pair_number==pair]==cyc))  
+#                    ax8[1,pr].plot(xo_ref_pt[xo_pair_number==pair][ccc]/1000,ref_h_corr[xo_pair_number==pair][ccc]-xo_h_corr[xo_pair_number==pair][ccc], '.', color=colorslist[int(cyc)], markersize=1, label=None);
+#                    ax8[1,pr].grid(linestyle='--')
+#            else:
+#                ax8[0,pr].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
+#                ax8[1,pr].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
+#                ax8[0,pr].plot(xo_ref_pt[xo_pair_number==pair]/1000,xo_h_corr[xo_pair_number==pair],'x',color=colorslist[int(cyc)], markersize=1, label='cycle {:d}'.format(int(cyc)));
+#                ax8[0,pr].grid(linestyle='--')
+#                ax8[1,pr].plot(xo_ref_pt[xo_pair_number==pair]/1000,ref_h_corr[xo_pair_number==pair]-xo_h_corr[xo_pair_number==pair], '.', color=colorslist[int(cyc)], markersize=1, label=None);
+#                ax8[1,pr].grid(linestyle='--')
+#            ax8[0,0].set_ylim((h05, h95))
+#            ax8[0,0].set_ylabel('meters')
+#            ax8[0,1].set_title('crossing_track_data/h_corr', fontdict={'fontsize':10})
+#            ax8[1,0].set_ylabel('meters')
+#            ax8[1,0].set_ylim((dxo05,dxo95))
+#            ax8[1,1].set_title('h_corr minus crossing_track_data/h_corr', fontdict={'fontsize':10})
+#        else:
+#            ax8[0,0].annotate('No Data', xy=(0.1, 0.8), xycoords='axes fraction')
+#        if pair == 3:
+#            fig8.subplots_adjust(bottom=0.2,right=0.8)
+#            cbar_ax = fig8.add_axes([0.85, 0.2, 0.02, 0.67])
+#            cmap = plt.get_cmap(cmCycles,num_cycles+1)
+#            norm = mpl.colors.Normalize(vmin=start_cycle, vmax=end_cycle)
+#            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+#            sm.set_array([])
+#            deltac=(end_cycle-start_cycle)/(num_cycles)
+#            cbar = fig4.colorbar(sm, ticks=np.arange(start_cycle+deltac/2,end_cycle,deltac), cax=cbar_ax)
+#            cbar.set_ticklabels(np.arange(int(start_cycle),int(end_cycle)+1))
+#            cbar.set_label('Cycle Number')
+#            plt.suptitle('{}'.format(os.path.basename(ATL11_file)))
+#            fig8.savefig('{0}/{1}_Figure8_h_corr_CrossOver.png'.format(out_path,ATL11_file_str),format='png')
+##    plt.show()
 
     if pdf:    #save all to one .pdf file
         figs = list(map(plt.figure, plt.get_fignums()))
@@ -475,10 +475,10 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
             namestr = os.path.basename(namestr).split('BRW_')[-1]
             dset = hf.create_dataset('default/'+namestr, img.shape, data=img.data, \
                                      chunks=img.shape, compression='gzip',compression_opts=6)
-            dset.attrs['CLASS'] = np.string_('IMAGE')
-            dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
-            dset.attrs['IMAGE_SUBCLASS'] = np.string_('IMAGE_TRUECOLOR')
-            dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
+            dset.attrs['CLASS'] = np.bytes_('IMAGE')
+            dset.attrs['IMAGE_VERSION'] = np.bytes_('1.2')
+            dset.attrs['IMAGE_SUBCLASS'] = np.bytes_('IMAGE_TRUECOLOR')
+            dset.attrs['INTERLACE_MODE'] = np.bytes_('INTERLACE_PIXEL')
         for ii, name in enumerate(sorted(glob.glob('{0}/{1}_Figure*.png'.format(out_path,ATL11_file_str)))):
             if 'Figure1' not in name and 'Figure3' not in name:
                 img = imageio.imread(name, pilmode='RGB') 
@@ -487,10 +487,10 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
                 namestr = os.path.basename(namestr).split('Figure')[-1]
                 dset = hf.create_dataset(namestr[2:], img.shape, data=img.data, \
                                          chunks=img.shape, compression='gzip',compression_opts=6)
-                dset.attrs['CLASS'] = np.string_('IMAGE')
-                dset.attrs['IMAGE_VERSION'] = np.string_('1.2')
-                dset.attrs['IMAGE_SUBCLASS'] = np.string_('IMAGE_TRUECOLOR')
-                dset.attrs['INTERLACE_MODE'] = np.string_('INTERLACE_PIXEL')
+                dset.attrs['CLASS'] = np.bytes_('IMAGE')
+                dset.attrs['IMAGE_VERSION'] = np.bytes_('1.2')
+                dset.attrs['IMAGE_SUBCLASS'] = np.bytes_('IMAGE_TRUECOLOR')
+                dset.attrs['INTERLACE_MODE'] = np.bytes_('INTERLACE_PIXEL')
         del hf['ancillary_data']
         with h5py.File(ATL11_file,'r') as g:
             g.copy('ancillary_data',hf)
@@ -503,7 +503,7 @@ def ATL11_browse_plots(ATL11_file, hemisphere=1, mosaic=None, out_path=None, pdf
     # plt.show()
 #
     
-if __name__=='__main__':
+def main():
     import argparse
     parser=argparse.ArgumentParser()
     parser.add_argument('ATL11_file', type=str)
@@ -514,6 +514,9 @@ if __name__=='__main__':
     parser.add_argument('--nolog', action='store_true', default=False, help='no writing errors to .log file')
     args=parser.parse_args()
     ATL11_browse_plots(args.ATL11_file, hemisphere=args.Hemisphere, mosaic=args.mosaic, out_path=args.out_path, pdf=args.pdf)
+
+if __name__=="__main__":
+    main()
 
 
 

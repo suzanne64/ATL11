@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ATL11"
+description = "Utilities for creating the NASA ICESat-2 ATL11 product"
+keywords = [
+    "ICESat-2",
+    "ATL11"
+]
+authors = [
+    {name = "Ben Smith", email = "besmith@uw.edu"}
+]
+maintainers = [
+    {name = "ATL11 contributors"}
+]
+license = {file = "LICENSE"}
+readme = "README.md"
+version = "2.0.0"
+
+requires-python = ">=3.6"
+dependencies = [
+    "h5py",
+    "matplotlib",
+    "netCDF4",
+    "numpy",
+    "pyproj",
+    "scipy>=1.10.1",
+    "shapely",
+    "cartopy",
+    "imageio",
+    "pointCollection @ git+ssh://git@github.com/smithb/pointCollection.git"
+]
+
+classifiers=[
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+Repository = "https://github.com/SmithB/ATL11"
+Issues = "https://github.com/SmithB/ATL11/issues"
+
+[project.optional-dependencies]
+all = ["gdal", "notebook", "shapely"]
+dev = ["flake8", "pytest>=4.6", "pytest-cov"]
+
+[project.scripts]
+
+"ATL06_to_ATL11.py" = "ATL11.scripts.ATL06_to_ATL11:main" 
+"ATL11_browse_plots.py" = "ATL11.scripts.ATL11_browse_plots:main"
+"ATL11_test_plot.py" = "ATL11.scripts.ATL11_test_plot:main"
+"geoloc_biases_from_xovers.py" = "ATL11.scripts.geoloc_biases_from_xovers:main"
+"get_tiles_for_ATL11.py" = "ATL11.scripts.get_tiles_for_ATL11:main"
+"index_ATL11.py" = "ATL11.scripts.index_ATL11:main"
+"make_ATL11_queue.py" = "ATL11.scripts.make_ATL11_queue:main"
+"make_ATL11_queue_script_dis.py" = "ATL11.scripts.make_ATL11_queue_script_dis:main"
+"make_ATL11_queue_script.py" = "ATL11.scripts.make_ATL11_queue_script:main"
+"make_Greenland_script.py" = "ATL11.scripts.make_Greenland_script:main"
+"make_ATL11xo_tiles.py" = "ATL11.scripts.make_ATL11xo_tiles:main"
+
+[tool.setuptools]
+script-files = ["scripts/make_ATL06_file_indexing_discover.sh", "scripts/make_ATL06_tiles_adapt_wCopy.sh","scripts/make_ATL06_tiles_adapt_wCopy.sh", "scripts/make_ATL06_tiles_discover.sh", "scripts/make_ATL06_tiles.sh", "scripts/run_all_l3b_is.sh"]
+
+[tool.setuptools.packages.find]
+exclude = ["test*"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+norecursedirs = ".git"
+python_files = [
+    "test*.py"
+]
+testpaths = [
+    "test"
+]

@@ -31,6 +31,7 @@ def write_METADATA(outfile,sec_offset,start_date,infiles):
 #
         filemeta(outfile,sec_offset,start_date,infiles)
         g = h5py.File(outfile,'r+')
+        create_attribute(g.id, 'title', [], 'SET_BY_META')
         gf = g.create_group('METADATA/Lineage/ATL06'.encode('ASCII','replace'))
         fname = []
         sname = []
@@ -101,8 +102,6 @@ def write_METADATA(outfile,sec_offset,start_date,infiles):
         g.close()
     return outfile    
     
-#if __name__=='__main__':
-#    outfile = write_METADATA(outfile,infiles)
     
 def filemeta(outfile,sec_offset,start_date,infiles):
 
@@ -154,6 +153,7 @@ def filemeta(outfile,sec_offset,start_date,infiles):
               if 'quality_assessment' in list(g['/'].keys()):
                   del g['quality_assessment']
               gf = g.create_group('quality_assessment'.encode('ASCII','replace'))
+              create_attribute(gf.id, 'description', [], 'Contains quality assessment data. This may include QA counters, QA along-track data and/or QA summary data.')
 
               if os.path.isfile(infile):
                 f = h5py.File(infile,'r')
@@ -204,7 +204,6 @@ def filemeta(outfile,sec_offset,start_date,infiles):
                            val=softwareVersion()
                            create_attribute(g.id, key, [], val)
                            create_attribute(g['METADATA/ProcessStep/PGE'].id, 'softwareVersion', [], val)
-#                           create_attribute(g['METADATA/DatasetIdentification'].id, 'VersionID', [], val)
                            create_attribute(g['METADATA/SeriesIdentification'].id, 'VersionID', [], series_version())
                            continue
                        if key=='time_coverage_start':
@@ -241,6 +240,7 @@ def filemeta(outfile,sec_offset,start_date,infiles):
                 if 'orbit_info' in list(g['/'].keys()):
                     del g['orbit_info']
                 g.create_group('orbit_info'.encode('ASCII','replace'))
+                create_attribute(g['orbit_info'].id, 'description', [], 'Contains orbit information.')
 #                duplicate_group(f, g, 'orbit_info')
 #                g['orbit_info/cycle_number'].dims[0].attach_scale(g['orbit_info/crossing_time'])
 #                g['orbit_info/lan'].dims[0].attach_scale(g['orbit_info/crossing_time'])
@@ -299,6 +299,7 @@ def poly_buffered_linestring(outfile):
             try:
                 lonlat_11 += [np.c_[h5f[pair+'/longitude'], h5f[pair+'/latitude']]]
             except Exception as e:
+                print(f"write_METADATA.py: problem reading {pair} latitude/longitude data from {outfile}")
                 print(e)
 #    print('avg lat lonlat_11[0]',np.sum(lonlat_11[0][:,1])/len(lonlat_11[0]))
 #    print('min lat lonlat_11',np.min(lonlat_11[0][:,1]))
